@@ -1,0 +1,136 @@
+/* ######################################################### */
+/* Estilos generales para modales */
+/* ######################################################### */
+
+/* Separación del icono y el título del modal */
+.icon-spaced {
+    margin-right: 10px;
+}
+
+/* Título del modal */
+.modal-title{
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* Texto del modal */
+.text-muted{
+    font-size:16px;
+    text-align: justify;
+}
+
+/* Estilos del header del modal*/
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+/* Estilos del título del modal*/
+.modal-header .modal-title {
+    margin: 0;
+    padding: 0;
+    flex: 1;
+}
+
+/* Estilos del botón de cerrar del modal*/
+.modal-header .close {
+    margin: 0;
+    padding: 0;
+    margin-left: auto;
+}
+
+/* ######################################################### */
+/* Modal de historial */
+/* ######################################################### */
+
+/* Estilos cabeceras de tablas */
+.thead-dark th{
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Control de ancho de columnas en la tabla del historial */
+#history-content .table td:nth-child(1) {
+    width: 5%; /* Columna del número */
+}
+
+#history-content .table td:nth-child(2) {
+    width: 23%; /* Columna de la fecha */
+}
+
+#history-content .table td:nth-child(3) {
+    width: auto; /* Columna de la consulta - ocupa el resto */
+}
+
+/* ######################################################### */
+/* Modal de feedback */
+/* ######################################################### */
+
+/* Contenedor de calificación del modal de feedback */
+.rating-container {
+    text-align: center;
+    margin: 10px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+}
+
+/* Contenedor de estrellas del modal de feedback */
+.rating-stars-container{
+    text-align: center;
+    margin: 2px 0 0 0;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+/* Estilos de las estrellas del modal de feedback */
+.star {
+    font-size: 3rem;
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    margin: 0 2px;
+}
+
+/* Estilos de las estrellas del modal de feedback al pasar el mouse */
+.star:hover,
+.star.active,
+.star.hover-active {
+    color: #ffc107;
+}
+
+/* ######################################################### */
+/* Modal de listado de archivos */
+/* ######################################################### */
+
+/* Para el icono de eliminar del modal */
+.remove-file-btn i {
+    color: #c82333
+}
+
+/* Estilos para el modal de archivos y ordenar icono */
+.list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Estilos del nombre del archivo del modal de archivos y ordenar icono */
+.file-name-modal {
+    flex: 1;
+    margin-right: 10px;
+}
+
+/* Estilos del botón de eliminar del modal de archivos y ordenar icono */
+.remove-file-btn {
+    flex-shrink: 0;
+}

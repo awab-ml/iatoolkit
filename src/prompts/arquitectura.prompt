@@ -1,0 +1,32 @@
+Mi app es un chatbot multiempresa, que se conecta
+con datos empresariales por sql y llamadas a endpoints.
+
+Es principalmente un backend, pero tambien puede actuar como frontend.
+Cuando actua como backend, los usuarios se identifican como external_user_id
+y el front lo informa en la vista external_login_view.
+
+Cuando actua como front y back,
+existe un acceso que simula un usuario externo a través de
+public_chat_view.
+
+El otro mecanismo de acceso es con el sistema de usuarios
+integrado a mi app, con tablas propias: user, company, user_company
+y el acceso se hace a través de profile_service.
+
+Estos accesos sirven para autentificar las consultas.
+Cada vez que hay un acceso en estos puntos, se llama a query_service
+para que construya el contexto de la empresa y se lo envie al
+llm.
+
+Se guarda en session de redis, el response.id generado
+para linkearlo con las consultas futuras (responses api de openai).
+
+Por otra parte, las queries ingresan a través de llm_query_view,
+el que autentifica al solicitante y la dirige a query_service.
+
+Query_service gestiona los prompts que pueden ser solicitados
+y llama a invoke en openai_client, quien se encarga
+de interactuar con el llm.
+
+Una vez terminada la interacción, se graba un registro en la
+tabla llm_queries.

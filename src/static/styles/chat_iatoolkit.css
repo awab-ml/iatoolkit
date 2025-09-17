@@ -1,0 +1,700 @@
+/* Spinner */
+.spinning {
+    animation: spin 1s linear infinite;
+    font-size: 15px; /* Tamaño del ícono */
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estilos para el contenedor del chat y mensajes para que exista scroll */
+#chat-container {
+    max-height: 70vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+.answer-section, .error-section, .document-section {
+    max-width: 100%;
+    word-wrap: break-word;
+    margin-bottom: 10px;
+}
+/* Estilos para alinear los iconos en una fila junto al boton enviar y el input*/
+.input-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+.input-container {
+    flex: 1;
+    display: flex;
+    /* Organiza los elementos internos (la fila de inputs y el textarea) uno sobre otro */
+    flex-direction: column;
+
+}
+#paperclip-button-container,
+#view-files-button-container,
+.flex-shrink-0 {
+    display: flex;
+    align-items: center;
+}
+/* Estilos para el modal de archivos y ordenar icono */
+.list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.file-name-modal {
+    flex: 1;
+    margin-right: 10px;
+}
+.remove-file-btn {
+    flex-shrink: 0;
+}
+/* Estilos del header del modal*/
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.modal-header .modal-title {
+    margin: 0;
+    padding: 0;
+    flex: 1;
+}
+
+.modal-header .close {
+    margin: 0;
+    padding: 0;
+    margin-left: auto;
+}
+
+/* Titulo del modal */
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+/* Para el ícono de clip de papel */
+#paperclip-button i {
+    font-size: 2.5rem !important;  /* Tamaño actual */
+}
+
+/* Para el ícono de ver archivos */
+#view-files-button i {
+    font-size: 2.5rem !important;  /* Tamaño actual */
+}
+
+/* Para el icono de eliminar del modal */
+.remove-file-btn i {
+    color: #c82333
+}
+
+/* Modern Header Mejorado */
+.modern-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 30px; /* Espaciado optimizado */
+    background: linear-gradient(90deg, #3388ff, #003399); /* Azul más claro al inicio */
+    color: #ffffff; /* Texto blanco */
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.08); /* Sombra más sutil */
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Línea blanca sutil abajo */
+}
+
+/* Ajustar el contenedor del logo */
+.modern-header .logo-section {
+    display: flex;
+    align-items: center; /* Centra verticalmente la imagen dentro del header */
+    max-height: 100%;    /* Asegura que siga el tamaño del contenedor */
+}
+
+/* Estilo general para la imagen del logo */
+.modern-header .logo-section img {
+    max-height: 60px;    /* Ajusta el tamaño máximo del logo */
+    max-width: 100%;     /* Evita desbordamiento horizontal */
+    height: auto;        /* Mantiene la proporción de la imagen */
+    object-fit: contain; /* Evita deformaciones */
+}
+
+
+/* Estilo del mensaje ingresado por el usuario */
+#chat-container .message {
+  /* Propiedades de layout y forma (se mantienen del original) */
+  margin-top: 10px;
+  max-width: 75%;
+  min-width: fit-content;
+  width: fit-content;
+  border-radius: 12px 12px 0px 12px;
+  word-wrap: break-word;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+  text-align: left;
+
+  /* Propiedades estéticas (adoptadas de .llm-output) */
+  padding: 15px;
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #333;
+  background-color: #ffffff; /* Fondo blanco para consistencia */
+  border: 1px solid #ddd;   /* Borde sutil como en las tablas */
+}
+
+
+.answer-section {
+    color: #202123; /* Texto negro suave */
+    font-family: "Inter", Arial, sans-serif; /* Fuente moderna */
+    font-size: 16px;
+    line-height: 1.6;
+    word-wrap: break-word;
+    padding-top: 0.5em;
+}
+
+.error-section {
+    /* Layout y Alineación (Burbuja a la izquierda) */
+    align-self: flex-start; /* Alinea a la izquierda, como los mensajes del asistente */
+    max-width: 75%;
+    min-width: fit-content; /* Se ajusta al contenido mínimo */
+    width: fit-content;
+    margin-top: 10px;
+    display: flex;
+    align-items: flex-start; /* Alinea el ícono con la primera línea de texto */
+    gap: 12px; /* Un espaciado más generoso entre el ícono y el texto */
+
+    /* Estilo Visual de Burbuja de Error */
+    background-color: #fff0f0; /* Un rojo muy pálido y suave */
+    color: #5c0f0f; /* Texto en un rojo oscuro para buena legibilidad */
+    border: 1px solid #ffcccc; /* Borde en un tono de rojo ligeramente más oscuro */
+    padding: 12px 18px; /* Espaciado interno optimizado */
+    border-radius: 0 12px 12px 12px; /* Forma de burbuja (esquina superior izquierda recta) */
+    font-family: Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    word-wrap: break-word; /* Mantenemos el ajuste de texto */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Sombra muy sutil para darle profundidad */
+}
+
+.error-section i {
+    color: #d32f2f; /* Un rojo más vibrante para el ícono, para que destaque */
+    font-size: 1.2em; /* Ícono un poco más grande para mayor impacto visual */
+    padding-top: 2px; /* Pequeño ajuste para alinear visualmente mejor con el texto */
+}
+
+
+.list-unstyled {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Ajustes generales para la sección de validación */
+.document-section {
+    display: flex;
+    border-radius: 15px;
+    margin-top: 10px;
+    padding: 10px;
+    text-align: left;
+    background-color: #ffffff; /* Fondo blanco */
+    flex-direction: column; /* Asegura que las filas se apilen verticalmente */
+    max-width: 70%;
+    border: 1px solid #d6d6d6; /* Borde neutro */
+}
+
+.row {
+    display: flex;
+    flex-wrap: nowrap; /* Evitar que los elementos salten de línea */
+}
+
+.col-auto {
+    display: inline-block; /* Asegura que ocupen solo el ancho necesario */
+}
+
+.document-section .rejection-reasons {
+    flex: 1;
+    margin-top: 10px;
+    margin-left: 25px;
+    display: block;
+}
+
+.rejection-reasons ul {
+    margin-left: 15px; /* Sangría para las listas */
+    padding: 0;
+    list-style: disc; /* Estilo de punto para las viñetas */
+}
+
+.document-section ul {
+    margin-left: 10px; /* Sangría para listas */
+    padding: 0;
+    list-style: disc inside; /* Estilo de viñetas alineadas */
+}
+
+
+.input-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+#question {
+    width: 100%;
+    font-size: 15px;
+    background: #f8f9fa; /* Fondo gris claro */
+    color: #202123; /* Texto oscuro */
+    border: 1px solid #d1d5db;
+    transition: border-color 0.2s ease-in-out;
+}
+
+#question:focus {
+    outline: none;
+    border-color: #0084ff; /* Azul vibrante */
+    box-shadow: 0 0 5px rgba(0, 132, 255, 0.3);
+}
+
+
+.filepond--panel {
+    padding: 0;              /* Elimina cualquier relleno adicional del contenedor */
+}
+
+/* bordered drop area */
+.filepond--panel-root {
+    background-color: transparent;
+}
+
+/* Contenedor de los archivos cargados (FilePond) */
+.filepond-container {
+    width: 100%; /* Se estira todo lo que pueda */
+    border: 2px dashed #adb5bd; /* Gris, igual al textarea */
+    border-radius: 5px; /* Igual que el textarea */
+    padding: 10px;
+    min-height: 70px; /* Mantiene altura mínima */
+    max-height: 200px; /* Evita que crezca demasiado */
+    overflow-y: auto; /* Permite scroll si es necesario */
+    background-color: #f8f9fa; /* Gris claro, igual al textarea */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #6c757d; /* Color de prompt_llm.txt sutil */
+}
+
+.filepond--item {
+    width: calc(40% - 0.5em);/* Ancho dinámico basado en el contenido */
+    border-radius: 5px;     /* Bordes curvados */
+    text-align: left;       /* Alinea el prompt_llm.txt a la izquierda */
+    white-space: nowrap;    /* Evita dividir el prompt_llm.txt en varias líneas */
+    overflow: hidden;       /* Oculta cualquier desbordamiento */
+    text-overflow: ellipsis; /* Muestra puntos suspensivos si el prompt_llm.txt es muy largo */
+}
+
+.filepond--drop-label {
+    display: none;           /* Opcional: Oculta el mensaje de arrastrar y soltar si no lo necesitas */
+}
+
+/* the text color of the file status and info labels */
+.filepond--file {
+    color: black;
+    background-color: #d1e3f1;
+}
+
+.custom-confirm-button {
+    background-color: #0066cc;
+    color: white;             /* Color del prompt_llm.txt */
+    border: none;             /* Sin borde */
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Sombra */
+}
+
+.custom-confirm-button:hover {
+    background-color: #0066cc; /* Color al pasar el mouse */
+}
+
+.custom-cancel-button {
+    background-color: #dc3545; /* Color de fondo (rojo) */
+    color: white;             /* Color del prompt_llm.txt */
+}
+
+.custom-cancel-button:hover {
+    background-color: #c82333; /* Color al pasar el mouse */
+}
+
+
+@media (max-width: 768px) {
+    #chat-container {
+        height: 68vh;
+    }
+}
+
+.edit-icon {
+    margin-left: 8px; /* Ajusta según el espacio deseado */
+}
+
+.message:hover .edit-icon {
+    color: #007bff; /* Un color azul que contrasta bien con el fondo blanco */
+}
+
+#chat-container {
+    background-color: #fff; /* Fondo blanco para el contenedor del chat */
+    box-shadow: 0 0 10px rgba(0,0,0,0.1); /* Sombra sutil */
+}
+
+/* Estilos para el input de texto y botones */
+.input-row {
+    background-color: #f8f9fa; /* Fondo ligeramente diferente para la fila de entrada */
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.05); /* Sombra superior */
+}
+
+#question {
+    transition: box-shadow 0.3s ease-in-out;
+}
+
+#question:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+/* Estilo para el ícono de clip de papel cuando está activo (ej. hover) */
+#paperclip-button:hover i {
+    color: #007bff !important; /* Azul Bootstrap primario en hover, importante para sobrescribir el verde */
+}
+
+.filepond--credits {
+    display: none; /* Ocultar créditos de FilePond */
+}
+
+/* Si FilePond sigue mostrando algo, intentar ocultarlo más agresivamente. */
+/* Se accede al contenedor principal de FilePond que se crea automáticamente */
+.filepond--root {
+    display: none;
+    visibility: hidden;
+    height: 0;
+    width: 0;
+    overflow: hidden;
+    position: absolute; /* Sacarlo del flujo del documento */
+    left: -9999px; /* Moverlo fuera de la pantalla */
+}
+
+/* Estilos para la barra de tareas*/
+.company-section {
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+    margin-right: 10px;
+    margin-bottom: 5px;
+    text-align: right
+}
+
+.first-line-input-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: center;
+}
+
+.second-line-input-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    align-items: center;
+}
+
+/* Estilo para el input de cliente cuando tiene contenido */
+#client-input.has-content {
+    background-color: #e9f3ed !important;                 /* Fondo verde muy pálido */
+    border-color: #198754 !important;                     /* Borde en verde 'success' */
+    border-width: 2px !important;                         /* Borde más grueso */
+    color: #0a5833 !important;                           /* Texto en verde oscuro */
+    font-weight: 500 !important;                          /* Fuente un poco más gruesa */
+    box-shadow: 0 1px 4px rgba(25, 135, 84, 0.2) !important; /* Sombra sutil y más suave */
+}
+
+/* Pequeño ajuste para la etiqueta flotante cuando el input tiene contenido */
+#client-input.has-content + label {
+    color: #0a5833 !important; /* Aseguramos que el color de la etiqueta coincida */
+}
+
+/* Estilo para el nuevo botón de limpiar el input de cliente */
+#clear-client-input-button {
+    position: absolute;
+    top: 50%;
+    right: 15px; /* Lo mueve desde la derecha */
+    transform: translateY(-50%); /* Lo centra verticalmente */
+    z-index: 5; /* Se asegura de que esté por encima del input */
+    padding: 0.25rem 0.5rem;
+    color: #6c757d;
+    background-color: transparent;
+}
+
+#clear-client-input-button:hover {
+    color: #212529;
+}
+
+
+
+/* Estilo personalizado para un input más suave */
+.form-control-soft {
+    background-color: #f8f9fa; /* Fondo gris muy claro, como en la opción 2 */
+    border-color: #dee2e6;     /* Un borde inicial muy sutil */
+    transition: all 0.2s ease-in-out; /* Transición suave para los efectos */
+}
+
+/* Efecto al hacer clic (focus) */
+.form-control-soft:focus {
+    border-color: #198754;     /* El borde toma el color verde 'success' de Bootstrap */
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25); /* Resplandor a juego con el borde verde */
+    color: #000;
+}
+
+.btn-dropdown-soft {
+    background-color: #f8f9fa; /* Mismo fondo gris claro que el input */
+    border: 1px solid #dee2e6; /* Borde inicial sutil */
+    color: #495057; /* Color de texto estándar */
+    transition: all 0.2s ease-in-out; /* Transición suave */
+    height: 100%; /* Asegura que tenga la misma altura que el input de al lado */
+}
+
+/* Efecto cuando el menú está abierto (similar al :focus del input) */
+.btn-dropdown-soft[aria-expanded="true"] {
+    background-color: #ffffff;
+    border-color: #198754; /* Borde verde 'success' */
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25); /* Resplandor verde */
+}
+
+/* Pequeño ajuste al pasar el ratón para que no cambie de color a menos que esté activo */
+.btn-dropdown-soft:hover {
+    background-color: #f8f9fa;
+    border-color: #ced4da;
+}
+
+/* 2. Estilo para el menú desplegable y sus ítems */
+.dropdown-menu-soft {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+/* Estilo y efecto para cada opción de la lista */
+.dropdown-menu-soft .dropdown-item {
+    transition: all 0.15s ease-in-out; /* Transición para el efecto hover */
+}
+
+.dropdown-menu-soft .dropdown-item:hover,
+.dropdown-menu-soft .dropdown-item:focus {
+    color: #ffffff;                       /* Nuevo color de texto: blanco */
+    background-color: #0a5833;           /* Nuevo color de fondo: verde oscuro */
+    padding-left: 1.5rem;                /* Mantenemos el efecto de indentación */
+    transition: all 0.15s ease-in-out;   /* Mantenemos la transición suave */
+}
+
+/* Estilo para las cabeceras de las categorías dentro del menú */
+.dropdown-menu-soft .dropdown-header {
+    background-color: #495057; /* Gris oscuro estándar de Bootstrap, muy legible */
+    color: #ffffff;            /* Texto en blanco para un contraste nítido */
+    font-weight: 600;          /* Grosor semibold, ideal para este contraste */
+
+    /* Pequeños ajustes para un look pulido */
+    margin: 4px;               /* Un pequeño margen para que "respire" */
+    padding: 0.4rem 1rem;      /* Espaciado interno equilibrado */
+    border-radius: 4px;        /* Bordes sutilmente redondeados */
+    font-size: 0.85rem;        /* Tamaño de fuente ajustado */
+    text-transform: none;      /* Texto en formato normal para una apariencia más limpia */
+    letter-spacing: normal;
+    border-bottom: none;       /* Nos aseguramos de quitar cualquier línea inferior */
+}
+
+
+.form-control-soft, #agent-select-button {
+    background-color: #f8f9fa; /* Un fondo gris muy sutil */
+    border: 1px solid #dee2e6; /* Borde gris claro */
+    box-shadow: none; /* Quitamos cualquier sombra inicial */
+    font-size: 16px;
+    padding: 12px 15px;
+    /* Transición suave para cuando el usuario haga foco */
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control-soft:focus, #agent-select-button.show {
+    border-color: #86b7fe; /* Borde azul de Bootstrap para indicar foco */
+    background-color: #ffffff; /* Fondo cambia a blanco */
+    outline: 0;
+    /* Sombra de resplandor azul, el estándar de Bootstrap 5 */
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* El botón del dropdown necesita su propio estado de foco cuando se abre */
+#agent-select-button:focus, #agent-select-button:active {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* Estilo para el texto de placeholder */
+.form-control-soft::placeholder {
+    color: #6c757d; /* Color de texto gris estándar */
+    opacity: 1;
+}
+
+/* Aseguramos que el botón del dropdown se alinee correctamente en altura */
+#agent-select-button {
+    height: calc(1.5em + 1.5rem + 2px); /* Mantenemos consistencia en altura */
+    line-height: 1.5;
+}
+
+/* Estilo para el botón del dropdown DESPUÉS de que se ha seleccionado un ítem */
+#agent-select-button.item-selected {
+    background-color: #e9f3ed !important;             /* Fondo verde muy pálido */
+    border-color: #198754 !important;                 /* Borde en verde 'success' */
+    border-width: 2px !important;                     /* Borde más grueso para que resalte */
+    color: #0a5833 !important;                       /* Texto en verde oscuro para contraste */
+    font-weight: 500 !important;                      /* Fuente un poco más gruesa */
+    box-shadow: 0 1px 4px rgba(25, 135, 84, 0.4) !important; /* Sombra sutil */
+    transition: all 0.2s ease-in-out;
+}
+
+#clear-selection-button {
+    position: absolute;
+    top: 50%;
+    /* Lo movemos 45px desde la derecha para que no se superponga con la flecha del dropdown */
+    right: 45px;
+    transform: translateY(-50%);
+    z-index: 5; /* Asegura que esté por encima del botón principal */
+    padding: 0.25rem 0.5rem;
+    color: #6c757d; /* Color gris estándar */
+    background-color: transparent;
+}
+
+#clear-selection-button:hover {
+    color: #212529; /* Se oscurece un poco al pasar el mouse */
+}
+
+
+/* Estilos para el modal de feedback */
+.icon-spaced {
+    margin-right: 10px;
+}
+
+.modal-title{
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.text-muted{
+    font-size:16px;
+    text-align: justify;
+}
+
+.feedback-text{
+    font-size: 16px;
+}
+
+/* Estilos para el modal de historial */
+
+.thead-dark th{
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Control de ancho de columnas en la tabla del historial */
+#history-content .table td:nth-child(1) {
+    width: 5%; /* Columna del número */
+}
+
+#history-content .table td:nth-child(2) {
+    width: 20%; /* Columna de la fecha */
+}
+
+#history-content .table td:nth-child(3) {
+    width: auto; /* Columna de la consulta - ocupa el resto */
+}
+
+/* Botones de feedback y historial */
+.buttons-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+}
+
+/* Contenedor de calificación con estrellas */
+.rating-container {
+    text-align: center;
+    margin: 10px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+}
+
+.rating-stars-container{
+    text-align: center;
+    margin: 2px 0 0 0;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+/* --- ESTILOS PARA EL WIDGET DE ESTRELLAS DE FEEDBACK --- */
+
+/* Contenedor para alinear las estrellas y darles espacio */
+.rating-stars {
+    display: flex;
+    justify-content: center; /* Centra las estrellas en el modal */
+    gap: 5px;                /* Espacio entre las estrellas */
+    margin-bottom: 15px;     /* Espacio debajo de las estrellas */
+    padding-top: 5px;        /* Espacio superior para que no se peguen al texto */
+}
+
+/* Estilo base para cada estrella */
+.star {
+    font-size: 2rem;       /* Tamaño de las estrellas */
+    color: #adb5bd;       /* Color de las estrellas inactivas (gris) */
+    cursor: pointer;      /* Cursor de mano para indicar que son clickeables */
+    transition: color 0.2s, transform 0.2s; /* Transición suave para el color y el tamaño */
+}
+
+/* Efecto visual al pasar el mouse por encima */
+.star:hover {
+    transform: scale(1.15); /* Agranda un poco la estrella */
+}
+
+/*
+ * La magia principal ocurre aquí.
+ * Usamos el pseudo-elemento ::before para controlar qué ícono de Bootstrap se muestra.
+ */
+
+/* Por defecto, todas las estrellas muestran el ícono de estrella VACÍA (`bi-star`) */
+.star::before {
+    font-family: 'bootstrap-icons'; /* Asegúrate de que la fuente de íconos esté disponible */
+    content: "\F586"; /* Código Unicode para el ícono `bi-star` */
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Cuando una estrella tiene la clase .active (seleccionada) o .hover-active (bajo el cursor)... */
+.star.active::before,
+.star.hover-active::before {
+    content: "\F587"; /* ...cambia el contenido al ícono de estrella LLENA (`bi-star-fill`) */
+}
+
+/* Color para las estrellas seleccionadas o bajo el cursor */
+.star.active,
+.star.hover-active {
+    color: #ffc107; /* Color dorado estándar de Bootstrap */
+}

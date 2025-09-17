@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - IAToolkit{% endblock %}
+
+{% block content %}
+
+  <!-- Contenido principal con espaciado adicional respecto al header -->
+  <div class="row flex-fill mt-5 flex-wrap">
+
+    {% if not user or user_company != company_short_name %}
+    <!-- Sección de login (se coloca primero en el HTML para mobile) -->
+    <div class="col-12 col-lg-5 offset-lg-1">
+      <div class="border rounded p-4 shadow-sm bg-light">
+        <h4 class="text-muted fw-semibold text-start mb-3">login integrado (IAToolkit)</h4>
+        <form id="login-form"
+              action="{{ url_for('home', company_short_name=company_short_name) }}"
+              method="post">
+          <div class="mb-3">
+            <label for="company_short_name" class="form-label d-block text-muted">Empresa</label>
+            <select id="company_short_name" name="company_short_name" class="form-select" required>
+              <option value="" disabled selected>Selecciona una empresa</option>
+                {% for company in companies %}
+                    <option value="{{ company.short_name }}"
+                            {% if company.short_name == company_short_name %}selected{% endif %}>
+                        {{ company.short_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+          <div class="mb-3">
+            <label for="email" class="form-label d-block text-muted">Correo Electrónico</label>
+            <input type="email" id="email" name="email" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label d-block text-muted">Contraseña</label>
+            <input type="password" id="password" name="password" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Iniciar Sesión</button>
+        </form>
+
+        <div class="text-center mt-3">
+    <a href="{% if company_short_name %}{{ url_for('signup', company_short_name=company_short_name) }}{% else %}#{% endif %}"
+       id="signup-link"
+       class="btn btn-outline-primary w-100">Registrarse</a>
+</div>
+        <div class="text-center mt-3">
+          <a href="{{ url_for('forgot_password', company_short_name=company_short_name) }}" class="text-decoration-none text-muted fw-semibold">
+            ¿Olvidaste tu contraseña?
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Sección de JWT -->
+    <div class="col-12 col-lg-5 offset-lg-1">
+      <div class="border rounded p-4 shadow-sm bg-light">
+        <h4 class="text-muted fw-semibold text-start mb-3">login externo (api-key)</h4>
+        <form id="jwt-form"  method="post">
+          <div class="mb-3">
+            <label for="company_name" class="form-label d-block text-muted">Empresa</label>
+            <select id="company_name" name="company_short_name" class="form-select" required>
+              <option value="" disabled selected>Selecciona una empresa</option>
+                {% for company in companies %}
+                    {% if company.allow_jwt %}
+                      <option value="{{ company.short_name }}"> {{ company.short_name }}
+                      </option>
+                  {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+
+          <div class="mb-3">
+            <label for="external_user_id" class="form-label d-block text-muted">External user ID</label>
+            <input type="text" id="external_user_id" name="external_user_id" class="form-control" required>
+          </div>
+
+          <button type="button"
+                  id="initiateJwtChatButton"
+                  class="ml-5 btn btn-primary">
+              <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+              Iniciar Sesión JWT
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/secure_chat_initiator.js') }}"></script>
+
+<script>
+  // Variables pasadas desde Flask (HomeView)
+  const CHAT_TOKEN_REQUEST_URL = "{{ chat_token_request_url|safe }}";
+  const PUBLIC_CHAT_URL_TEMPLATE = "{{ public_chat_url_template|safe }}";
+  const API_KEY = "{{ api_key|safe }}";
+
+  $(document).ready(function () {
+      // Función para actualizar el enlace de "Registrarse" y el action del formulario "Iniciar Sesión"
+      function updateLinksAndForm() {
+          const selectedCompany = $('#company_short_name').val(); // Obtenemos el valor del select
+
+          // Actualizar enlace "Registrarse"
+          if (selectedCompany && selectedCompany.trim() !== '') {
+              const signupUrl = '/' + selectedCompany + '/signup';
+              $('#signup-link').attr('href', signupUrl); // Actualizamos el href del botón "Registrarse"
+          } else {
+              $('#signup-link').attr('href', '#'); // Enlace a "#" si no hay empresa seleccionada
+          }
+
+          // Actualizar action del formulario "Iniciar Sesión"
+          if (selectedCompany && selectedCompany.trim() !== '') {
+              const loginAction = '/' + selectedCompany + '/login';
+              $('#login-form').attr('action', loginAction); // Actualizamos la URL del form
+          } else {
+              $('#login-form').attr('action', '#'); // URL genérica si no hay selección
+          }
+      }
+
+      // Actualizamos al cargar la página
+      updateLinksAndForm();
+
+      // Escuchamos el evento de cambio en el dropdown para actualizar dinámicamente
+      $('#company_short_name').on('change', function () {
+          updateLinksAndForm();
+      });
+
+      // Event listener para el botón de "Abrir Chat (JWT)"
+      $('#initiateJwtChatButton').on('click', function() {
+
+          const selectedCompany = $('#company_name').val();
+          const externalUserId = $('#external_user_id').val();
+
+          if (!selectedCompany || !externalUserId.trim()) {
+              Swal.fire({ icon: 'warning', title: 'Campos Requeridos', text: 'Por favor, selecciona una empresa e ingresa un ID de usuario.' });
+              return;
+          }
+          if (!API_KEY || API_KEY.includes("defecto")) {
+              Swal.fire({ icon: 'error', title: 'Error de Configuración', text: 'La API Key de la aplicación no está disponible.' });
+              return;
+          }
+
+          const $button = $(this);
+          const $spinner = $button.find('.spinner-border');
+          $button.prop('disabled', true);
+          $spinner.removeClass('d-none');
+
+          fetch(`/${selectedCompany}/chat_login`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${API_KEY}`
+              },
+              body: JSON.stringify({
+                  external_user_id: externalUserId
+              })
+          })
+          .then(async response => {
+              if (response.ok) { // Si el status es 200, la respuesta es el HTML
+                  return response.text();
+              } else { // Si hay un error, el cuerpo es JSON
+                  const errorData = await response.json();
+                  throw new Error(errorData.error || 'Ocurrió un error desconocido.');
+              }
+          })
+          .then(htmlContent => {
+              // Éxito: Abrimos el HTML que nos devolvió el servidor en una nueva pestaña.
+              const newTab = window.open();
+              newTab.document.write(htmlContent);
+              newTab.document.close();
+          })
+          .catch(error => {
+              Swal.fire({ icon: 'error', title: 'Error de Inicio de Sesión', text: error.message });
+          })
+          .finally(() => {
+              $button.prop('disabled', false);
+              $spinner.addClass('d-none');
+          });
+
+       });
+  });
+</script>
+{% endblock %}
