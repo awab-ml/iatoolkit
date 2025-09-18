@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iatoolkit-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Un toolkit de herramientas de IA"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
-    {name = "Tu Nombre", email = "tu.email@ejemplo.com"}
+    {name = "Fernando Libedinsky", email = "fernando.libedinsky@gmail.com"}
 ]
 maintainers = [
     {name = "Tu Nombre", email = "tu.email@ejemplo.com"}
@@ -27,11 +27,16 @@ classifiers = [
 ]
 dynamic = ["dependencies"]
 
+
 [project.urls]
-Homepage = "https://github.com/tu-usuario/iatoolkit-core"
-Documentation = "https://github.com/tu-usuario/iatoolkit-core/blob/main/README.md"
-Repository = "https://github.com/tu-usuario/iatoolkit-core.git"
-"Bug Tracker" = "https://github.com/tu-usuario/iatoolkit-core/issues"
+Homepage = "https://github.com/flibedinsky/iatoolkit-core"
+Documentation = "https://github.com/flibedinsky/iatoolkit-core/blob/main/README.md"
+Repository = "https://github.com/flibedinsky/iatoolkit-core.git"
+"Bug Tracker" = "https://github.com/flibedinsky/iatoolkit-core/issues"
+
+
+[tool.setuptools]
+py-modules = ["iatoolkit"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -41,3 +46,9 @@ where = ["src"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+
+[build-system]
+requires = ["setuptools>=68", "wheel", "build"]
+build-backend = "setuptools.build_meta"
+
+
