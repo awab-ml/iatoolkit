@@ -5,7 +5,7 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from infra.mail_app import MailApp
 import os
 
@@ -52,7 +52,7 @@ class TestMailApp:
         mock_response = MagicMock()
         self.mock_mail_api.send_transac_email.return_value = mock_response
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             response = self.mail_app.send_email(
                 to="test@domain.com",
                 subject="Test Subject",
@@ -60,7 +60,7 @@ class TestMailApp:
             )
 
         # Verificar que la excepción es la esperada
-        assert excinfo.value.error_type == AppException.ErrorType.MAIL_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.MAIL_ERROR
         assert "Brevo no retornó message_id" in str(excinfo.value)
 
 
@@ -70,7 +70,7 @@ class TestMailApp:
         # Simular que la API lanza una excepción
         self.mock_mail_api.send_transac_email.side_effect = Exception("API error")
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.mail_app.send_email(
                 to="test@domain.com",
                 subject="Test Subject",
@@ -78,7 +78,7 @@ class TestMailApp:
             )
 
         # Verificar que la excepción es la esperada
-        assert excinfo.value.error_type == AppException.ErrorType.MAIL_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.MAIL_ERROR
         assert "No se pudo enviar correo: API error" in str(excinfo.value)
 
     def test_initial_configuration(self):

@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock, patch
 
 from infra.llm_proxy import LLMProxy
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from infra.llm_response import LLMResponse, Usage
 
 
@@ -93,13 +93,13 @@ class TestLLMProxy:
 
     def test_create_response_raises_for_unsupported_model(self):
         """
-        Prueba que create_response lanza una AppException para un modelo no soportado.
+        Prueba que create_response lanza una IAToolkitException para un modelo no soportado.
         """
         self.util_mock.is_openai_model.return_value = False
         self.util_mock.is_gemini_model.return_value = False
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.proxy.create_response(model="unsupported-model", input=[])
 
-        assert excinfo.value.error_type == AppException.ErrorType.LLM_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.LLM_ERROR
         assert "Modelo no soportado: unsupported-model" in str(excinfo.value)
 

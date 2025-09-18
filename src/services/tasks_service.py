@@ -9,7 +9,7 @@ from services.query_service import QueryService
 from repositories.tasks_repo import TaskRepo
 from repositories.profile_repo import ProfileRepo
 from infra.call_service import CallServiceClient
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from datetime import datetime
 from werkzeug.utils import secure_filename
 
@@ -38,13 +38,13 @@ class TaskService:
         # validate company
         company = self.profile_repo.get_company_by_short_name(company_short_name)
         if not company:
-            raise AppException(AppException.ErrorType.INVALID_NAME,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
                                f'No existe la empresa: {company_short_name}')
 
         # validate task_type
         task_type = self.task_repo.get_task_type(task_type_name)
         if not task_type:
-            raise AppException(AppException.ErrorType.INVALID_NAME,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
                                f'No existe el task_type: {task_type_name}')
 
         # process the task files
@@ -69,11 +69,11 @@ class TaskService:
         # get the task
         task = self.task_repo.get_task_by_id(task_id)
         if not task:
-            raise AppException(AppException.ErrorType.TASK_NOT_FOUND,
+            raise IAToolkitException(IAToolkitException.ErrorType.TASK_NOT_FOUND,
                                f'No existe la tarea: {task_id}')
 
         if task.status != TaskStatus.ejecutado:
-            raise AppException(AppException.ErrorType.INVALID_STATE,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_STATE,
                                f'La tarea debe estar en estado ejecutada: {task_id}')
 
         # update the task
@@ -93,7 +93,7 @@ class TaskService:
 
         # get the Task template prompt
         if not task.task_type.prompt_template:
-            raise AppException(AppException.ErrorType.INVALID_NAME,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
                                f'No existe el prompt_template para el task_type: {task.task_type.name}')
 
         template_dir = f'companies/{task.company.short_name}/prompts'
@@ -108,8 +108,8 @@ class TaskService:
             files=task.files
         )
         if 'error' in response:
-            raise AppException(AppException.ErrorType.LLM_ERROR,
-                               response.get('error'))
+            raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR,
+                                     response.get('error'))
 
         # update the Task with the response from llm_query
         task.llm_query_id = response.get('query_id', 0)
@@ -139,8 +139,8 @@ class TaskService:
         try:
             response, status_code = self.call_service.post(task.callback_url, response_data)
         except Exception as e:
-            raise AppException(
-                AppException.ErrorType.REQUEST_ERROR,
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.REQUEST_ERROR,
                 f"Error al notificar callback {task.callback_url}: {str(e)}"
             )
 
@@ -154,8 +154,8 @@ class TaskService:
                 # the file is already in base64
                 file_content = file.read().decode('utf-8')
             except Exception as e:
-                raise AppException(
-                    AppException.ErrorType.FILE_IO_ERROR,
+                raise IAToolkitException(
+                    IAToolkitException.ErrorType.FILE_IO_ERROR,
                     f"Error al extraer el contenido del archivo {filename}: {str(e)}"
                 )
 
@@ -176,8 +176,8 @@ class TaskService:
                 self.execute_task(task)
                 n_tasks += 1
         except Exception as e:
-            raise AppException(
-                AppException.ErrorType.TASK_EXECUTION_ERROR,
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.TASK_EXECUTION_ERROR,
                 f"Error ejecutando tareas pendientes: {str(e)}"
             )
 

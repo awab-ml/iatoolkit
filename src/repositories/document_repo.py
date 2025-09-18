@@ -7,7 +7,7 @@ from repositories.models import Document
 from repositories.models import Company
 from injector import inject
 from repositories.database_manager import DatabaseManager
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class DocumentRepo:
@@ -22,7 +22,7 @@ class DocumentRepo:
 
     def get(self, company: Company,filename: str ) -> Document:
         if not company or not filename:
-            raise AppException(AppException.ErrorType.PARAM_NOT_FILLED,
+            raise IAToolkitException(IAToolkitException.ErrorType.PARAM_NOT_FILLED,
                                'Falta empresa o filename')
 
         return self.session.query(Document).filter_by(company_id=company.id, filename=filename).first()

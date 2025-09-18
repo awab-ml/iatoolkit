@@ -30,24 +30,13 @@ class IAToolkitException(Exception):
 
 class IAToolkit:
     """
-    🚀 Clase principal del framework IAToolkit
-
-    Factory simple para crear aplicaciones Flask configuradas con todos los servicios core.
-    El cliente implementa y registra sus propias empresas en el dispatcher.
+    IAToolkit main class
 
     Ejemplo de uso:
     ```python
     from iatoolkit import IAToolkit
 
-    # Configuración mínima
-    config = {
-        'DATABASE_URI': 'sqlite:///mi_app.db'
-    }
-
-    toolkit = IAToolkit(config=config)
-    app = toolkit.create_app()
-
-    # O usando variables de entorno
+    # Configuración mínima con variables de entorno
     toolkit = IAToolkit()
     app = toolkit.create_app()
     ```
@@ -55,8 +44,6 @@ class IAToolkit:
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
-        Inicializa el toolkit
-
         Args:
             config: Diccionario opcional de configuración que sobrescribe variables de entorno
         """
@@ -64,14 +51,10 @@ class IAToolkit:
         self.app: Optional[Flask] = None
         self.db_manager: Optional[DatabaseManager] = None
         self._injector: Optional[Injector] = None
+        self._startup_executed = False
 
     def create_app(self) -> Flask:
-        """
-        🏗️ Crea y configura la aplicación Flask
 
-        Returns:
-            Aplicación Flask configurada y lista para usar
-        """
         # 1. Configurar logging
         self._setup_logging()
 
@@ -106,7 +89,7 @@ class IAToolkit:
         self._setup_context_processors()
 
         # 12. Auto-startup para desarrollo
-        self._setup_auto_startup()
+        self._start_companies()
 
         logging.info(f"🎉 IAToolkit v{VERSION} inicializado correctamente")
         return self.app
@@ -118,7 +101,7 @@ class IAToolkit:
     def _setup_logging(self):
         """📝 Configura el sistema de logging"""
         log_level_str = self._get_config_value('FLASK_ENV', 'production')
-        log_level = logging.INFO if log_level_str == 'development' else logging.WARNING
+        log_level = logging.INFO if log_level_str == 'dev' else logging.WARNING
 
         logging.basicConfig(
             level=log_level,
@@ -329,6 +312,20 @@ class IAToolkit:
         """🔧 Configura servicios adicionales"""
         Bcrypt(self.app)
 
+    # 🚀 Método público para inicializar empresas manualmente
+    def _start_companies(self):
+        if self._startup_executed:
+            return
+
+        try:
+            dispatcher = self._get_injector().get(Dispatcher)
+            dispatcher.start_execution()
+            self._startup_executed = True
+            logging.info("🏢 Empresas inicializadas")
+        except Exception as e:
+            logging.exception(e)
+            raise
+
     def _setup_cli_commands(self):
         """⌨️ Configura comandos CLI básicos"""
 
@@ -346,19 +343,6 @@ class IAToolkit:
                 logging.exception(e)
                 click.echo(f"❌ Error: {e}")
 
-        @self.app.cli.command("start-companies")
-        def start_companies():
-            """🏢 Inicia la ejecución de todas las empresas"""
-            try:
-                dispatcher = self._get_injector().get(Dispatcher)
-
-                click.echo("🏢 Iniciando empresas...")
-                dispatcher.start_execution()
-                click.echo("✅ Empresas iniciadas correctamente")
-
-            except Exception as e:
-                logging.exception(e)
-                click.echo(f"❌ Error: {e}")
 
     def _setup_context_processors(self):
         """🎭 Configura context processors para templates"""
@@ -374,7 +358,7 @@ class IAToolkit:
     def _setup_auto_startup(self):
         """🚀 Configura auto-startup para desarrollo"""
         if not self._get_config_value("PYTEST_CURRENT_TEST"):
-            @self.app.before_first_request
+            @self.app.before_request
             def startup():
                 try:
                     dispatcher = self._get_injector().get(Dispatcher)
@@ -423,14 +407,10 @@ class IAToolkit:
 
 # 🚀 Función de conveniencia para inicialización rápida
 def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:
-    """
-    🏗️ Función de conveniencia para crear una app IAToolkit
-
-    Args:
-        config: Diccionario opcional de configuración
-
-    Returns:
-        Aplicación Flask configurada
-    """
     toolkit = IAToolkit(config)
     return toolkit.create_app()
+
+if __name__ == "__main__":
+    toolkit = IAToolkit()
+    app = toolkit.create_app()
+    app.run()

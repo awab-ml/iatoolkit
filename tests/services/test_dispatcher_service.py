@@ -6,7 +6,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from services.dispatcher_service import Dispatcher
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from repositories.llm_query_repo import LLMQueryRepo
 from services.excel_service import ExcelService
 from services.mail_service import MailService
@@ -57,11 +57,11 @@ class TestDispatcher:
 
     def test_dispatch_invalid_company(self):
         """Test que dispatch lanza excepción para empresa no configurada."""
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.dispatch("invalid_company", "some_tag")
 
         # Validar que se lanza la excepción correcta
-        assert excinfo.value.error_type == AppException.ErrorType.EXTERNAL_SOURCE_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR
         assert "Empresa no configurada: invalid_company" in str(excinfo.value)
 
     def test_dispatch_method_exception(self):
@@ -69,11 +69,11 @@ class TestDispatcher:
         # Configurar un mock para arrojar excepción
         self.mock_maxxa.handle_request.side_effect = Exception("Method error")
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.dispatch("maxxa", "finantial_data")
 
         # Validar que se captura y transforma la excepción
-        assert excinfo.value.error_type == AppException.ErrorType.EXTERNAL_SOURCE_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR
         assert "Error en function call 'finantial_data': Method error" in str(excinfo.value)
 
     def test_dispatch_system_function(self):
@@ -107,10 +107,10 @@ class TestDispatcher:
 
     def test_get_company_context_invalid_company(self):
         """Test que get_company_context lanza excepción para empresa no configurada."""
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.get_company_context("invalid_company")
 
-        assert excinfo.value.error_type == AppException.ErrorType.EXTERNAL_SOURCE_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR
         assert "Empresa no configurada: invalid_company" in str(excinfo.value)
 
     def test_start_execution_when_ok(self):
@@ -142,10 +142,10 @@ class TestDispatcher:
 
     def test_get_user_info_invalid_company(self):
         """Test que get_user_info lanza excepción para empresa no configurada."""
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.get_user_info("invalid_company")
 
-        assert excinfo.value.error_type == AppException.ErrorType.EXTERNAL_SOURCE_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR
         assert "Empresa no configurada: invalid_company" in str(excinfo.value)
 
     def test_get_metadata_from_filename(self):
@@ -160,10 +160,10 @@ class TestDispatcher:
 
     def test_get_metadata_from_filename_invalid_company(self):
         """Test que get_metadata_from_filename lanza excepción para empresa no configurada."""
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.get_metadata_from_filename("invalid_company", "test.pdf")
 
-        assert excinfo.value.error_type == AppException.ErrorType.EXTERNAL_SOURCE_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR
         assert "Empresa no configurada: invalid_company" in str(excinfo.value)
 
     @patch.object(Dispatcher, '_discover_company_classes')
@@ -183,7 +183,7 @@ class TestDispatcher:
         assert len(dispatcher.company_classes) == 0
 
         # Verificar que dispatch falla para cualquier empresa
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             dispatcher.dispatch("any_company", "some_action")
 
         assert "Empresa no configurada: any_company" in str(excinfo.value)

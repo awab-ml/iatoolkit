@@ -9,7 +9,7 @@ from services.query_service import QueryService
 from services.prompt_manager_service import PromptService
 from services.user_session_context_service import UserSessionContextService
 from repositories.profile_repo import ProfileRepo
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from repositories.models import Company, User
 import base64
 import json
@@ -261,10 +261,10 @@ class TestQueryService:
         """
         self.profile_repo.get_company_by_short_name.return_value = None
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.service.llm_init_context(company_short_name='non_existent_co', external_user_id="test_user")
 
-        assert excinfo.value.error_type == AppException.ErrorType.INVALID_NAME
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.INVALID_NAME
         assert "Empresa no encontrada: non_existent_co" in str(excinfo.value)
         self.dispatcher.get_user_info.assert_not_called()
         self.llm_client.set_company_context.assert_not_called()
@@ -285,17 +285,17 @@ class TestQueryService:
 
     def test_load_files_for_context_handles_empty_content(self):
         files = [{'filename': 'doc.pdf', 'content': base64.b64encode(b'').decode('ascii')}]
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.service.load_files_for_context(files)
-        assert excinfo.value.error_type == AppException.ErrorType.PROMPT_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.PROMPT_ERROR
         assert 'Documento no tiene contenido' in str(excinfo.value)
 
     def test_load_files_for_context_handles_service_exception(self):
         self.document_service.file_to_txt.side_effect = Exception("Fallo de conversión")
         files = [{'filename': 'doc.pdf', 'content': self.base64_content.decode('ascii')}]
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.service.load_files_for_context(files)
-        assert excinfo.value.error_type == AppException.ErrorType.PROMPT_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.PROMPT_ERROR
         assert 'No se pudo crear prompt' in str(excinfo.value)
 
     def test_load_files_for_context_builds_correctly(self):

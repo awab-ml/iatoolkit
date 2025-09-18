@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import patch, MagicMock, ANY
 from services.load_documents_service import LoadDocumentsService
 from repositories.models import Company
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class TestLoadDocumentsService:
@@ -57,10 +57,10 @@ class TestLoadDocumentsService:
     def test_load_when_missing_connector(self):
         self.company.parameters['load']['document_types']['certificados']['connector'] = None
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.service.load('certificados')
 
-        assert excinfo.value.error_type == AppException.ErrorType.MISSING_PARAMETER
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.MISSING_PARAMETER
         assert "Falta configurar conector" in str(excinfo.value)
 
 
@@ -93,10 +93,10 @@ class TestLoadDocumentsService:
 
         filename = "mock_file.pdf"
         content = b"mock content"
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             result = self.service.load_file(filename, content, self.company)
 
-        assert excinfo.value.error_type == AppException.ErrorType.LOAD_DOCUMENT_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR
         assert "Error al procesar el archivo" in str(excinfo.value)
 
     @patch("services.load_documents_service.FileProcessor")

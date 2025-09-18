@@ -6,7 +6,7 @@
 import logging
 from typing import Dict, List, Optional
 from infra.llm_response import LLMResponse, ToolCall, Usage
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class OpenAIAdapter:
@@ -57,7 +57,7 @@ class OpenAIAdapter:
             if "context_length_exceeded" in str(e):
                 error_message = 'Tu consulta supera el limite de contexto, sale e ingresa de nuevo a Maxxa IA'
 
-            raise AppException(AppException.ErrorType.LLM_ERROR, error_message)
+            raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
 
     def _map_openai_response(self, openai_response) -> LLMResponse:
         """Mapear respuesta de OpenAI a estructura común"""

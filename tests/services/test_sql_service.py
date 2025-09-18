@@ -11,7 +11,7 @@ from datetime import datetime
 from services.sql_service import SqlService
 from repositories.database_manager import DatabaseManager
 from common.util import Utility
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 class TestSqlService:
     def setup_method(self):
@@ -135,18 +135,18 @@ class TestSqlService:
 
     def test_exec_sql_raises_app_exception_on_database_error(self):
         """
-        Prueba que se lanza una AppException cuando ocurre un error en la base de datos.
+        Prueba que se lanza una IAToolkitException cuando ocurre un error en la base de datos.
         """
         sql_statement = "SELECT * FROM table_that_does_not_exist"
         original_db_error_message = "Error: Table not found"
         # Configurar el mock para que lance una excepción cuando se llame a execute
         self.session_mock.execute.side_effect = Exception(original_db_error_message)
 
-        with pytest.raises(AppException) as exc_info:
+        with pytest.raises(IAToolkitException) as exc_info:
             self.service.exec_sql(self.db_manager_mock, sql_statement)
 
         # Verificar el tipo de excepción y el mensaje
-        assert exc_info.value.error_type == AppException.ErrorType.DATABASE_ERROR
+        assert exc_info.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
         assert original_db_error_message in str(exc_info.value)
         # Verificar que la excepción original está encadenada (from e)
         assert isinstance(exc_info.value.__cause__, Exception)

@@ -5,7 +5,7 @@
 
 import pytest
 from unittest.mock import MagicMock, patch, mock_open
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 import os
 from common.util import Utility
 from datetime import datetime, date
@@ -26,7 +26,7 @@ class TestUtil:
         mock_get_template.return_value = mock_template
         mock_template.render.side_effect = Exception('jinja error')
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.util.render_prompt_from_template(
                 template_pathname='a template',
                 query='a query'
@@ -170,9 +170,9 @@ class TestUtil:
     def test_encrypt_key_no_fernet_key_env(self):
         """Testa encrypt_key cuando FERNET_KEY no está en el entorno."""
         util_no_env_key = Utility()
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             util_no_env_key.encrypt_key("testkey")
-        assert excinfo.value.error_type == AppException.ErrorType.CRYPT_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.CRYPT_ERROR
         assert "No se pudo obtener variable de ambiente para encriptar" in excinfo.value.message
 
     def test_encrypt_key_empty_input_key(self):
@@ -180,9 +180,9 @@ class TestUtil:
         env_vars = {'FERNET_KEY': ACTUAL_FERNET_KEY_FOR_ENV}
         with patch.dict(os.environ, env_vars, clear=True):
             util_with_key = Utility() # Nueva instancia con FERNET_KEY
-            with pytest.raises(AppException) as excinfo_empty:
+            with pytest.raises(IAToolkitException) as excinfo_empty:
                 util_with_key.encrypt_key("")
-        assert excinfo_empty.value.error_type == AppException.ErrorType.CRYPT_ERROR
+        assert excinfo_empty.value.error_type == IAToolkitException.ErrorType.CRYPT_ERROR
         assert "falta la clave a encriptar" in excinfo_empty.value.message
 
     def test_decrypt_key_no_fernet_key_env(self):
@@ -197,9 +197,9 @@ class TestUtil:
 
         # Ahora, probar la desencriptación sin FERNET_KEY
         util_no_env_key = Utility()
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             util_no_env_key.decrypt_key(encrypted_key_valid)
-        assert excinfo.value.error_type == AppException.ErrorType.CRYPT_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.CRYPT_ERROR
         assert "No se pudo obtener variable de ambiente para desencriptar" in excinfo.value.message
 
     def test_decrypt_key_empty_input_key(self):
@@ -207,14 +207,14 @@ class TestUtil:
         env_vars = {'FERNET_KEY': ACTUAL_FERNET_KEY_FOR_ENV}
         with patch.dict(os.environ, env_vars, clear=True):
             util_with_key = Utility() # Nueva instancia con FERNET_KEY
-            with pytest.raises(AppException) as excinfo_empty:
+            with pytest.raises(IAToolkitException) as excinfo_empty:
                 util_with_key.decrypt_key("")
-            assert excinfo_empty.value.error_type == AppException.ErrorType.CRYPT_ERROR
+            assert excinfo_empty.value.error_type == IAToolkitException.ErrorType.CRYPT_ERROR
             assert "falta la clave a encriptar" in excinfo_empty.value.message # Mensaje actual de la implementación
 
-            with pytest.raises(AppException) as excinfo_none:
+            with pytest.raises(IAToolkitException) as excinfo_none:
                 util_with_key.decrypt_key(None)
-            assert excinfo_none.value.error_type == AppException.ErrorType.CRYPT_ERROR
+            assert excinfo_none.value.error_type == IAToolkitException.ErrorType.CRYPT_ERROR
             assert "falta la clave a encriptar" in excinfo_none.value.message # Mensaje actual de la implementación
 
     def test_encrypt_key_when_exception_in_fermet(self):
@@ -223,9 +223,9 @@ class TestUtil:
         env_vars = {'FERNET_KEY': invalid_env_fernet_key}
         with patch.dict(os.environ, env_vars, clear=True):
             util_invalid_env_key = Utility()
-            with pytest.raises(AppException) as excinfo:
+            with pytest.raises(IAToolkitException) as excinfo:
                 util_invalid_env_key.encrypt_key("testkey")
-        assert excinfo.value.error_type == AppException.ErrorType.CRYPT_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.CRYPT_ERROR
         # El mensaje exacto puede depender de cómo Utility maneje internamente el error de Fernet
         # "No se pudo encriptar la clave" es un buen candidato si hay un try-except genérico.
         # Si Fernet(key) se llama directamente y falla, el mensaje podría ser de Fernet/cryptography.
@@ -247,9 +247,9 @@ class TestUtil:
         invalid_env_vars = {'FERNET_KEY': invalid_env_fernet_key, 'PROMPTS_DIR': './prompts'}
         with patch.dict(os.environ, invalid_env_vars, clear=True):
             util_invalid_env_key = Utility()
-            with pytest.raises(AppException) as excinfo:
+            with pytest.raises(IAToolkitException) as excinfo:
                 util_invalid_env_key.decrypt_key(encrypted_key_valid)
-        assert excinfo.value.error_type == AppException.ErrorType.CRYPT_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.CRYPT_ERROR
         assert "No se pudo desencriptar la clave" in excinfo.value.message
 
     def test_validate_rut_when_not_ok(self):
@@ -363,10 +363,10 @@ class TestUtil:
         """Test cuando el directorio no existe"""
         mock_exists.return_value = False
         
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.util.get_files_by_extension('/nonexistent/directory', '.txt')
         
-        assert excinfo.value.error_type == AppException.ErrorType.FILE_IO_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.FILE_IO_ERROR
         assert "El directorio no existe" in excinfo.value.message
         mock_exists.assert_called_once_with('/nonexistent/directory')
 
@@ -377,10 +377,10 @@ class TestUtil:
         mock_exists.return_value = True
         mock_isdir.return_value = False
         
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.util.get_files_by_extension('/path/to/file.txt', '.txt')
         
-        assert excinfo.value.error_type == AppException.ErrorType.FILE_IO_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.FILE_IO_ERROR
         assert "La ruta no es un directorio" in excinfo.value.message
         mock_exists.assert_called_once_with('/path/to/file.txt')
         mock_isdir.assert_called_once_with('/path/to/file.txt')
@@ -394,10 +394,10 @@ class TestUtil:
         mock_isdir.return_value = True
         mock_listdir.side_effect = OSError("Permission denied")
         
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.util.get_files_by_extension('/test/directory', '.txt')
         
-        assert excinfo.value.error_type == AppException.ErrorType.FILE_IO_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.FILE_IO_ERROR
         assert "Error al buscar archivos en el directorio" in excinfo.value.message
         mock_exists.assert_called_once_with('/test/directory')
         mock_isdir.assert_called_once_with('/test/directory')

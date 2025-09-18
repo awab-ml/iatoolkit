@@ -8,7 +8,7 @@ import json
 from unittest.mock import Mock
 from services.api_service import ApiService
 from infra.call_service import CallServiceClient
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class TestApiService:
@@ -44,20 +44,20 @@ class TestApiService:
 
     def test_call_api_unsupported_method(self):
         unsupported_method = 'put'
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.api_service.call_api(self.test_endpoint, unsupported_method)
 
-        assert excinfo.value.error_type == AppException.ErrorType.INVALID_PARAMETER
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.INVALID_PARAMETER
         assert f"API error, {unsupported_method} not supported" in str(excinfo.value)
 
     def test_call_api_get_error_status_code(self):
         error_status_code = 400
         self.mock_call_service_client.get.return_value = (self.error_payload, error_status_code)
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.api_service.call_api(self.test_endpoint, 'get')
 
-        assert excinfo.value.error_type == AppException.ErrorType.CALL_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.CALL_ERROR
         assert f"API {self.test_endpoint} error: {error_status_code}" in str(excinfo.value)
         self.mock_call_service_client.get.assert_called_once_with(self.test_endpoint)
 
@@ -65,10 +65,10 @@ class TestApiService:
         error_status_code = 503
         self.mock_call_service_client.post.return_value = (self.error_payload, error_status_code)
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.api_service.call_api(self.test_endpoint, 'post', **self.post_kwargs)
 
-        assert excinfo.value.error_type == AppException.ErrorType.CALL_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.CALL_ERROR
         assert f"API {self.test_endpoint} error: {error_status_code}" in str(excinfo.value)
         self.mock_call_service_client.post.assert_called_once_with(
             endpoint=self.test_endpoint,

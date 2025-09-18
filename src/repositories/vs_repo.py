@@ -6,7 +6,7 @@
 from sqlalchemy import  text
 from huggingface_hub import InferenceClient
 from injector import inject
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from repositories.database_manager import DatabaseManager
 from repositories.models import Document, VSDoc
 import os
@@ -33,7 +33,7 @@ class VSRepo:
         except Exception as e:
             logging.error(f"Error insertando documentos en PostgreSQL: {str(e)}")
             self.session.rollback()
-            raise AppException(AppException.ErrorType.DATABASE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
                                f"Error insertando documentos en PostgreSQL: {str(e)}")
 
 
@@ -67,7 +67,7 @@ class VSRepo:
                             for row in rows]
             return self.remove_duplicates_by_id(vs_documents)
         except Exception as e:
-            raise AppException(AppException.ErrorType.DATABASE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
                                f"Error en la consulta: {str(e)}")
         finally:
             self.session.close()
@@ -153,7 +153,7 @@ class VSRepo:
             logging.error(f"Error en la consulta de documentos: {str(e)}")
             logging.error(f"Failed SQL: {sql_query}")
             logging.error(f"Failed params: {params}")
-            raise AppException(AppException.ErrorType.DATABASE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
                                f"Error en la consulta: {str(e)}")
         finally:
             self.session.close()

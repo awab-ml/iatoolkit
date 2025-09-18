@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from infra.llm_client import llmClient
 from infra.llm_response import LLMResponse, ToolCall, Usage
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from repositories.models import Company
 import json
 
@@ -56,7 +56,7 @@ class TestLLMClient:
     def test_init_missing_llm_model(self):
         """Test que la inicialización falla si falta LLM_MODEL."""
         with patch.dict('os.environ', {}, clear=True):
-            with pytest.raises(AppException, match="LLM_MODEL"):
+            with pytest.raises(IAToolkitException, match="LLM_MODEL"):
                 llmClient(self.dispatcher_mock, self.llmquery_repo, self.util_mock, self.llm_proxy_factory)
 
     def test_invoke_success(self):
@@ -96,10 +96,10 @@ class TestLLMClient:
         assert any(msg.get('type') == 'function_call_output' for msg in second_call_args['input'])
 
     def test_invoke_llm_api_error_propagates(self):
-        """Test que los errores de la API del LLM se propagan como AppException."""
+        """Test que los errores de la API del LLM se propagan como IAToolkitException."""
         self.mock_proxy.create_response.side_effect = Exception("API Communication Error")
 
-        with pytest.raises(AppException, match="Error calling LLM API"):
+        with pytest.raises(IAToolkitException, match="Error calling LLM API"):
             self.client.invoke(
                 company=self.company, user_identifier='user1', previous_response_id='prev1',
                 question='q', context='c', tools=[], text={}

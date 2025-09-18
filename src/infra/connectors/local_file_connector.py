@@ -6,7 +6,7 @@
 import os
 from infra.connectors.file_connector import FileConnector
 from typing import List
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class LocalFileConnector(FileConnector):
@@ -34,7 +34,7 @@ class LocalFileConnector(FileConnector):
                 for file in files
             ]
         except Exception as e:
-            raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                f"Error procesando el directorio {self.directory}: {e}")
 
     def get_file_content(self, file_path: str) -> bytes:
@@ -42,5 +42,5 @@ class LocalFileConnector(FileConnector):
             with open(file_path, 'rb') as f:
                 return f.read()
         except Exception as e:
-            raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                f"Error leyendo el archivo {file_path}: {e}")

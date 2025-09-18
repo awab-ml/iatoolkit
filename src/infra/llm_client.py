@@ -15,7 +15,7 @@ import markdown2
 import os
 import logging
 import json
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 import threading
 import re
 import tiktoken
@@ -41,7 +41,7 @@ class llmClient:
         # get the model from the environment variable
         self.model = os.getenv("LLM_MODEL", "")
         if not self.model:
-            raise AppException(AppException.ErrorType.API_KEY,
+            raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
                                "La variable de entorno 'LLM_MODEL' no está configurada.")
 
         # library for counting tokens
@@ -107,7 +107,7 @@ class llmClient:
                 if "context_length_exceeded" in str(e):
                     error_message = 'Tu consulta supera el limite de contexto, sale e ingresa de nuevo a Maxxa IA'
 
-                raise AppException(AppException.ErrorType.LLM_ERROR, error_message)
+                raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
 
             while True:
                 # check if there are function calls to execute
@@ -129,8 +129,8 @@ class llmClient:
                             **args
                         )
                         force_tool_name = None
-                    except AppException as e:
-                        if (e.error_type == AppException.ErrorType.DATABASE_ERROR and
+                    except IAToolkitException as e:
+                        if (e.error_type == IAToolkitException.ErrorType.DATABASE_ERROR and
                             sql_retry_count < self.MAX_SQL_RETRIES):
                             sql_retry_count += 1
                             sql_query_with_error = args.get('query', 'No se pudo extraer la consulta.')
@@ -144,10 +144,10 @@ class llmClient:
                             force_tool_name = function_name
                         else:
                             error_message = f"Error en dispatch para '{function_name}' tras {sql_retry_count} reintentos: {str(e)}"
-                            raise AppException(AppException.ErrorType.CALL_ERROR, error_message)
+                            raise IAToolkitException(IAToolkitException.ErrorType.CALL_ERROR, error_message)
                     except Exception as e:
                         error_message = f"Dispatch error en {function_name} con args {args} -******- {str(e)}"
-                        raise AppException(AppException.ErrorType.CALL_ERROR, error_message)
+                        raise IAToolkitException(IAToolkitException.ErrorType.CALL_ERROR, error_message)
 
                     # add  the return value into the list of messages
                     input_messages.append({
@@ -247,7 +247,7 @@ class llmClient:
             elif "string_above_max_length" in str(e):
                 error_message = 'La respuesta es muy larga, trata de filtrar/restringuir tu consulta'
 
-            raise AppException(AppException.ErrorType.LLM_ERROR, error_message)
+            raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
 
     def set_company_context(self,
             company: Company,
@@ -271,7 +271,7 @@ class llmClient:
         except Exception as e:
             error_message = f"Error calling LLM API: {str(e)}"
             logging.error(error_message)
-            raise AppException(AppException.ErrorType.LLM_ERROR, error_message)
+            raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
 
         return response.id
 

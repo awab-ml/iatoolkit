@@ -6,7 +6,7 @@
 from infra.mail_app import MailApp
 from injector import inject
 from pathlib import Path
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 import base64
 
 TEMP_DIR = Path("static/temp")
@@ -19,11 +19,11 @@ class MailService:
     def _read_token_bytes(self, token: str) -> bytes:
         # Defensa simple contra path traversal
         if not token or "/" in token or "\\" in token or token.startswith("."):
-            raise AppException(AppException.ErrorType.MAIL_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                "attachment_token inválido")
         path = TEMP_DIR / token
         if not path.is_file():
-            raise AppException(AppException.ErrorType.MAIL_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                f"Adjunto no encontrado: {token}")
         return path.read_bytes()
 

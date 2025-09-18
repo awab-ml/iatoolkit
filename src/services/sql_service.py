@@ -8,7 +8,7 @@ from common.util import Utility
 from sqlalchemy import text
 from injector import inject
 import json
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class SqlService:
@@ -38,5 +38,5 @@ class SqlService:
             if 'timed out' in str(e):
                 error_message = 'Intentalo de nuevo, se agoto el tiempo de espera'
 
-            raise AppException(AppException.ErrorType.DATABASE_ERROR,
-                               error_message) from e
+            raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
+                                     error_message) from e

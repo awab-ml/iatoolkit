@@ -5,7 +5,7 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from repositories.vs_repo import VSRepo
 from repositories.models import VSDoc, Document
 
@@ -39,10 +39,10 @@ class TestVSRepo:
         mock_embedder.feature_extraction.side_effect = Exception("Error al generar embeddings")
         vs_chunk_list = [VSDoc(id=1, text="Documento con error")]
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             vs_repo.add_document(vs_chunk_list)
 
-        assert excinfo.value.error_type == AppException.ErrorType.DATABASE_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
         assert "Error insertando documentos en PostgreSQL" in str(excinfo.value)
         mock_session.rollback.assert_called_once()
 
@@ -66,10 +66,10 @@ class TestVSRepo:
         mock_session = mock_db_manager.get_session.return_value
         mock_session.execute.side_effect = Exception("Error en la base de datos")
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             vs_repo.query(company_id=123, query_text="texto de prueba", n_results=3)
 
-        assert excinfo.value.error_type == AppException.ErrorType.DATABASE_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
         assert "Error en la consulta" in str(excinfo.value)
 
     def test_query_success(self, vs_repo, mock_db_manager, mock_embedder):

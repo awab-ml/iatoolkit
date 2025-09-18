@@ -7,7 +7,7 @@ from common.util import Utility
 import pandas as pd
 from uuid import uuid4
 from pathlib import Path
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from injector import inject
 import os
 import logging
@@ -70,7 +70,7 @@ class ExcelService:
                 }
 
         except Exception as e:
-            raise AppException(AppException.ErrorType.CALL_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.CALL_ERROR,
                                'error generating excel file') from e
 
     def validate_file_access(self, filename):

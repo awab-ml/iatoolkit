@@ -9,7 +9,7 @@ import logging
 from injector import inject
 from services.query_service import QueryService
 from repositories.profile_repo import ProfileRepo
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class BenchmarkService:
@@ -38,18 +38,18 @@ class BenchmarkService:
 
     def run(self, company_short_name: str, file_path: str):
         if not file_path.endswith('.xlsx'):
-            raise AppException(AppException.ErrorType.INVALID_PARAMETER,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_PARAMETER,
                         f"solo se leer archivos .xlsx")
 
         try:
             df = pd.read_excel(file_path, keep_default_na=False)
         except FileNotFoundError:
-            raise AppException(AppException.ErrorType.INVALID_NAME,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
                         f"El archivo no fue encontrado en: {file_path}")
 
         required_columns = ['username', 'client_identity', 'prompt_name', 'question', 'model']
         if not all(col in df.columns for col in required_columns):
-            raise AppException(AppException.ErrorType.INVALID_PARAMETER,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_PARAMETER,
                                f"La planilla debe contener las columnas: {required_columns}")
 
         # Añadir columnas para los resultados
@@ -65,7 +65,7 @@ class BenchmarkService:
 
         company = self.profile_repo.get_company_by_short_name(company_short_name)
         if not company:
-            raise AppException(AppException.ErrorType.CONFIG_ERROR, "Compañía 'maxxa' no encontrada.")
+            raise IAToolkitException(IAToolkitException.ErrorType.CONFIG_ERROR, "Compañía 'maxxa' no encontrada.")
 
         total_rows = len(df)
         logging.info(f"Iniciando benchmark para {total_rows} casos de prueba desde el archivo: {file_path}")

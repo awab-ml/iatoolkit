@@ -5,7 +5,7 @@
 
 import logging
 from typing import List
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from injector import inject
 import os
 from jinja2 import Environment, FileSystemLoader
@@ -64,7 +64,7 @@ class Utility:
             return prompt
         except Exception as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.TEMPLATE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.TEMPLATE_ERROR,
                                f'No se pudo renderizar el template: {template_pathname}, error: {str(e)}') from e
 
     def render_prompt_from_string(self,
@@ -100,7 +100,7 @@ class Utility:
             return prompt
         except Exception as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.TEMPLATE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.TEMPLATE_ERROR,
                                f'No se pudo renderizar el template desde el string, error: {str(e)}') from e
 
 
@@ -116,11 +116,11 @@ class Utility:
 
     def encrypt_key(self, key: str) -> str:
         if not self.encryption_key:
-            raise AppException(AppException.ErrorType.CRYPT_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.CRYPT_ERROR,
                                'No se pudo obtener variable de ambiente para encriptar')
 
         if not key:
-            raise AppException(AppException.ErrorType.CRYPT_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.CRYPT_ERROR,
                                'falta la clave a encriptar')
         try:
             cipher_suite = Fernet(self.encryption_key.encode('utf-8'))
@@ -130,15 +130,15 @@ class Utility:
 
             return encrypted_key_str
         except Exception as e:
-            raise AppException(AppException.ErrorType.CRYPT_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.CRYPT_ERROR,
                                f'No se pudo encriptar la clave: {str(e)}') from e
 
     def decrypt_key(self, encrypted_key: str) -> str:
         if not self.encryption_key:
-            raise AppException(AppException.ErrorType.CRYPT_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.CRYPT_ERROR,
                                'No se pudo obtener variable de ambiente para desencriptar')
         if not encrypted_key:
-            raise AppException(AppException.ErrorType.CRYPT_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.CRYPT_ERROR,
                                'falta la clave a encriptar')
 
         try:
@@ -149,7 +149,7 @@ class Utility:
             decrypted_key_bytes = cipher_suite.decrypt(encrypted_data_from_storage_bytes)
             return decrypted_key_bytes.decode('utf-8')
         except Exception as e:
-            raise AppException(AppException.ErrorType.CRYPT_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.CRYPT_ERROR,
                                f'No se pudo desencriptar la clave: {str(e)}') from e
 
     def load_schema_from_yaml(self, file_path):
@@ -159,7 +159,7 @@ class Utility:
 
     def generate_context_for_schema(self, entity_name: str, schema_file: str = None, schema: dict = {}) -> str:
         if not schema_file and not schema:
-            raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                f'No se pudo obtener schema de la entidad: {entity_name}')
 
         try:
@@ -169,7 +169,7 @@ class Utility:
             return table_schema
         except Exception as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                f'No se pudo leer el schema de la entidad: {entity_name}') from e
 
     def generate_schema_table(self, schema: dict) -> str:
@@ -314,11 +314,11 @@ class Utility:
 
             # Verificar que el directorio existe
             if not os.path.exists(directory):
-                raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                    f'El directorio no existe: {directory}')
 
             if not os.path.isdir(directory):
-                raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                    f'La ruta no es un directorio: {directory}')
 
             # Buscar archivos con la extensión especificada
@@ -334,11 +334,11 @@ class Utility:
 
             return sorted(files)  # Retornar lista ordenada alfabéticamente
 
-        except AppException:
+        except IAToolkitException:
             raise
         except Exception as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                f'Error al buscar archivos en el directorio {directory}: {str(e)}') from e
 
     def is_openai_model(self, model: str) -> bool:

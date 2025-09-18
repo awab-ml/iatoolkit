@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import MagicMock
 from repositories.models import DocumentType
 from repositories.document_type_repo import DocumentTypeRepo
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from sqlalchemy.exc import SQLAlchemyError
 
 
@@ -25,11 +25,11 @@ class TestDocumentTypeRepo:
         self.session.query.side_effect = Exception("Database error")
 
         # Probar la obtención de tipos con excepción
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.repo.get_all_document_types()
 
         # Validar que la excepción es la esperada
-        assert excinfo.value.error_type == AppException.ErrorType.DATABASE_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
 
     def test_get_all_document_types_when_success(self):
         # Configurar el mock para retornar una lista de tipos de documentos
@@ -48,20 +48,20 @@ class TestDocumentTypeRepo:
 
     def test_get_doc_type_id_when_db_error(self):
         self.session.query.side_effect = SQLAlchemyError("Error simulado")
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.repo.get_doc_type_id('escritura')
 
         # Validar que la excepción es la esperada
-        assert excinfo.value.error_type == AppException.ErrorType.DATABASE_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
 
     def test_get_doc_type_id_when_not_exist(self):
         self.session.query.return_value.filter.return_value.first.return_value = None
         self.session.query.return_value.filter_by.return_value.first.return_value = None
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.repo.get_doc_type_id('escritura')
 
         # Validar que la excepción es la esperada
-        assert excinfo.value.error_type == AppException.ErrorType.DATABASE_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
 
     def test_get_doc_type_id_when_found_by_name(self):
         mock_doc_type = DocumentType(id=1, name='escritura')

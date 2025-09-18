@@ -6,7 +6,7 @@
 from enum import Enum
 
 
-class AppException(Exception):
+class IAToolkitException(Exception):
 
     class ErrorType(Enum):
         SYSTEM_ERROR = 0

@@ -13,7 +13,7 @@ from services.dispatcher_service import Dispatcher
 from services.prompt_manager_service import PromptService
 from services.user_session_context_service import UserSessionContextService
 from common.util import Utility
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from injector import inject
 import base64
 import logging
@@ -50,7 +50,7 @@ class QueryService:
         # Obtener el modelo de las variables de entorno
         self.model = os.getenv("LLM_MODEL", "")
         if not self.model:
-            raise AppException(AppException.ErrorType.API_KEY,
+            raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
                                "La variable de entorno 'LLM_MODEL' no está configurada.")
 
     def llm_init_context(self,
@@ -65,12 +65,12 @@ class QueryService:
         # Validate the user and company
         user_identifier = self.util.resolve_user_identifier(external_user_id, local_user_id)
         if not user_identifier:
-            raise AppException(AppException.ErrorType.INVALID_USER,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_USER,
                         "No se pudo resolver el identificador del usuario")
 
         company = self.profile_repo.get_company_by_short_name(company_short_name)
         if not company:
-            raise AppException(AppException.ErrorType.INVALID_NAME,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
                                f"Empresa no encontrada: {company_short_name}")
 
         logging.info(f"Inicializando contexto para {company_short_name}/{user_identifier} con modelo {model}  ...")
@@ -270,16 +270,16 @@ class QueryService:
             filename = document.get('filename')
             file_content = base64.b64decode(document.get('content'))
             if not file_content:
-                raise AppException(AppException.ErrorType.PROMPT_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.PROMPT_ERROR,
                                    'Documento no tiene contenido')
             try:
                 document_text = self.document_service.file_to_txt(filename, file_content)
                 context += f"Documento adjunto con nombre: \'{filename}\'\n"
                 context += "Contenido del documento:\n" + document_text + '\n'
-            except AppException as e:
+            except IAToolkitException as e:
                 raise e
             except Exception as e:
-                raise AppException(AppException.ErrorType.PROMPT_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.PROMPT_ERROR,
                                    f'No se pudo crear prompt: {str(e)}') from e
 
         return context

@@ -3,13 +3,13 @@
 # Todos los derechos reservados.
 # En trámite de registro en el Registro de Propiedad Intelectual de Chile.
 
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from services.prompt_manager_service import PromptService
 from repositories.llm_query_repo import LLMQueryRepo
 from repositories.models import Company, Function
 from services.excel_service import ExcelService
 from services.mail_service import MailService
-from src.companies.base_company import BaseCompany
+from common.base_company import BaseCompany
 from common.util import Utility
 from injector import inject
 import importlib
@@ -81,7 +81,7 @@ class Dispatcher:
 
     def dispatch(self, company_name: str, action: str, **kwargs) -> str:
         if company_name not in self.company_classes:
-            raise AppException(AppException.ErrorType.EXTERNAL_SOURCE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Empresa no configurada: {company_name}")
 
         # check if action is a system function
@@ -91,18 +91,18 @@ class Dispatcher:
         company_instance = self.company_classes[company_name]
         try:
             return company_instance.handle_request(action, **kwargs)
-        except AppException as e:
-            # Si ya es una AppException, la relanzamos para preservar el tipo de error original.
+        except IAToolkitException as e:
+            # Si ya es una IAToolkitException, la relanzamos para preservar el tipo de error original.
             raise e
 
         except Exception as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.EXTERNAL_SOURCE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Error en function call '{action}': {str(e)}") from e
 
     def get_company_context(self, company_name: str, **kwargs) -> str:
         if company_name not in self.company_classes:
-            raise AppException(AppException.ErrorType.EXTERNAL_SOURCE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Empresa no configurada: {company_name}")
 
         company_context = ''
@@ -128,7 +128,7 @@ class Dispatcher:
             return company_context + company_instance.get_company_context(**kwargs)
         except Exception as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.EXTERNAL_SOURCE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Error en get_company_context de {company_name}: {str(e)}") from e
 
     def get_company_services(self, company: Company) -> list[dict]:
@@ -152,7 +152,7 @@ class Dispatcher:
 
     def get_user_info(self, company_name: str, **kwargs) -> dict:
         if company_name not in self.company_classes:
-            raise AppException(AppException.ErrorType.EXTERNAL_SOURCE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Empresa no configurada: {company_name}")
 
         company_instance = self.company_classes[company_name]
@@ -160,13 +160,13 @@ class Dispatcher:
             return company_instance.get_user_info(**kwargs)
         except Exception as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.EXTERNAL_SOURCE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Error en get_user_info de {company_name}: {str(e)}") from e
 
 
     def get_metadata_from_filename(self, company_name: str, filename: str) -> dict:
         if company_name not in self.company_classes:
-            raise AppException(AppException.ErrorType.EXTERNAL_SOURCE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Empresa no configurada: {company_name}")
 
         company_instance = self.company_classes[company_name]
@@ -174,7 +174,7 @@ class Dispatcher:
             return company_instance.get_metadata_from_filename(filename)
         except Exception as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.EXTERNAL_SOURCE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Error en get_metadata_from_filename de {company_name}: {str(e)}") from e
 
     def _discover_company_classes(self) -> dict:

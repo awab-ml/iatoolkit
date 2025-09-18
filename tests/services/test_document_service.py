@@ -6,7 +6,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from services.document_service import DocumentService
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class TestDocumentService:
@@ -31,7 +31,7 @@ class TestDocumentService:
 
     def test_file_txt_when_binary_content_and_error_decoding(self):
         service = DocumentService()
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             result = service.file_to_txt("test.txt", b'\xff\xfe\xff'
 )
         assert "FILE_FORMAT_ERROR" == excinfo.value.error_type.name

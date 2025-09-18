@@ -10,7 +10,7 @@ import io
 import os
 import pytesseract
 from injector import inject
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 class DocumentService:
     @inject
@@ -28,7 +28,7 @@ class DocumentService:
                         # decode using UTF-8
                         file_content = file_content.decode('utf-8')
                     except UnicodeDecodeError:
-                        raise AppException(AppException.ErrorType.FILE_FORMAT_ERROR,
+                        raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
                                            "El archivo no es texto o la codificación no es UTF-8")
 
                 return file_content
@@ -38,13 +38,13 @@ class DocumentService:
                 else:
                     return self.read_pdf(file_content)
             else:
-                raise AppException(AppException.ErrorType.FILE_FORMAT_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
                                    "Formato de archivo desconocido")
-        except AppException as e:
+        except IAToolkitException as e:
             # Si es una excepción conocida, simplemente la relanzamos
             raise
         except Exception as e:
-            raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                    f"Error processing file: {e}") from e
 
     def read_docx(self, file_content):

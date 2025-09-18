@@ -13,7 +13,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from infra.connectors.file_connector_factory import FileConnectorFactory
 from services.file_processor_service import FileProcessorConfig, FileProcessor
 from services.dispatcher_service import Dispatcher
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 import logging
 import base64
 from injector import inject
@@ -78,7 +78,7 @@ class LoadDocumentsService:
                 # Comportamiento anterior: usar la configuración general
                 connector = load_config.get('connector', {})
                 if not connector:
-                    raise AppException(AppException.ErrorType.MISSING_PARAMETER,
+                    raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER,
                                        f"Falta configurar conector en empresa {company.short_name}")
 
                 files_loaded += self.load_data_source(connector)
@@ -90,7 +90,7 @@ class LoadDocumentsService:
         connector = type_config.get('connector')
         if not connector:
             logging.warning(f"Falta configurar conector para tipo {doc_type_name} en empresa {company.short_name}")
-            raise AppException(AppException.ErrorType.MISSING_PARAMETER,
+            raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER,
                                f"Falta configurar conector para tipo {doc_type_name} en empresa {company.short_name}")
 
         # get the metadata for this connector
@@ -208,5 +208,5 @@ class LoadDocumentsService:
 
             # if something fails, throw exception
             logging.exception("Error procesando el archivo %s: %s", filename, str(e))
-            raise AppException(AppException.ErrorType.LOAD_DOCUMENT_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR,
                                f"Error al procesar el archivo {filename}")

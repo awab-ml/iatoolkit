@@ -7,7 +7,7 @@ import pytest
 import os
 from unittest.mock import patch, mock_open, call
 from infra.connectors.local_file_connector import LocalFileConnector
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from datetime import datetime
 
 
@@ -18,10 +18,10 @@ class TestLocalFileConnector:
 
     @patch("os.listdir", side_effect=Exception("Error al listar directorio"))
     def test_list_files_error(self, mock_listdir):
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.file_connector.list_files()
 
-        assert excinfo.value.error_type == AppException.ErrorType.FILE_IO_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.FILE_IO_ERROR
         assert "Error procesando el directorio" in str(excinfo.value)
         mock_listdir.assert_called_once_with(self.mock_directory)
 
@@ -66,10 +66,10 @@ class TestLocalFileConnector:
         mock_file_path = os.path.join(self.mock_directory, "file1.txt")
 
         # Verificar que se lanza la excepción esperada
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.file_connector.get_file_content(mock_file_path)
 
-        assert excinfo.value.error_type == AppException.ErrorType.FILE_IO_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.FILE_IO_ERROR
         assert "Error leyendo el archivo" in str(excinfo.value)
         mock_open_file.assert_called_once_with(mock_file_path, "rb")
 

@@ -9,7 +9,7 @@ from common.util import Utility
 from infra.llm_response import LLMResponse
 from infra.openai_adapter import OpenAIAdapter
 from infra.gemini_adapter import GeminiAdapter
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from repositories.models import Company
 from openai import OpenAI
 import google.generativeai as genai
@@ -56,17 +56,17 @@ class LLMProxy:
         """
         try:
             openai_client = self._get_llm_connection(company, LLMProvider.OPENAI)
-        except AppException:
+        except IAToolkitException:
             openai_client = None
 
         try:
             gemini_client = self._get_llm_connection(company, LLMProvider.GEMINI)
-        except AppException:
+        except IAToolkitException:
             gemini_client = None
 
         if not openai_client and not gemini_client:
-            raise AppException(
-                AppException.ErrorType.API_KEY,
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.API_KEY,
                 f"La empresa '{company.name}' no tiene configuradas API keys para ningún proveedor LLM."
             )
 
@@ -78,16 +78,16 @@ class LLMProxy:
         # Se asume que esta instancia ya tiene los clientes configurados por `create_for_company`
         if self.util.is_openai_model(model):
             if not self.openai_adapter:
-                raise AppException(AppException.ErrorType.API_KEY,
+                raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
                                    f"No se configuró cliente OpenAI, pero se solicitó modelo OpenAI: {model}")
             return self.openai_adapter.create_response(model=model, input=input, **kwargs)
         elif self.util.is_gemini_model(model):
             if not self.gemini_adapter:
-                raise AppException(AppException.ErrorType.API_KEY,
+                raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
                                    f"No se configuró cliente Gemini, pero se solicitó modelo Gemini: {model}")
             return self.gemini_adapter.create_response(model=model, input=input, **kwargs)
         else:
-            raise AppException(AppException.ErrorType.LLM_ERROR, f"Modelo no soportado: {model}")
+            raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, f"Modelo no soportado: {model}")
 
     def _get_llm_connection(self, company: Company, provider: LLMProvider) -> Any:
         """Obtiene una conexión de cliente para un proveedor, usando un caché para reutilizarla."""
@@ -103,13 +103,13 @@ class LLMProxy:
                     elif provider == LLMProvider.GEMINI:
                         client = self._create_gemini_client(company)
                     else:
-                        raise AppException(f"Proveedor no soportado: {provider.value}")
+                        raise IAToolkitException(f"Proveedor no soportado: {provider.value}")
 
                     if client:
                         LLMProxy._clients_cache[cache_key] = client
 
         if not client:
-            raise AppException(AppException.ErrorType.API_KEY, f"No se pudo crear el cliente para {provider.value}")
+            raise IAToolkitException(IAToolkitException.ErrorType.API_KEY, f"No se pudo crear el cliente para {provider.value}")
 
         return client
 
@@ -120,7 +120,7 @@ class LLMProxy:
         else:
             decrypted_api_key = os.getenv("IATOOLKIT_OPENAI_API_KEY", '')
         if not decrypted_api_key:
-            raise AppException(AppException.ErrorType.API_KEY,
+            raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
                                f"La empresa '{company.name}' no tiene API key de OpenAI.")
         return OpenAI(api_key=decrypted_api_key)
 

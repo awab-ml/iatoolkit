@@ -6,7 +6,7 @@
 from repositories.models import DocumentType
 from injector import inject
 from repositories.database_manager import DatabaseManager
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from sqlalchemy import func
 
 
@@ -20,7 +20,7 @@ class DocumentTypeRepo:
             type_list = self.session.query(DocumentType).all()
             return type_list
         except Exception as e:
-            raise AppException(AppException.ErrorType.DATABASE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
                                'No se pudo buscar los tipos de documentos') from e
 
     def get_doc_type_id(self, name: str):
@@ -29,10 +29,10 @@ class DocumentTypeRepo:
             if not doc_type:
                 doc_type = self.session.query(DocumentType).filter_by(name='indefinido').first()
                 if not doc_type:
-                    raise AppException(AppException.ErrorType.DATABASE_ERROR,
+                    raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
                     'No existe el tipo de documento: indefinido')
 
             return doc_type.id
         except Exception as e:
-            raise AppException(AppException.ErrorType.DATABASE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
                                'No se pudo buscar los tipos de documentos') from e

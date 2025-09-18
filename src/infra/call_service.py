@@ -6,7 +6,7 @@
 import logging
 import requests
 from requests import RequestException
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from injector import inject
 
 class CallServiceClient:
@@ -31,7 +31,7 @@ class CallServiceClient:
             response = requests.get(endpoint, params=params, timeout=timeout)
         except RequestException as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.REQUEST_ERROR, f'request error: {str(e)}')
+            raise IAToolkitException(IAToolkitException.ErrorType.REQUEST_ERROR, f'request error: {str(e)}')
         return self._deserialize_response(response)
 
     def post(self, endpoint, json_dict, timeout=(10, 200)):
@@ -41,7 +41,7 @@ class CallServiceClient:
             response = requests.post(endpoint, json=json_dict, headers=self.headers, timeout=timeout)
         except RequestException as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.REQUEST_ERROR, str(e))
+            raise IAToolkitException(IAToolkitException.ErrorType.REQUEST_ERROR, str(e))
         return self._deserialize_response(response)
 
     def put(self, endpoint, json_dict, timeout=(10, 200)):
@@ -51,7 +51,7 @@ class CallServiceClient:
             response = requests.put(endpoint, json=json_dict, headers=self.headers, timeout=timeout)
         except RequestException as e:
             logging.exception(e)
-            raise AppException(AppException.ErrorType.REQUEST_ERROR, str(e))
+            raise IAToolkitException(IAToolkitException.ErrorType.REQUEST_ERROR, str(e))
         return self._deserialize_response(response)
 
     def patch(self, endpoint, json_dict, timeout=(10, 200)):
@@ -60,7 +60,7 @@ class CallServiceClient:
         try:
             response = requests.patch(endpoint, json=json_dict, headers=self.headers, timeout=timeout)
         except RequestException as e:
-            raise AppException(AppException.ErrorType.REQUEST_ERROR, str(e))
+            raise IAToolkitException(IAToolkitException.ErrorType.REQUEST_ERROR, str(e))
         return self._deserialize_response(response)
 
     def delete(self, endpoint, json_dict, timeout=(10, 200)):
@@ -69,7 +69,7 @@ class CallServiceClient:
         try:
             response = requests.delete(endpoint, json=json_dict, headers=self.headers, timeout=timeout)
         except RequestException as e:
-            raise AppException(AppException.ErrorType.REQUEST_ERROR, str(e))
+            raise IAToolkitException(IAToolkitException.ErrorType.REQUEST_ERROR, str(e))
         return self._deserialize_response(response)
 
     def post_files(self, endpoint, data, timeout=(10, 200)):
@@ -78,6 +78,6 @@ class CallServiceClient:
         try:
             response = requests.post(endpoint, files=data, timeout=timeout)
         except RequestException as e:
-            raise AppException(AppException.ErrorType.REQUEST_ERROR, str(e))
+            raise IAToolkitException(IAToolkitException.ErrorType.REQUEST_ERROR, str(e))
         return self._deserialize_response(response)
 

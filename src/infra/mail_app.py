@@ -5,7 +5,7 @@
 
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 import os
 import base64
 import logging
@@ -34,10 +34,10 @@ class MailApp:
         for idx, a in enumerate(attachments, start=1):
             # 1) claves obligatorias
             if "filename" not in a:
-                raise AppException(AppException.ErrorType.MAIL_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                    f"Adjunto #{idx} inválido: falta 'filename'")
             if "content" not in a:
-                raise AppException(AppException.ErrorType.MAIL_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                    f"Adjunto '{a.get('filename', '(sin nombre)')}' inválido: falta 'content'")
 
             name = a["filename"]
@@ -52,11 +52,11 @@ class MailApp:
             except Exception:
                 logging.error("Adjunto '%s' con base64 inválido (primeros 16 chars: %r)",
                               name, str(content_b64)[:16])
-                raise AppException(AppException.ErrorType.MAIL_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                    f"Adjunto '{name}' trae base64 inválido")
 
             if not raw:
-                raise AppException(AppException.ErrorType.MAIL_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                    f"Adjunto '{name}' está vacío")
 
             # 4) volver a base64 limpio (sin prefijos, sin espacios)
@@ -98,7 +98,7 @@ class MailApp:
             if not ((isinstance(message_id, str) and message_id.strip()) or
                     (isinstance(message_ids, (list, tuple)) and len(message_ids) > 0)):
                 logging.error("MAIL ERROR: Respuesta sin message_id(s): %r", api_response)
-                raise AppException(AppException.ErrorType.MAIL_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                    "Brevo no retornó message_id; el envío podría haber fallado.")
 
             return api_response
@@ -106,11 +106,11 @@ class MailApp:
         except ApiException as e:
             logging.exception("MAIL ERROR (ApiException): status=%s reason=%s body=%s",
                               getattr(e, "status", None), getattr(e, "reason", None), getattr(e, "body", None))
-            raise AppException(AppException.ErrorType.MAIL_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                f"Error Brevo (status={getattr(e, 'status', 'N/A')}): {getattr(e, 'reason', str(e))}") from e
         except Exception as e:
             logging.exception("MAIL ERROR: %s", str(e))
-            raise AppException(AppException.ErrorType.MAIL_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                f"No se pudo enviar correo: {str(e)}") from e
 ''''
     def send_template_email(self,
@@ -136,10 +136,10 @@ class MailApp:
             # self.send_brevo_email(msg)
             pass
         except jinja2.exceptions.TemplateNotFound:
-            raise AppException(AppException.ErrorType.MAIL_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                f"Error: No se encontró el template '{template_name}'.")
         except Exception as e:
-            raise AppException(AppException.ErrorType.MAIL_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
                                f'No se pudo enviar correo: {str(e)}') from e
     
     '''

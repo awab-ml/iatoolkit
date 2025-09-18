@@ -5,7 +5,7 @@ import json
 
 from infra.gemini_adapter import GeminiAdapter
 from infra.llm_response import LLMResponse, ToolCall
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class TestGeminiAdapter:
@@ -124,7 +124,7 @@ class TestGeminiAdapter:
     ])
     def test_api_error_handling(self, error_msg, expected_app_msg):
         self.mock_generative_model.generate_content.side_effect = Exception(error_msg)
-        with pytest.raises(AppException, match=expected_app_msg):
+        with pytest.raises(IAToolkitException, match=expected_app_msg):
             self.adapter.create_response(model="gemini-pro", input=[])
 
     @pytest.mark.parametrize("finish_reason, expected_status", [

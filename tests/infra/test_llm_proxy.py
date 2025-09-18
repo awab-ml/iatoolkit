@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from infra.llm_proxy import LLMProxy
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class TestLLMProxy:
@@ -81,7 +81,7 @@ class TestLLMProxy:
             company_truly_none = MagicMock()
             company_truly_none.llm_api_key = None
 
-            with pytest.raises(AppException, match="no tiene configuradas API keys"):
+            with pytest.raises(IAToolkitException, match="no tiene configuradas API keys"):
                 self.proxy_factory.create_for_company(company_truly_none)
 
     def test_client_caching_works(self):

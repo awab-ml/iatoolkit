@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from infra.call_service import CallServiceClient
 from requests import RequestException
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class TestCallServiceClient:
@@ -45,10 +45,10 @@ class TestCallServiceClient:
     def test_get_failure(self):
         self.mock_get.side_effect = RequestException("Failed GET")
 
-        with pytest.raises(AppException) as exc_info:
+        with pytest.raises(IAToolkitException) as exc_info:
             self.client.get(self.endpoint)
 
-        assert exc_info.value.error_type == AppException.ErrorType.REQUEST_ERROR
+        assert exc_info.value.error_type == IAToolkitException.ErrorType.REQUEST_ERROR
 
     def test_post_success(self):
         json_dict = {'key': 'value'}
@@ -61,10 +61,10 @@ class TestCallServiceClient:
     def test_post_failure(self):
         self.mock_post.side_effect = RequestException("Failed POST")
 
-        with pytest.raises(AppException) as exc_info:
+        with pytest.raises(IAToolkitException) as exc_info:
             self.client.post(self.endpoint, {'data': 'test'})
 
-        assert exc_info.value.error_type == AppException.ErrorType.REQUEST_ERROR
+        assert exc_info.value.error_type == IAToolkitException.ErrorType.REQUEST_ERROR
 
     def test_put_success(self):
         json_dict = {'key': 'updated'}

@@ -6,7 +6,7 @@ from services.prompt_manager_service import PromptService
 from repositories.llm_query_repo import LLMQueryRepo
 from repositories.profile_repo import ProfileRepo
 from repositories.models import Prompt, PromptCategory, Company
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class TestPromptService:
@@ -97,10 +97,10 @@ class TestPromptService:
         """Prueba que se maneja una excepción del repositorio."""
         self.llm_query_repo.get_system_prompts.side_effect = Exception("DB Connection Error")
 
-        with pytest.raises(AppException) as exc_info:
+        with pytest.raises(IAToolkitException) as exc_info:
             self.prompt_service.get_system_prompt()
 
-        assert exc_info.value.error_type == AppException.ErrorType.PROMPT_ERROR
+        assert exc_info.value.error_type == IAToolkitException.ErrorType.PROMPT_ERROR
         assert "DB Connection Error" in str(exc_info.value)
 
     # --- Tests para get_prompt_content ---
@@ -121,10 +121,10 @@ class TestPromptService:
         """Prueba que se lanza una excepción si el prompt no se encuentra en la BD."""
         self.llm_query_repo.get_prompt_by_name.return_value = None
 
-        with pytest.raises(AppException) as exc_info:
+        with pytest.raises(IAToolkitException) as exc_info:
             self.prompt_service.get_prompt_content(self.mock_company, 'non_existent_prompt')
 
-        assert exc_info.value.error_type == AppException.ErrorType.DOCUMENT_NOT_FOUND
+        assert exc_info.value.error_type == IAToolkitException.ErrorType.DOCUMENT_NOT_FOUND
 
     # --- Tests para create_prompt ---
 
@@ -151,14 +151,14 @@ class TestPromptService:
     @patch('services.prompt_manager_service.os.path.exists', return_value=False)
     def test_create_prompt_fails_if_file_does_not_exist(self, mock_exists):
         """Prueba que la creación falla si el archivo de plantilla no existe."""
-        with pytest.raises(AppException) as exc_info:
+        with pytest.raises(IAToolkitException) as exc_info:
             self.prompt_service.create_prompt(
                 prompt_name='prompt_with_missing_file',
                 description='Desc',
                 order=1,
                 company=self.mock_company
             )
-        assert exc_info.value.error_type == AppException.ErrorType.INVALID_NAME
+        assert exc_info.value.error_type == IAToolkitException.ErrorType.INVALID_NAME
         assert "No existe el archivo de prompt" in str(exc_info.value)
 
     @patch('services.prompt_manager_service.os.path.exists', return_value=True)
@@ -166,11 +166,11 @@ class TestPromptService:
         """Prueba que se maneja una excepción de la base de datos al guardar."""
         self.llm_query_repo.create_or_update_prompt.side_effect = Exception("DB Unique Constraint Failed")
 
-        with pytest.raises(AppException) as exc_info:
+        with pytest.raises(IAToolkitException) as exc_info:
             self.prompt_service.create_prompt(
                 prompt_name='any_prompt',
                 description='Desc',
                 order=1,
                 company=self.mock_company
             )
-        assert exc_info.value.error_type == AppException.ErrorType.DATABASE_ERROR
+        assert exc_info.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR

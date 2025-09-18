@@ -5,7 +5,7 @@
 
 from infra.call_service import CallServiceClient
 from injector import inject
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 import json
 
 
@@ -20,11 +20,11 @@ class ApiService:
         elif method == 'post':
             response, status_code = self.call_service.post(endpoint=endpoint, json_dict=kwargs)
         else:
-            raise AppException(AppException.ErrorType.INVALID_PARAMETER,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_PARAMETER,
                                f'API error, {method} not supported')
 
         if status_code != 200:
-            raise AppException(AppException.ErrorType.CALL_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.CALL_ERROR,
                                f'API {endpoint} error: {status_code}')
 
         return json.dumps(response)

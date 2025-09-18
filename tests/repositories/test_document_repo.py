@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import MagicMock
 from repositories.models import Document, Company
 from repositories.document_repo import DocumentRepo
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 import base64
 
 
@@ -36,10 +36,10 @@ class TestDocumentRepo:
 
     def test_get_missing_company(self):
         # Act & Assert
-        with pytest.raises(AppException) as exc_info:
+        with pytest.raises(IAToolkitException) as exc_info:
             self.repo.get(None, filename="test_file.txt")
 
-        assert exc_info.value.error_type == AppException.ErrorType.PARAM_NOT_FILLED
+        assert exc_info.value.error_type == IAToolkitException.ErrorType.PARAM_NOT_FILLED
 
     def test_get_document_by_filename(self):
         self.session.query.return_value.filter_by.return_value.first.return_value = self.mock_document

@@ -10,7 +10,7 @@ from repositories.profile_repo import ProfileRepo
 from collections import defaultdict
 from repositories.models import Prompt, PromptCategory, Company
 import os
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 
 
 class PromptService:
@@ -42,7 +42,7 @@ class PromptService:
         # Validar la existencia del archivo usando la ruta absoluta
         absolute_prompt_path = os.path.join(os.getcwd(), relative_prompt_path)
         if not os.path.exists(absolute_prompt_path):
-            raise AppException(AppException.ErrorType.INVALID_NAME,
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
                                f'No existe el archivo de prompt: {absolute_prompt_path}')
 
         prompt = Prompt(
@@ -60,7 +60,7 @@ class PromptService:
         try:
             self.llm_query_repo.create_or_update_prompt(prompt)
         except Exception as e:
-            raise AppException(AppException.ErrorType.DATABASE_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
                                f'error creating prompt "{prompt_name}": {str(e)}')
 
     def get_prompt_content(self, company: Company, prompt_name: str):
@@ -71,31 +71,31 @@ class PromptService:
             # get the user prompt
             user_prompt = self.llm_query_repo.get_prompt_by_name(company, prompt_name)
             if not user_prompt:
-                raise AppException(AppException.ErrorType.DOCUMENT_NOT_FOUND,
+                raise IAToolkitException(IAToolkitException.ErrorType.DOCUMENT_NOT_FOUND,
                                    f"No se encontró el prompt '{prompt_name}' para la empresa '{company.short_name}'")
 
             absolute_filepath = os.path.join(execution_dir, user_prompt.filepath)
             if not os.path.exists(absolute_filepath):
-                raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                    f"El archivo para el prompt '{prompt_name}' no existe: {absolute_filepath}")
 
             try:
                 with open(absolute_filepath, 'r', encoding='utf-8') as f:
                     user_prompt_content = f.read()
             except Exception as e:
-                raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+                raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                    f"Error leyendo el archivo de prompt '{prompt_name}' en {absolute_filepath}: {e}")
 
             return user_prompt_content
 
-        except AppException:
-            # Vuelve a lanzar las AppException que ya hemos manejado
+        except IAToolkitException:
+            # Vuelve a lanzar las IAToolkitException que ya hemos manejado
             # para que no sean capturadas por el siguiente bloque.
             raise
         except Exception as e:
             logging.exception(
                 f"Error al obtener el contenido del prompt para la empresa '{company.short_name}' y prompt '{prompt_name}': {e}")
-            raise AppException(AppException.ErrorType.PROMPT_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.PROMPT_ERROR,
                                f'Error al obtener el contenido del prompt "{prompt_name}" para la empresa {company.short_name}: {str(e)}')
 
     def get_system_prompt(self):
@@ -116,18 +116,18 @@ class PromptService:
                     with open(absolute_filepath, 'r', encoding='utf-8') as f:
                         system_prompt_content.append(f.read())
                 except Exception as e:
-                    raise AppException(AppException.ErrorType.FILE_IO_ERROR,
+                    raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                        f"Error leyendo el archivo de prompt del sistema {absolute_filepath}: {e}")
 
             # Unir todo el contenido en un solo string
             return "\n".join(system_prompt_content)
 
-        except AppException:
+        except IAToolkitException:
             raise
         except Exception as e:
             logging.exception(
                 f"Error al obtener el contenido del prompt de sistema: {e}")
-            raise AppException(AppException.ErrorType.PROMPT_ERROR,
+            raise IAToolkitException(IAToolkitException.ErrorType.PROMPT_ERROR,
                                f'Error al obtener el contenido de los prompts de sistema": {str(e)}')
 
     def get_user_prompts(self, company_short_name: str) -> dict:

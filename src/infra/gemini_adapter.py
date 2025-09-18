@@ -7,7 +7,7 @@ from infra.llm_response import LLMResponse, ToolCall, Usage
 from typing import Dict, List, Optional
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from google.protobuf.json_format import MessageToDict
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 import logging
 import json
 import uuid
@@ -100,7 +100,7 @@ class GeminiAdapter:
             elif "token" in str(e).lower():
                 error_message = "Tu consulta supera el límite de contexto de Gemini"
 
-            raise AppException(AppException.ErrorType.LLM_ERROR, error_message)
+            raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
 
     # ... rest of the methods keep the same ...
     def _map_model_name(self, model: str) -> str:

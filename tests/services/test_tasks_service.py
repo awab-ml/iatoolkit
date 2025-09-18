@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 from services.tasks_service import TaskService
 from infra.call_service import CallServiceClient
 from repositories.models import Task, TaskStatus, TaskType, Company
-from common.exceptions import AppException
+from common.exceptions import IAToolkitException
 from datetime import datetime, timedelta
 
 
@@ -45,28 +45,28 @@ class TestTaskService:
     def test_create_task_when_company_not_found(self):
         self.mock_profile_repo.get_company_by_short_name.return_value = None
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.task_service.create_task(
                 company_short_name="non_existent_company",
                 task_type_name="test_task_type",
                 client_data={}
             )
 
-        assert excinfo.value.error_type == AppException.ErrorType.INVALID_NAME
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.INVALID_NAME
         assert "No existe la empresa" in str(excinfo.value)
 
     def test_create_task_when_tasktype_not_found(self):
         self.mock_profile_repo.get_company_by_short_name.return_value = self.mock_company
         self.mock_task_repo.get_task_type.return_value = None
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.task_service.create_task(
                 company_short_name="test_company",
                 task_type_name="non_existent_type",
                 client_data={}
             )
 
-        assert excinfo.value.error_type == AppException.ErrorType.INVALID_NAME
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.INVALID_NAME
         assert "No existe el task_type" in str(excinfo.value)
 
     def test_create_task_when_future_execution(self):
@@ -105,7 +105,7 @@ class TestTaskService:
     def test_review_task_when_task_not_found(self):
         self.mock_task_repo.get_task_by_id.return_value = None
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.task_service.review_task(task_id=99,
                                           review_user='pgonzalez',
                                           approved=True,
@@ -116,7 +116,7 @@ class TestTaskService:
     def test_review_task_when_invalid_status(self):
         self.mock_task_repo.get_task_by_id.return_value = self.task_mock
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.task_service.review_task(task_id=99,
                                           review_user='pgonzalez',
                                           approved=True,
@@ -145,10 +145,10 @@ class TestTaskService:
             "error": "IA error"}
         self.mock_query_service.llm_query.return_value = llm_response
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.task_service.execute_task(self.task_mock)
 
-        assert excinfo.value.error_type == AppException.ErrorType.LLM_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.LLM_ERROR
         assert "IA error" in str(excinfo.value)
 
 
@@ -171,10 +171,10 @@ class TestTaskService:
         self.mock_query_service.llm_query.return_value = llm_response
         self.task_mock.callback_url = "http://test.com"
         self.mock_call_service.post.side_effect =Exception("timeout")
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             result_task = self.task_service.execute_task(self.task_mock)
 
-        assert excinfo.value.error_type == AppException.ErrorType.REQUEST_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.REQUEST_ERROR
         assert "timeout" in str(excinfo.value)
 
     def test_execute_task_when_llm_invalid_response(self):
@@ -212,10 +212,10 @@ class TestTaskService:
 
     def test_trigger_pending_tasks_when_exception(self):
         self.mock_task_repo.get_pending_tasks.side_effect = Exception("Error al obtener tareas pendientes")
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.task_service.trigger_pending_tasks('open')
 
-        assert excinfo.value.error_type == AppException.ErrorType.TASK_EXECUTION_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.TASK_EXECUTION_ERROR
 
     def test_trigger_pending_tasks_when_ok(self):
         self.mock_task_repo.get_pending_tasks.return_value = [self.task_mock]
@@ -228,10 +228,10 @@ class TestTaskService:
         uploaded_file_mock = MagicMock()
         uploaded_file_mock.read.side_effect = Exception("Error Guardando")
 
-        with pytest.raises(AppException) as excinfo:
+        with pytest.raises(IAToolkitException) as excinfo:
             self.task_service.get_task_files([uploaded_file_mock])
 
-        assert excinfo.value.error_type == AppException.ErrorType.FILE_IO_ERROR
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.FILE_IO_ERROR
         assert "Error al extraer el contenido del archivo secure_file.txt: Error Guardando" in str(excinfo.value)
 
 
