@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from services.excel_service import ExcelService
     from services.sql_service import SqlService
     from services.mail_service import MailService
+    from repositories.database_manager import DatabaseManager
 
 # Información del paquete
 __version__ = "0.2.8"
@@ -45,6 +46,9 @@ def __getattr__(name: str):
     elif name == "MailService":
         from services.mail_service import MailService
         return MailService
+    elif name == "DatabaseManager":
+        from repositories.database_manager import DatabaseManager
+        return DatabaseManager
     else:
         raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
@@ -59,5 +63,6 @@ __all__ = [
     "Dispatcher",
     "ExcelService",
     "SqlService",
-    "MailService"
+    "MailService",
+    "DatabaseManager"
 ]
