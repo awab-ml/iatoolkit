@@ -10,7 +10,7 @@ bash pip install iatoolkit-core
 ## Uso básico
 
 ```python
-from iatoolkit import *
+from iatoolkit.iatoolkit import *
 
 # Aquí va tu código de ejemplo
 ```
