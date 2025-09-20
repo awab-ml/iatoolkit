@@ -9,12 +9,9 @@ from repositories.llm_query_repo import LLMQueryRepo
 from repositories.models import Company, Function
 from services.excel_service import ExcelService
 from services.mail_service import MailService
-from iatoolkit.base_company import BaseCompany
+from iatoolkit.company_registry import get_company_registry
 from common.util import Utility
 from injector import inject
-import importlib
-import pkgutil
-import inspect
 import logging
 import os
 
@@ -35,8 +32,9 @@ class Dispatcher:
         self.system_functions = _FUNCTION_LIST
         self.system_prompts = _SYSTEM_PROMPT
 
-        # automatic discovery of company classes
-        self.company_classes = self._discover_company_classes()
+        # Usar registry en lugar de autodiscovery
+        self.company_registry = get_company_registry()
+        self.company_classes = {}  # Se inicializa en set_injector()
 
         self.tool_handlers = {
             "iat_generate_excel": self.excel_service.excel_generator,
@@ -73,16 +71,23 @@ class Dispatcher:
             company.init_db()
 
     def start_execution(self):
-        for company in self.company_classes.values():
-            logging.info(f'init execution for company: {company.__class__.__name__}')
-            company.start_execution()
+        """Ejecuta la inicialización de todas las empresas registradas"""
+        for company_name, company_instance in self.company_classes.items():
+            logging.info(f'Iniciando ejecución para empresa: {company_name}')
+            company_instance.start_execution()
 
+        logging.info(f"✅ {len(self.company_classes)} empresas iniciadas correctamente")
         return True
 
     def dispatch(self, company_name: str, action: str, **kwargs) -> str:
-        if company_name not in self.company_classes:
-            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
-                               f"Empresa no configurada: {company_name}")
+        company_key = company_name.lower()
+
+        if company_key not in self.company_classes:
+            available_companies = list(self.company_classes.keys())
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
+                f"Empresa '{company_name}' no configurada. Empresas disponibles: {available_companies}"
+            )
 
         # check if action is a system function
         if action in self.tool_handlers:
@@ -177,56 +182,23 @@ class Dispatcher:
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Error en get_metadata_from_filename de {company_name}: {str(e)}") from e
 
-    def _discover_company_classes(self) -> dict:
+    def set_injector(self, injector) -> None:
         """
-        Descubre dinámicamente todas las clases de empresa que heredan de BaseCompany
+        Configura el injector y crea las instancias de empresas.
+        Llamado por IAToolkit después de configurar DI.
         """
-        company_classes = {}
+        self.company_registry.set_injector(injector)
+        self.company_classes = self.company_registry.instantiate_companies()
 
-        try:
-            # Importar el paquete companies
-            import companies
-            companies_package = companies
+        logging.info(f"Dispatcher configurado con {len(self.company_classes)} empresas")
 
-            # Recorrer todos los módulos en el paquete companies
-            for importer, modname, ispkg in pkgutil.iter_modules(companies_package.__path__):
-                if ispkg:  # Si es un subpaquete (como companies.maxxa)
-                    continue
-
-                try:
-                    # Importar el módulo
-                    module_name = f"companies.{modname}"
-                    module = importlib.import_module(module_name)
-
-                    # Buscar clases que hereden de BaseCompany
-                    for name, obj in inspect.getmembers(module, inspect.isclass):
-                        if (obj != BaseCompany and
-                                issubclass(obj, BaseCompany) and
-                                obj.__module__ == module_name):
-
-                            # Crear instancia usando el inyector
-                            try:
-                                # Obtener la instancia del inyector
-                                from injector import Injector
-                                injector = Injector()
-                                company_instance = injector.get(obj)
-
-                                # Usar el nombre de la clase en minúsculas como key
-                                company_key = name.lower()
-                                company_classes[company_key] = company_instance
-
-                                logging.info(f"Empresa registrada dinámicamente: {company_key} -> {name}")
-
-                            except Exception as e:
-                                logging.warning(f"No se pudo crear instancia de {name}: {e}")
-
-                except ImportError as e:
-                    logging.warning(f"No se pudo importar módulo {modname}: {e}")
-
-        except Exception as e:
-            logging.error(f"Error en autodescubrimiento de empresas: {e}")
-
-        return company_classes
+    def get_registered_companies(self) -> dict:
+        """Obtiene todas las empresas registradas (para debugging/admin)"""
+        return {
+            "registered_classes": list(self.company_registry.get_registered_companies().keys()),
+            "instantiated": list(self.company_classes.keys()),
+            "count": len(self.company_classes)
+        }
 
 
 # iatoolkit system prompts

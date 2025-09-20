@@ -19,6 +19,7 @@ from injector import Binder, singleton, Injector
 from repositories.database_manager import DatabaseManager
 from common.routes import register_routes
 
+
 VERSION = "2.0.0"
 
 
@@ -256,7 +257,6 @@ class IAToolkit:
         binder.bind(TaskRepo, to=TaskRepo)
 
     def _bind_services(self, binder: Binder):
-        """Bind de todos los servicios"""
         from services.query_service import QueryService
         from services.tasks_service import TaskService
         from services.benchmark_service import BenchmarkService
@@ -280,8 +280,27 @@ class IAToolkit:
         binder.bind(ProfileService, to=ProfileService)
         binder.bind(JWTService, to=JWTService)
 
-        # El dispatcher ya maneja el descubrimiento de empresas
+        # Import tardío para evitar ciclo
         binder.bind(Dispatcher, to=Dispatcher)
+
+    def _start_companies(self):
+        if self._startup_executed:
+            return
+
+        try:
+            from services.dispatcher_service import Dispatcher
+            dispatcher = self._get_injector().get(Dispatcher)
+
+            # NUEVO: Configurar el injector en el dispatcher
+            dispatcher.set_injector(self._injector)
+
+            dispatcher.start_execution()
+            self._startup_executed = True
+            logging.info("🏢 Empresas inicializadas")
+        except Exception as e:
+            logging.exception(e)
+            raise
+
 
     def _bind_infrastructure(self, binder: Binder):
         """Bind de infraestructura y utilities"""

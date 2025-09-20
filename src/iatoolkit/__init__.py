@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 # Solo importar lo esencial que no causa ciclos
 from .base_company import BaseCompany
+from .company_registry import register_company
 
 # Type hints para el IDE (no se ejecutan en runtime)
 if TYPE_CHECKING:
@@ -54,12 +55,13 @@ def __getattr__(name: str):
 
 
 __all__ = [
-    # Componentes principales
+    # main components
     "IAToolkit",
     "create_app",
     "BaseCompany",
+    "register_company",
 
-    # Servicios disponibles
+    # available services
     "Dispatcher",
     "ExcelService",
     "SqlService",

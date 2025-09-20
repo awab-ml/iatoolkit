@@ -5,13 +5,11 @@
 
 # companies/base_company.py
 from abc import ABC, abstractmethod
-from repositories.profile_repo import ProfileRepo
-from repositories.llm_query_repo import LLMQueryRepo
+from typing import Any
 
 
 class BaseCompany(ABC):
-    def __init__(self, profile_repo: ProfileRepo,
-                 llm_query_repo: LLMQueryRepo):
+    def __init__(self, profile_repo: Any = None, llm_query_repo: Any = None):
         self.profile_repo = profile_repo
         self.llm_query_repo = llm_query_repo
 
