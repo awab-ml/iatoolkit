@@ -7,6 +7,34 @@ from flask_session import Session
 from flask_injector import FlaskInjector
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
+from repositories.document_repo import DocumentRepo
+from repositories.document_type_repo import DocumentTypeRepo
+from repositories.profile_repo import ProfileRepo
+from repositories.llm_query_repo import LLMQueryRepo
+from repositories.vs_repo import VSRepo
+from repositories.tasks_repo import TaskRepo
+from services.query_service import QueryService
+from services.tasks_service import TaskService
+from services.benchmark_service import BenchmarkService
+from services.document_service import DocumentService
+from services.prompt_manager_service import PromptService
+from services.excel_service import ExcelService
+from services.mail_service import MailService
+from services.load_documents_service import LoadDocumentsService
+from services.profile_service import ProfileService
+from services.jwt_service import JWTService
+from services.dispatcher_service import Dispatcher
+from infra.llm_proxy import LLMProxy
+from infra.google_chat_app import GoogleChatApp
+from infra.llm_client import llmClient
+from infra.mail_app import MailApp
+from common.auth import IAuthentication
+from common.util import Utility
+from views.llmquery_view import LLMQueryView
+from views.home_view import HomeView
+from views.chat_view import ChatView
+from views.change_password_view import ChangePasswordView
+
 from urllib.parse import urlparse
 import redis
 import logging
@@ -241,14 +269,6 @@ class IAToolkit:
             raise
 
     def _bind_repositories(self, binder: Binder):
-        """Bind de todos los repositorios"""
-        from repositories.document_repo import DocumentRepo
-        from repositories.document_type_repo import DocumentTypeRepo
-        from repositories.profile_repo import ProfileRepo
-        from repositories.llm_query_repo import LLMQueryRepo
-        from repositories.vs_repo import VSRepo
-        from repositories.tasks_repo import TaskRepo
-
         binder.bind(DocumentRepo, to=DocumentRepo)
         binder.bind(DocumentTypeRepo, to=DocumentTypeRepo)
         binder.bind(ProfileRepo, to=ProfileRepo)
@@ -257,18 +277,6 @@ class IAToolkit:
         binder.bind(TaskRepo, to=TaskRepo)
 
     def _bind_services(self, binder: Binder):
-        from services.query_service import QueryService
-        from services.tasks_service import TaskService
-        from services.benchmark_service import BenchmarkService
-        from services.document_service import DocumentService
-        from services.prompt_manager_service import PromptService
-        from services.excel_service import ExcelService
-        from services.mail_service import MailService
-        from services.load_documents_service import LoadDocumentsService
-        from services.profile_service import ProfileService
-        from services.jwt_service import JWTService
-        from services.dispatcher_service import Dispatcher
-
         binder.bind(QueryService, to=QueryService)
         binder.bind(TaskService, to=TaskService)
         binder.bind(BenchmarkService, to=BenchmarkService)
@@ -279,19 +287,34 @@ class IAToolkit:
         binder.bind(LoadDocumentsService, to=LoadDocumentsService)
         binder.bind(ProfileService, to=ProfileService)
         binder.bind(JWTService, to=JWTService)
-
-        # Import tardío para evitar ciclo
         binder.bind(Dispatcher, to=Dispatcher)
+
+    def _bind_infrastructure(self, binder: Binder):
+        binder.bind(LLMProxy, to=LLMProxy, scope=singleton)
+        binder.bind(llmClient, to=llmClient, scope=singleton)
+        binder.bind(GoogleChatApp, to=GoogleChatApp)
+        binder.bind(MailApp, to=MailApp)
+        binder.bind(IAuthentication, to=IAuthentication)
+        binder.bind(Utility, to=Utility)
+
+    def _bind_views(self, binder: Binder):
+        binder.bind(HomeView, to=HomeView)
+        binder.bind(ChatView, to=ChatView)
+        binder.bind(ChangePasswordView, to=ChangePasswordView)
+        binder.bind(LLMQueryView, to=LLMQueryView)
+
+    def _register_routes(self):
+        register_routes(self.app)
+
+    def _setup_additional_services(self):
+        Bcrypt(self.app)
 
     def _start_companies(self):
         if self._startup_executed:
             return
 
         try:
-            from services.dispatcher_service import Dispatcher
             dispatcher = self._get_injector().get(Dispatcher)
-
-            # NUEVO: Configurar el injector en el dispatcher
             dispatcher.set_injector(self._injector)
 
             dispatcher.start_execution()
@@ -301,50 +324,6 @@ class IAToolkit:
             logging.exception(e)
             raise
 
-
-    def _bind_infrastructure(self, binder: Binder):
-        """Bind de infraestructura y utilities"""
-        from infra.llm_proxy import LLMProxy
-        from infra.google_chat_app import GoogleChatApp
-        from infra.llm_client import llmClient
-        from infra.mail_app import MailApp
-        from common.auth import IAuthentication
-        from common.util import Utility
-
-        binder.bind(LLMProxy, to=LLMProxy, scope=singleton)
-        binder.bind(llmClient, to=llmClient, scope=singleton)
-        binder.bind(GoogleChatApp, to=GoogleChatApp)
-        binder.bind(MailApp, to=MailApp)
-        binder.bind(IAuthentication, to=IAuthentication)
-        binder.bind(Utility, to=Utility)
-
-    def _bind_views(self, binder: Binder):
-        """Bind de las views"""
-        from views.llmquery_view import LLMQueryView
-        binder.bind(LLMQueryView, to=LLMQueryView)
-
-    def _register_routes(self):
-        """🛤️ Registra todas las rutas del sistema"""
-        register_routes(self.app)
-
-    def _setup_additional_services(self):
-        """🔧 Configura servicios adicionales"""
-        Bcrypt(self.app)
-
-    def _start_companies(self):
-        if self._startup_executed:
-            return
-
-        try:
-            # Import tardío para evitar ciclo
-            from services.dispatcher_service import Dispatcher
-            dispatcher = self._get_injector().get(Dispatcher)
-            dispatcher.start_execution()
-            self._startup_executed = True
-            logging.info("🏢 Empresas inicializadas")
-        except Exception as e:
-            logging.exception(e)
-            raise
 
     def _setup_cli_commands(self):
         """⌨️ Configura comandos CLI básicos"""
@@ -366,8 +345,7 @@ class IAToolkit:
 
 
     def _setup_context_processors(self):
-        """🎭 Configura context processors para templates"""
-
+        # Configura context processors para templates
         @self.app.context_processor
         def inject_globals():
             return {
@@ -378,7 +356,6 @@ class IAToolkit:
 
 
     def _get_default_static_folder(self) -> str:
-        """Obtiene la ruta por defecto de static"""
         try:
             # Buscar en el paquete src
             current_dir = os.path.dirname(__file__)
@@ -387,7 +364,6 @@ class IAToolkit:
             return 'static'
 
     def _get_default_template_folder(self) -> str:
-        """Obtiene la ruta por defecto de templates"""
         try:
             # Buscar en el paquete src
             current_dir = os.path.dirname(__file__)
@@ -401,28 +377,26 @@ class IAToolkit:
             raise IAToolkitException("Injector no inicializado. Llame a create_app() primero")
         return self._injector
 
-    # 📊 Métodos públicos de utilidad
     def get_dispatcher(self):
         """Obtiene el dispatcher del sistema"""
         if not self._injector:
             raise IAToolkitException("App no inicializada. Llame a create_app() primero")
-        # Import tardío para evitar ciclo
-        from services.dispatcher_service import Dispatcher
+
         return self._injector.get(Dispatcher)
 
     def get_database_manager(self) -> DatabaseManager:
-        """Obtiene el database manager"""
         if not self.db_manager:
             raise IAToolkitException("Database manager no inicializado")
         return self.db_manager
 
-
 # 🚀 Función de conveniencia para inicialización rápida
-def create_app(config: Optional[Dict[str, Any]] = None) -> IAToolkit:
+def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:
     toolkit = IAToolkit(config)
-    return toolkit.create_iatoolkit()
+    toolkit.create_iatoolkit()
+
+    return toolkit.app
 
 if __name__ == "__main__":
-    toolkit = IAToolkit()
-    app = toolkit.create_iatoolkit()
-    app.run()
+    app = create_app()
+    if app:
+        app.run(debug=True)

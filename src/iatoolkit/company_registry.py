@@ -52,22 +52,10 @@ class CompanyRegistry:
         for company_key, company_class in self._company_classes.items():
             if company_key not in self._company_instances:
                 try:
-                    # Obtener las dependencias necesarias del injector
-                    from repositories.profile_repo import ProfileRepo
-                    from repositories.llm_query_repo import LLMQueryRepo
-
-                    profile_repo = self._injector.get(ProfileRepo)
-                    llm_query_repo = self._injector.get(LLMQueryRepo)
-
-                    # Crear la instancia manualmente pasando las dependencias
-                    company_instance = company_class(
-                        profile_repo=profile_repo,
-                        llm_query_repo=llm_query_repo
-                    )
-
+                    # use de injector to create the instance
+                    company_instance = self._injector.get(company_class)
                     self._company_instances[company_key] = company_instance
-
-                    logging.info(f"Empresa instanciada: {company_key}")
+                    logging.info(f"Empresa instanciada con DI: {company_key}")
 
                 except Exception as e:
                     logging.error(f"Error instanciando empresa {company_key}: {e}")
