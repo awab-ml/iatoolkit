@@ -1,70 +1,41 @@
 """
-iatoolkit-core: Framework opensource para chatbots empresariales con IA
-
-Componentes principales:
-- IAToolkit: Clase principal del framework
-- BaseCompany: Clase base para implementaciones empresariales
-- create_app: Función de conveniencia para inicialización rápida
+IAToolkit Package
 """
 
-from typing import TYPE_CHECKING
+# Expose main classes and functions at the top level of the package
 
-# Solo importar lo esencial que no causa ciclos
-from .base_company import BaseCompany
+# Assuming 'toolkit.py' contains the IAToolkit class
+from .iatoolkit import IAToolkit, create_app
+from iatoolkit.context import current_iatoolkit
+
+# Assuming 'app_factory.py' contains create_app and register_company
 from .company_registry import register_company
 
-# Type hints para el IDE (no se ejecutan en runtime)
-if TYPE_CHECKING:
-    from .iatoolkit import IAToolkit, create_app
-    from services.dispatcher_service import Dispatcher
-    from services.excel_service import ExcelService
-    from services.sql_service import SqlService
-    from services.mail_service import MailService
-    from repositories.database_manager import DatabaseManager
+# Assuming 'base_company.py' contains BaseCompany
+from .base_company import BaseCompany
 
-# Información del paquete
-__version__ = "0.2.8"
-__author__ = "Fernando Libedinsky"
-
-
-def __getattr__(name: str):
-    """Lazy loading para evitar imports circulares"""
-    if name == "IAToolkit":
-        from .iatoolkit import IAToolkit
-        return IAToolkit
-    elif name == "create_app":
-        from .iatoolkit import create_app
-        return create_app
-    elif name == "Dispatcher":
-        from services.dispatcher_service import Dispatcher
-        return Dispatcher
-    elif name == "ExcelService":
-        from services.excel_service import ExcelService
-        return ExcelService
-    elif name == "SqlService":
-        from services.sql_service import SqlService
-        return SqlService
-    elif name == "MailService":
-        from services.mail_service import MailService
-        return MailService
-    elif name == "DatabaseManager":
-        from repositories.database_manager import DatabaseManager
-        return DatabaseManager
-    else:
-        raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+# --- Services ---
+# Assuming they are in a 'services' sub-package
+from services.sql_service import SqlService
+from services.excel_service import ExcelService
+from services.dispatcher_service import Dispatcher
+from services.document_service import DocumentService
+from services.search_service import SearchService
+from repositories.profile_repo import ProfileRepo
+from repositories.database_manager import DatabaseManager
 
 
 __all__ = [
-    # main components
-    "IAToolkit",
-    "create_app",
-    "BaseCompany",
-    "register_company",
-
-    # available services
-    "Dispatcher",
-    "ExcelService",
-    "SqlService",
-    "MailService",
-    "DatabaseManager"
+    'IAToolkit',
+    'create_app',
+    'current_iatoolkit',
+    'register_company',
+    'BaseCompany',
+    'SqlService',
+    'ExcelService',
+    'Dispatcher',
+    'DocumentService',
+    'SearchService',
+    'ProfileRepo',
+    'DatabaseManager',
 ]

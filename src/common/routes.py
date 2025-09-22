@@ -3,26 +3,6 @@
 # Todos los derechos reservados.
 # En trámite de registro en el Registro de Propiedad Intelectual de Chile.
 
-from views.llmquery_view import LLMQueryView
-from views.tasks_view import TaskView
-from views.tasks_review_view import TaskReviewView
-from views.home_view import HomeView
-from views.chat_view import ChatView
-from views.login_view import LoginView
-from views.external_chat_login_view import ExternalChatLoginView
-from views.select_company_view import SelectCompanyView
-from views.signup_view import SignupView
-from views.verify_user_view import VerifyAccountView
-from views.forgot_password_view import ForgotPasswordView
-from views.change_password_view import ChangePasswordView
-from views.file_store_view import FileStoreView
-from views.url_simulation_view import URLSimulationView
-from views.user_feedback_view import UserFeedbackView
-from views.prompt_view import PromptView
-from views.chat_token_request_view import ChatTokenRequestView
-from views.chat_info_view import ChatInfoView
-from views.external_login_view import ExternalLoginView
-from views.download_file_view import DownloadFileView
 from flask import (render_template, redirect, flash, url_for,
                    send_from_directory, current_app)
 from common.session_manager import SessionManager
@@ -48,6 +28,27 @@ def inject_user_data():
 
 
 def register_routes(app):
+    from views.llmquery_view import LLMQueryView
+    from views.tasks_view import TaskView
+    from views.tasks_review_view import TaskReviewView
+    from views.home_view import HomeView
+    from views.chat_view import ChatView
+    from views.login_view import LoginView
+    from views.external_chat_login_view import ExternalChatLoginView
+    from views.select_company_view import SelectCompanyView
+    from views.signup_view import SignupView
+    from views.verify_user_view import VerifyAccountView
+    from views.forgot_password_view import ForgotPasswordView
+    from views.change_password_view import ChangePasswordView
+    from views.file_store_view import FileStoreView
+    from views.url_simulation_view import URLSimulationView
+    from views.user_feedback_view import UserFeedbackView
+    from views.prompt_view import PromptView
+    from views.chat_token_request_view import ChatTokenRequestView
+    from views.chat_info_view import ChatInfoView
+    from views.external_login_view import ExternalLoginView
+    from views.download_file_view import DownloadFileView
+
     app.add_url_rule('/', view_func=HomeView.as_view('home'))
 
     # main chat for iatoolkit front

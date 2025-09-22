@@ -17,7 +17,7 @@ from common.exceptions import IAToolkitException
 from injector import inject
 import base64
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 import json
 import time
 import os
@@ -27,13 +27,14 @@ GEMINI_MAX_TOKENS_CONTEXT_HISTORY = 200000
 
 class QueryService:
     @inject
-    def __init__(self, document_service: DocumentService,
+    def __init__(self,
+                 llm_client: llmClient,
+                 document_service: DocumentService,
                  document_repo: DocumentRepo,
                  llmquery_repo: LLMQueryRepo,
                  profile_repo: ProfileRepo,
                  prompt_service: PromptService,
                  util: Utility,
-                 llm: llmClient,
                  dispatcher: Dispatcher,
                  session_context: UserSessionContextService
                  ):
@@ -43,15 +44,16 @@ class QueryService:
         self.profile_repo = profile_repo
         self.prompt_service = prompt_service
         self.util = util
-        self.llm = llm
         self.dispatcher = dispatcher
         self.session_context = session_context
+        self.llm_client = llm_client
 
         # Obtener el modelo de las variables de entorno
         self.model = os.getenv("LLM_MODEL", "")
         if not self.model:
             raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
                                "La variable de entorno 'LLM_MODEL' no está configurada.")
+
 
     def llm_init_context(self,
                          company_short_name: str,
@@ -120,7 +122,7 @@ class QueryService:
             elif self.util.is_openai_model(model):
 
                 # 6. set the company/user context as the initial context for the LLM
-                response_id = self.llm.set_company_context(
+                response_id = self.llm_client.set_company_context(
                     company=company,
                     company_base_context=final_system_context,
                     model=model
@@ -178,8 +180,6 @@ class QueryService:
                 # check the length of the context_history and remove old messages
                 self._trim_context_history(context_history)
 
-
-
             # get the user data from the session context
             user_info_from_session = self.session_context.get_user_session_data(company.short_name, user_identifier)
 
@@ -232,7 +232,7 @@ class QueryService:
             output_schema = {}
 
             # Now send the instructions to the llm
-            response = self.llm.invoke(
+            response = self.llm_client.invoke(
                 company=company,
                 user_identifier=user_identifier,
                 previous_response_id=previous_response_id,
@@ -257,7 +257,11 @@ class QueryService:
             logging.exception(e)
             return {'error': True, "error_message": f"{str(e)}"}
 
-    def load_files_for_context(self, files) -> str:
+    def load_files_for_context(self, files: list) -> str:
+        """
+        Processes a list of attached files, decodes their content,
+        and formats them into a string context for the LLM.
+        """
         if not files:
             return ''
 
@@ -267,20 +271,33 @@ class QueryService:
             en total son: {len(files)} documentos adjuntos
             """
         for document in files:
-            filename = document.get('filename')
-            file_content = base64.b64decode(document.get('content'))
-            if not file_content:
-                raise IAToolkitException(IAToolkitException.ErrorType.PROMPT_ERROR,
-                                   'Documento no tiene contenido')
+            # Support both 'file_id' and 'filename' for robustness
+            filename = document.get('file_id') or document.get('filename')
+            if not filename:
+                context += "\n<error>Documento adjunto sin nombre ignorado.</error>\n"
+                continue
+
+            # Support both 'base64' and 'content' for robustness
+            base64_content = document.get('base64') or document.get('content')
+
+            if not base64_content:
+                # Handles the case where a file is referenced but no content is provided
+                context += f"\n<error>El archivo '{filename}' no fue encontrado y no pudo ser cargado.</error>\n"
+                continue
+
             try:
+                # Ensure content is bytes before decoding
+                if isinstance(base64_content, str):
+                    base64_content = base64_content.encode('utf-8')
+
+                file_content = base64.b64decode(base64_content)
                 document_text = self.document_service.file_to_txt(filename, file_content)
-                context += f"Documento adjunto con nombre: \'{filename}\'\n"
-                context += "Contenido del documento:\n" + document_text + '\n'
-            except IAToolkitException as e:
-                raise e
+                context += f"\n<document name='{filename}'>\n{document_text}\n</document>\n"
             except Exception as e:
-                raise IAToolkitException(IAToolkitException.ErrorType.PROMPT_ERROR,
-                                   f'No se pudo crear prompt: {str(e)}') from e
+                # Catches errors from b64decode or file_to_txt
+                logging.error(f"Failed to process file {filename}: {e}")
+                context += f"\n<error>Error al procesar el archivo {filename}: {str(e)}</error>\n"
+                continue
 
         return context
 
@@ -294,7 +311,7 @@ class QueryService:
 
         # calculate total tokens
         try:
-            total_tokens = sum(self.llm.count_tokens(json.dumps(message)) for message in context_history)
+            total_tokens = sum(self.llm_client.count_tokens(json.dumps(message)) for message in context_history)
         except Exception as e:
             logging.error(f"Error al calcular tokens del historial: {e}. No se pudo recortar el contexto.")
             return
@@ -304,7 +321,7 @@ class QueryService:
             try:
                 # Eliminar el mensaje más antiguo después del prompt del sistema
                 removed_message = context_history.pop(1)
-                removed_tokens = self.llm.count_tokens(json.dumps(removed_message))
+                removed_tokens = self.llm_client.count_tokens(json.dumps(removed_message))
                 total_tokens -= removed_tokens
                 logging.warning(
                     f"Historial de contexto ({total_tokens + removed_tokens} tokens) excedía el límite de {GEMINI_MAX_TOKENS_CONTEXT_HISTORY}. "

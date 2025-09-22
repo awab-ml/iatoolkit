@@ -55,7 +55,6 @@ class CompanyRegistry:
                     # use de injector to create the instance
                     company_instance = self._injector.get(company_class)
                     self._company_instances[company_key] = company_instance
-                    logging.info(f"Empresa instanciada con DI: {company_key}")
 
                 except Exception as e:
                     logging.error(f"Error instanciando empresa {company_key}: {e}")

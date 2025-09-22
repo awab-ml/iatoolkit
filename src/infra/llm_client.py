@@ -3,8 +3,8 @@
 # Todos los derechos reservados.
 # En trámite de registro en el Registro de Propiedad Intelectual de Chile.
 
+from iatoolkit.context import current_iatoolkit
 from infra.llm_proxy import LLMProxy
-from services.dispatcher_service import Dispatcher
 from repositories.models import Company, LLMQuery
 from repositories.llm_query_repo import LLMQueryRepo
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
@@ -19,7 +19,10 @@ from common.exceptions import IAToolkitException
 import threading
 import re
 import tiktoken
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from services.dispatcher_service import Dispatcher
 
 
 class llmClient:
@@ -28,15 +31,14 @@ class llmClient:
 
     @inject
     def __init__(self,
-                 dispatcher: Dispatcher,
                  llmquery_repo: LLMQueryRepo,
                  llm_proxy_factory: LLMProxy,
                  util: Utility
                  ):
-        self.dispatcher = dispatcher
         self.llmquery_repo = llmquery_repo
         self.llm_proxy_factory = llm_proxy_factory
         self.util = util
+        self._dispatcher: Optional['Dispatcher'] = None # Cache for the lazy-loaded dispatcher
 
         # get the model from the environment variable
         self.model = os.getenv("LLM_MODEL", "")
@@ -49,6 +51,15 @@ class llmClient:
 
         # max number of sql retries
         self.MAX_SQL_RETRIES = 1
+
+    @property
+    def dispatcher(self) -> 'Dispatcher':
+        """Lazy-loads and returns the Dispatcher instance."""
+        if self._dispatcher is None:
+            # Use the global context proxy to get the injector, then get the service
+            self._dispatcher = current_iatoolkit._get_injector().get("Dispatcher")
+        return self._dispatcher
+
 
     def invoke(self,
                company: Company,

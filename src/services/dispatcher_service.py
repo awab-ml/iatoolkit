@@ -3,6 +3,7 @@
 # Todos los derechos reservados.
 # En trámite de registro en el Registro de Propiedad Intelectual de Chile.
 
+from iatoolkit.context import current_iatoolkit
 from common.exceptions import IAToolkitException
 from services.prompt_manager_service import PromptService
 from repositories.llm_query_repo import LLMQueryRepo
@@ -34,7 +35,12 @@ class Dispatcher:
 
         # Usar registry en lugar de autodiscovery
         self.company_registry = get_company_registry()
-        self.company_classes = {}  # Se inicializa en set_injector()
+
+        # get the application injector
+        injector = current_iatoolkit._get_injector()
+        self.company_registry.set_injector(injector)
+        self.company_classes = self.company_registry.instantiate_companies()
+        logging.info(f"Dispatcher configurado con {len(self.company_classes)} empresas")
 
         self.tool_handlers = {
             "iat_generate_excel": self.excel_service.excel_generator,
@@ -76,7 +82,6 @@ class Dispatcher:
             logging.info(f'Iniciando ejecución para empresa: {company_name}')
             company_instance.start_execution()
 
-        logging.info(f"✅ {len(self.company_classes)} empresas iniciadas correctamente")
         return True
 
     def dispatch(self, company_name: str, action: str, **kwargs) -> str:
@@ -181,16 +186,6 @@ class Dispatcher:
             logging.exception(e)
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Error en get_metadata_from_filename de {company_name}: {str(e)}") from e
-
-    def set_injector(self, injector) -> None:
-        """
-        Configura el injector y crea las instancias de empresas.
-        Llamado por IAToolkit después de configurar DI.
-        """
-        self.company_registry.set_injector(injector)
-        self.company_classes = self.company_registry.instantiate_companies()
-
-        logging.info(f"Dispatcher configurado con {len(self.company_classes)} empresas")
 
     def get_registered_companies(self) -> dict:
         """Obtiene todas las empresas registradas (para debugging/admin)"""

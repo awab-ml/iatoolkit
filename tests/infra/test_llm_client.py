@@ -17,6 +17,7 @@ class TestLLMClient:
         self.llmquery_repo = MagicMock()
         self.util_mock = MagicMock()
         self.llm_proxy_factory = MagicMock()
+        self.injector_mock = MagicMock()
 
         # Mock del LLMProxy que será devuelto por la fábrica
         self.mock_proxy = MagicMock()
@@ -34,9 +35,8 @@ class TestLLMClient:
         self.mock_tiktoken = self.tiktoken_patcher.start()
         self.mock_tiktoken.encoding_for_model.return_value = MagicMock()
 
-        # Instancia del cliente bajo prueba
+        # Instance of the client under test
         self.client = llmClient(
-            dispatcher=self.dispatcher_mock,
             llmquery_repo=self.llmquery_repo,
             util=self.util_mock,
             llm_proxy_factory=self.llm_proxy_factory
@@ -57,7 +57,7 @@ class TestLLMClient:
         """Test que la inicialización falla si falta LLM_MODEL."""
         with patch.dict('os.environ', {}, clear=True):
             with pytest.raises(IAToolkitException, match="LLM_MODEL"):
-                llmClient(self.dispatcher_mock, self.llmquery_repo, self.util_mock, self.llm_proxy_factory)
+                llmClient(self.llmquery_repo, self.util_mock, self.llm_proxy_factory)
 
     def test_invoke_success(self):
         """Test de una llamada invoke exitosa."""
@@ -76,24 +76,46 @@ class TestLLMClient:
         self.llmquery_repo.add_query.assert_called_once()
 
     def test_invoke_handles_function_calls(self):
-        """Test que invoke maneja correctamente las llamadas a funciones."""
-        tool_call = ToolCall('call1', 'function_call', 'test_func', '{"a": 1}')
-        response_with_tools = LLMResponse('r1', 'gpt-4o', 'completed', '', [tool_call], Usage(10, 5, 15))
-        self.mock_proxy.create_response.side_effect = [response_with_tools, self.mock_llm_response]
-        self.dispatcher_mock.dispatch.return_value = '{"status": "ok"}'
+        """Tests that invoke correctly handles function calls."""
+        # 1. Create a mock for the dispatcher service
+        dispatcher_mock = MagicMock()
+        dispatcher_mock.dispatch.return_value = '{"status": "ok"}'
 
-        self.client.invoke(
-            company=self.company, user_identifier='user1', previous_response_id='prev1',
-            question='q', context='c', tools=[{}], text={}
-        )
+        # 2. Create a mock injector that knows how to provide the dispatcher mock
+        injector_mock = MagicMock()
+        injector_mock.get.return_value = dispatcher_mock
 
+        # 3. Create a mock IAToolkit instance
+        toolkit_mock = MagicMock()
+        # Make its _get_injector() method return our mock injector
+        toolkit_mock._get_injector.return_value = injector_mock
+
+        # 4. Use patch to replace `current_iatoolkit` with our mock toolkit
+        with patch('infra.llm_client.current_iatoolkit', toolkit_mock):
+            # 5. Define the sequence of LLM responses
+            tool_call = ToolCall('call1', 'function_call', 'test_func', '{"a": 1}')
+            response_with_tools = LLMResponse('r1', 'gpt-4o', 'completed', '', [tool_call], Usage(10, 5, 15))
+            self.mock_proxy.create_response.side_effect = [response_with_tools, self.mock_llm_response]
+
+            # 6. Invoke the client. Now, when it calls current_iatoolkit, it will get our mock.
+            self.client.invoke(
+                company=self.company, user_identifier='user1', previous_response_id='prev1',
+                question='q', context='c', tools=[{}], text={}
+            )
+
+        # 7. Assertions
         assert self.mock_proxy.create_response.call_count == 2
-        self.dispatcher_mock.dispatch.assert_called_once_with(
+
+        # Verify that the dispatcher was correctly retrieved and called
+        dispatcher_mock.dispatch.assert_called_once_with(
             company_name='test_company', action='test_func', a=1
         )
-        # Verificar que la salida de la función se reinyecta en el historial
+
+        # Verify that the function output was reinjected into the history
         second_call_args = self.mock_proxy.create_response.call_args_list[1].kwargs
-        assert any(msg.get('type') == 'function_call_output' for msg in second_call_args['input'])
+        function_output_message = second_call_args['input'][1]
+        assert function_output_message.get('type') == 'function_call_output'
+        assert function_output_message.get('output') == '{"status": "ok"}'
 
     def test_invoke_llm_api_error_propagates(self):
         """Test que los errores de la API del LLM se propagan como IAToolkitException."""

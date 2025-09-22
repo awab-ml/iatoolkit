@@ -7,34 +7,9 @@ from flask_session import Session
 from flask_injector import FlaskInjector
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
-from repositories.document_repo import DocumentRepo
-from repositories.document_type_repo import DocumentTypeRepo
-from repositories.profile_repo import ProfileRepo
-from repositories.llm_query_repo import LLMQueryRepo
-from repositories.vs_repo import VSRepo
-from repositories.tasks_repo import TaskRepo
-from services.query_service import QueryService
-from services.tasks_service import TaskService
-from services.benchmark_service import BenchmarkService
-from services.document_service import DocumentService
-from services.prompt_manager_service import PromptService
-from services.excel_service import ExcelService
-from services.mail_service import MailService
-from services.load_documents_service import LoadDocumentsService
-from services.profile_service import ProfileService
-from services.jwt_service import JWTService
-from services.dispatcher_service import Dispatcher
-from infra.llm_proxy import LLMProxy
-from infra.google_chat_app import GoogleChatApp
-from infra.llm_client import llmClient
-from infra.mail_app import MailApp
 from common.auth import IAuthentication
 from common.util import Utility
-from views.llmquery_view import LLMQueryView
-from views.home_view import HomeView
-from views.chat_view import ChatView
-from views.change_password_view import ChangePasswordView
-
+from common.exceptions import IAToolkitException
 from urllib.parse import urlparse
 import redis
 import logging
@@ -43,31 +18,16 @@ import click
 from functools import partial
 from typing import Optional, Dict, Any
 from injector import Binder, singleton, Injector
-
 from repositories.database_manager import DatabaseManager
-from common.routes import register_routes
+from .context import _iatoolkit_ctx_stack
 
 
 VERSION = "2.0.0"
 
 
-class IAToolkitException(Exception):
-    """Excepción personalizada para IAToolkit"""
-    pass
-
-
 class IAToolkit:
     """
     IAToolkit main class
-
-    Ejemplo de uso:
-    ```python
-    from iatoolkit import IAToolkit
-
-    # Configuración mínima con variables de entorno
-    toolkit = IAToolkit()
-    app = toolkit.create_app()
-    ```
     """
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
@@ -79,70 +39,45 @@ class IAToolkit:
         self.app: Optional[Flask] = None
         self.db_manager: Optional[DatabaseManager] = None
         self._injector: Optional[Injector] = None
-        self._startup_executed = False
 
     def create_iatoolkit(self):
 
-        # 1. Configurar logging
         self._setup_logging()
-
-        # 2. Crear instancia Flask
         self._create_flask_instance()
 
-        # 3. Configurar Flask básico
-        self._configure_flask_basic()
+        # save current iatoolkit instance in the stack
+        ctx = self.app.app_context()
+        ctx.push()
+        _iatoolkit_ctx_stack.push(self)
 
-        # 4. Configurar base de datos
         self._setup_database()
-
-        # 5. Configurar Redis y sesiones
-        self._setup_redis_sessions()
-
-        # 6. Configurar CORS
-        self._setup_cors()
-
-        # 7. Configurar inyección de dependencias
         self._setup_dependency_injection()
-
-        # 8. Registrar rutas
         self._register_routes()
-
-        # 9. Configurar servicios adicionales
+        self._setup_redis_sessions()
+        self._setup_cors()
         self._setup_additional_services()
-
-        # 10. Configurar CLI commands
         self._setup_cli_commands()
-
-        # 11. Context processors
         self._setup_context_processors()
 
-        # 12. Auto-startup para desarrollo
-        self._start_companies()
-
         logging.info(f"🎉 IAToolkit v{VERSION} inicializado correctamente")
-        return self
+        return self.app
 
     def _get_config_value(self, key: str, default=None):
         """Obtiene un valor de configuración, primero del dict config, luego de env vars"""
         return self.config.get(key, os.getenv(key, default))
 
     def _setup_logging(self):
-        """📝 Configura el sistema de logging"""
         log_level_str = self._get_config_value('FLASK_ENV', 'production')
-        log_level = logging.INFO if log_level_str == 'dev' else logging.WARNING
+        log_level = logging.INFO if log_level_str in ('dev', 'development') else logging.WARNING
 
         logging.basicConfig(
             level=log_level,
             format="%(asctime)s - IATOOLKIT - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler()]
+            handlers=[logging.StreamHandler()],
+            force=True
         )
 
-        # Configurar niveles de librerías externas
-        logging.getLogger("urllib3").setLevel(logging.WARNING)
-        logging.getLogger("requests").setLevel(logging.WARNING)
-
     def _create_flask_instance(self):
-        """🏭 Crea la instancia Flask"""
         static_folder = self._get_config_value('STATIC_FOLDER') or self._get_default_static_folder()
         template_folder = self._get_config_value('TEMPLATE_FOLDER') or self._get_default_template_folder()
 
@@ -150,8 +85,6 @@ class IAToolkit:
                          static_folder=static_folder,
                          template_folder=template_folder)
 
-    def _configure_flask_basic(self):
-        """⚙️ Configuraciones básicas de Flask"""
         is_https = self._get_config_value('USE_HTTPS', 'false').lower() == 'true'
         is_dev = self._get_config_value('FLASK_ENV') == 'development'
 
@@ -172,17 +105,18 @@ class IAToolkit:
             os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     def _setup_database(self):
-        """🗄️ Configura el gestor de base de datos"""
         database_uri = self._get_config_value('DATABASE_URI')
         if not database_uri:
-            raise IAToolkitException("DATABASE_URI es requerida (config dict o variable de entorno)")
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.CONFIG_ERROR,
+                "DATABASE_URI es requerida (config dict o variable de entorno)"
+            )
 
         self.db_manager = DatabaseManager(database_uri)
         self.db_manager.create_all()
         logging.info("✅ Base de datos configurada correctamente")
 
     def _setup_redis_sessions(self):
-        """🔄 Configura Redis y las sesiones"""
         redis_url = self._get_config_value('REDIS_URL')
         if not redis_url:
             logging.warning("⚠️ REDIS_URL no configurada, usando sesiones en memoria")
@@ -240,35 +174,57 @@ class IAToolkit:
         logging.info(f"✅ CORS configurado para: {all_origins}")
 
     def _setup_dependency_injection(self):
-        """💉 Configura el sistema de inyección de dependencias"""
-        # Crear el injector y guardarlo para uso posterior
-        self._injector = Injector([partial(self._configure_dependencies)])
+        """
+        Sets up the dependency injection system in the correct order.
+        Views are configured separately via FlaskInjector's modules.
+        """
+        # 1. Create a configuration module for all non-view components.
+        core_bindings = partial(self._configure_core_dependencies)
 
-        # Configurar FlaskInjector con el injector creado
+        # 2. Create the main injector with only the core components.
+        self._injector = Injector([core_bindings])
+
+        # 3. Create a separate configuration module just for the views.
+        view_bindings = partial(self._bind_views)
+
+        # 4. Initialize FlaskInjector. It receives the main injector and is given
+        #    the special responsibility of handling the view bindings.
         FlaskInjector(
             app=self.app,
-            injector=self._injector
+            injector=self._injector,
+            modules=[view_bindings]
         )
+        logging.info("✅ Dependency Injection configured.")
 
-    def _configure_dependencies(self, binder: Binder):
-        """⚙️ Configura todas las dependencias del sistema"""
+    def _configure_core_dependencies(self, binder: Binder):
+        """⚙️ Configures all system dependencies."""
         try:
             # Core dependencies
+            binder.bind(Injector, to=self._injector, scope=singleton)
             binder.bind(DatabaseManager, to=self.db_manager, scope=singleton)
 
-            # Import y bind todos los servicios core
+            # Bind all application components by calling the specific methods
             self._bind_repositories(binder)
             self._bind_services(binder)
             self._bind_infrastructure(binder)
-            self._bind_views(binder)
 
             logging.info("✅ Dependencias configuradas correctamente")
 
         except Exception as e:
             logging.error(f"❌ Error configurando dependencias: {e}")
-            raise
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.CONFIG_ERROR,
+                f"❌ Error configurando dependencias: {e}"
+            )
 
     def _bind_repositories(self, binder: Binder):
+        from repositories.document_repo import DocumentRepo
+        from repositories.document_type_repo import DocumentTypeRepo
+        from repositories.profile_repo import ProfileRepo
+        from repositories.llm_query_repo import LLMQueryRepo
+        from repositories.vs_repo import VSRepo
+        from repositories.tasks_repo import TaskRepo
+
         binder.bind(DocumentRepo, to=DocumentRepo)
         binder.bind(DocumentTypeRepo, to=DocumentTypeRepo)
         binder.bind(ProfileRepo, to=ProfileRepo)
@@ -277,6 +233,18 @@ class IAToolkit:
         binder.bind(TaskRepo, to=TaskRepo)
 
     def _bind_services(self, binder: Binder):
+        from services.query_service import QueryService
+        from services.tasks_service import TaskService
+        from services.benchmark_service import BenchmarkService
+        from services.document_service import DocumentService
+        from services.prompt_manager_service import PromptService
+        from services.excel_service import ExcelService
+        from services.mail_service import MailService
+        from services.load_documents_service import LoadDocumentsService
+        from services.profile_service import ProfileService
+        from services.jwt_service import JWTService
+        from services.dispatcher_service import Dispatcher
+
         binder.bind(QueryService, to=QueryService)
         binder.bind(TaskService, to=TaskService)
         binder.bind(BenchmarkService, to=BenchmarkService)
@@ -290,6 +258,11 @@ class IAToolkit:
         binder.bind(Dispatcher, to=Dispatcher)
 
     def _bind_infrastructure(self, binder: Binder):
+        from infra.llm_client import llmClient
+        from infra.llm_proxy import LLMProxy
+        from infra.google_chat_app import GoogleChatApp
+        from infra.mail_app import MailApp
+
         binder.bind(LLMProxy, to=LLMProxy, scope=singleton)
         binder.bind(llmClient, to=llmClient, scope=singleton)
         binder.bind(GoogleChatApp, to=GoogleChatApp)
@@ -298,32 +271,22 @@ class IAToolkit:
         binder.bind(Utility, to=Utility)
 
     def _bind_views(self, binder: Binder):
+        from views.llmquery_view import LLMQueryView
+        from views.home_view import HomeView
+        from views.chat_view import ChatView
+        from views.change_password_view import ChangePasswordView
+
         binder.bind(HomeView, to=HomeView)
         binder.bind(ChatView, to=ChatView)
         binder.bind(ChangePasswordView, to=ChangePasswordView)
         binder.bind(LLMQueryView, to=LLMQueryView)
 
     def _register_routes(self):
+        from common.routes import register_routes
         register_routes(self.app)
 
     def _setup_additional_services(self):
         Bcrypt(self.app)
-
-    def _start_companies(self):
-        if self._startup_executed:
-            return
-
-        try:
-            dispatcher = self._get_injector().get(Dispatcher)
-            dispatcher.set_injector(self._injector)
-
-            dispatcher.start_execution()
-            self._startup_executed = True
-            logging.info("🏢 Empresas inicializadas")
-        except Exception as e:
-            logging.exception(e)
-            raise
-
 
     def _setup_cli_commands(self):
         """⌨️ Configura comandos CLI básicos"""
@@ -374,19 +337,27 @@ class IAToolkit:
     def _get_injector(self) -> Injector:
         """Obtiene el injector actual"""
         if not self._injector:
-            raise IAToolkitException("Injector no inicializado. Llame a create_app() primero")
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.CONFIG_ERROR,
+                f"❌ injector not initialized"
+            )
         return self._injector
 
     def get_dispatcher(self):
-        """Obtiene el dispatcher del sistema"""
+        from services.dispatcher_service import Dispatcher
         if not self._injector:
-            raise IAToolkitException("App no inicializada. Llame a create_app() primero")
-
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.CONFIG_ERROR,
+                "App no inicializada. Llame a create_app() primero"
+            )
         return self._injector.get(Dispatcher)
 
     def get_database_manager(self) -> DatabaseManager:
         if not self.db_manager:
-            raise IAToolkitException("Database manager no inicializado")
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.CONFIG_ERROR,
+                "Database manager no inicializado"
+            )
         return self.db_manager
 
 # 🚀 Función de conveniencia para inicialización rápida
