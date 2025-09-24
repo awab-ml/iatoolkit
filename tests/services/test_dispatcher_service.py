@@ -93,7 +93,7 @@ class TestDispatcher:
 
     def test_init_db_calls_init_db_on_each_company(self):
         """Tests that init_db calls init_db on each registered company."""
-        self.dispatcher.init_db()
+        self.dispatcher.setup_all_companies()
         self.mock_sample_company_instance.init_db.assert_called_once()
 
     def test_dispatch_sample_company(self):

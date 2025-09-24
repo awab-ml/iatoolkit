@@ -393,5 +393,5 @@ class TestProfileService:
         response = self.service.new_api_key(company_short_name='test_company')
 
         self.repo.create_api_key.assert_called()
-        assert "La nueva clave de API" in response['message']
+        assert response['api-key'] != ''
 

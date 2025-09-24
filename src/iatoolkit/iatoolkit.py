@@ -323,7 +323,7 @@ class IAToolkit:
                 dispatcher = self._get_injector().get(Dispatcher)
 
                 click.echo("🚀 Inicializando base de datos...")
-                dispatcher.init_db()
+                dispatcher.setup_all_companies()
                 click.echo("✅ Base de datos inicializada correctamente")
 
             except Exception as e:
@@ -339,7 +339,7 @@ class IAToolkit:
                 # step 1: init the database
                 dispatcher = self._get_injector().get(Dispatcher)
                 click.echo("🚀 step 1 of 2: init companies in the database...")
-                dispatcher.init_db()
+                dispatcher.setup_all_companies()
                 click.echo("✅ database is ready.")
 
                 # step 2: generate the api key

@@ -74,7 +74,7 @@ class Dispatcher:
 
         return True
 
-    def init_db(self):
+    def setup_all_companies(self):
         # create system functions
         for function in self.system_functions:
             self.llmquery_repo.create_or_update_function(
@@ -102,7 +102,6 @@ class Dispatcher:
         for company in self.company_classes.values():
             print(f'company: {company.__class__.__name__}')
             company.init_db()
-
 
     def dispatch(self, company_name: str, action: str, **kwargs) -> str:
         company_key = company_name.lower()
@@ -312,50 +311,5 @@ _FUNCTION_LIST = [
             },
             "required": ["from_email","recipient", "subject", "body", "attachments"]
         }
-     },
-    {
-        "name": "Llamada genérica a API",
-        "description": (
-            "Realiza una llamada HTTP genérica a un endpoint externo. "
-            "Permite usar distintos métodos (GET, POST, PUT, DELETE), "
-            "pasar cabeceras, parámetros de query y cuerpo de la petición. "
-            "El resultado será el contenido JSON devuelto por la API."
-        ),
-        "function_name": "iat_api_call",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "url": {
-                    "type": "string",
-                    "format": "uri",
-                    "description": "URL completa del endpoint (ej: 'https://api.ejemplo.com/data')"
-                },
-                "method": {
-                    "type": "string",
-                    "enum": ["GET", "POST", "PUT", "DELETE"],
-                    "description": "Método HTTP a utilizar"
-                },
-                "headers": {
-                    "type": "object",
-                    "description": "Diccionario opcional de cabeceras HTTP",
-                    "additionalProperties": {"type": "string"}
-                },
-                "params": {
-                    "type": "object",
-                    "description": "Parámetros opcionales de query string (ej: {'q': 'python'})",
-                    "additionalProperties": {"type": "string"}
-                },
-                "body": {
-                    "type": "object",
-                    "description": "Cuerpo de la petición (para POST/PUT). JSON arbitrario.",
-                    "additionalProperties": True
-                },
-                "timeout": {
-                    "type": "number",
-                    "description": "Tiempo máximo de espera en segundos (default: 10)"
-                }
-            },
-            "required": ["url", "method"]
-        }
-    }
+     }
 ]
