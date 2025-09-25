@@ -17,11 +17,11 @@ Duplicate the sample implementation and rename it:
 
 1. Go to `companies/`
 2. Copy the folder `sample_company` → `my_company`
-3. Inside your new folder, rename the main file if needed (e.g., keep `sample_company.py` as your base or rename it to `my_company.py`)
-4. Update the class name to your company (e.g., `SampleCompany` → `MyCompany`)
+3. Inside your new folder, rename `sample_company.py` to `my_company.py`
+4. In `my_company.py` update the class name to your company (e.g., `SampleCompany` → `MyCompany`)
 5. Replace references of `sample_fintech`/`sample_company` with `my_company` where applicable (short name, identifiers, etc.)
-6. Edit the **register_company_method** in the new module for use the new company short_name and full_name
-7. of the new company (name, and short name)
+6. Edit the `register_company_method` in the new module for use the new company short_name (`my_company`)
+7. and name (`the name of my company`)
 Expected structure:
 
 ## 2) Register the company
