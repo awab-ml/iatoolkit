@@ -50,9 +50,9 @@ class IAToolkit:
             return
 
         self.config = config or {}
-        self.app: Optional[Flask] = None
-        self.db_manager: Optional[DatabaseManager] = None
-        self._injector: Optional[Injector] = None
+        self.app = None
+        self.db_manager = None
+        self._injector = None
 
     @classmethod
     def get_instance(cls) -> 'IAToolkit':
@@ -67,7 +67,7 @@ class IAToolkit:
     def create_iatoolkit(self):
         """
             Creates, configures, and returns the Flask application instance.
-            his is the main entry point for the application factory.
+            this is the main entry point for the application factory.
         """
         self._setup_logging()
 
@@ -96,7 +96,6 @@ class IAToolkit:
 
         logging.info(f"🎉 IAToolkit v{VERSION} inicializado correctamente")
         return self.app
-
 
     def _get_config_value(self, key: str, default=None):
         """Obtiene un valor de configuración, primero del dict config, luego de env vars"""
@@ -320,7 +319,7 @@ class IAToolkit:
         def init_db():
             """🗄️ Inicializa la base de datos del sistema"""
             try:
-                dispatcher = self._get_injector().get(Dispatcher)
+                dispatcher = self.get_injector().get(Dispatcher)
 
                 click.echo("🚀 Inicializando base de datos...")
                 dispatcher.setup_all_companies()
@@ -337,13 +336,13 @@ class IAToolkit:
             """⚙️ Ejecuta el proceso de configuración para una nueva empresa."""
             try:
                 # step 1: init the database
-                dispatcher = self._get_injector().get(Dispatcher)
+                dispatcher = self.get_injector().get(Dispatcher)
                 click.echo("🚀 step 1 of 2: init companies in the database...")
                 dispatcher.setup_all_companies()
                 click.echo("✅ database is ready.")
 
                 # step 2: generate the api key
-                profile_service = self._get_injector().get(ProfileService)
+                profile_service = self.get_injector().get(ProfileService)
                 click.echo(f"🔑 step 2 of 2: generating api-key for use in '{company_short_name}'...")
                 result = profile_service.new_api_key(company_short_name)
 
@@ -387,7 +386,7 @@ class IAToolkit:
         except:
             return 'templates'
 
-    def _get_injector(self) -> Injector:
+    def get_injector(self) -> Injector:
         """Obtiene el injector actual"""
         if not self._injector:
             raise IAToolkitException(

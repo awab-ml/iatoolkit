@@ -55,7 +55,7 @@ class llmClient:
         """Lazy-loads and returns the Dispatcher instance."""
         if self._dispatcher is None:
             # Use the global context proxy to get the injector, then get the service
-            self._dispatcher = current_iatoolkit()._get_injector().get(Dispatcher)
+            self._dispatcher = current_iatoolkit().get_injector().get(Dispatcher)
         return self._dispatcher
 
 

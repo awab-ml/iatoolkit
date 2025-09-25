@@ -65,7 +65,7 @@ class TestDispatcher:
 
         # Create a mock IAToolkit instance
         self.toolkit_mock = MagicMock()
-        self.toolkit_mock._get_injector.return_value = mock_injector
+        self.toolkit_mock.get_injector.return_value = mock_injector
 
         # START the patch that will persist throughout the test
         self.current_iatoolkit_patcher = patch('services.dispatcher_service.current_iatoolkit',
@@ -141,9 +141,10 @@ class TestDispatcher:
 
     def test_start_execution_when_ok(self):
         """Tests that start_execution works correctly."""
-        result = self.dispatcher.start_execution()
+        result = self.dispatcher.get_registered_companies()
 
-        assert result is True
+        assert result['count'] == 1
+        assert result['registered_classes'][0] == 'sample'
         self.mock_sample_company_instance.start_execution.assert_called_once()
 
     def test_dispatcher_with_no_companies_registered(self):

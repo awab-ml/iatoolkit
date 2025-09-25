@@ -8,32 +8,14 @@ import logging
 
 class CompanyRegistry:
     """
-    Registro centralizado de empresas para iatoolkit.
-
-    Permite a los clientes registrar sus clases de empresa de forma explícita
-    en lugar de usar autodiscovery.
+    Company registry with dependency injection support.
+    Allow the client to register companies and instantiate them with dependency injection.
     """
 
     def __init__(self):
         self._company_classes: Dict[str, Type[BaseCompany]] = {}
         self._company_instances: Dict[str, BaseCompany] = {}
         self._injector = None
-
-    def register_company(self, name: str, company_class: Type[BaseCompany]) -> None:
-        """
-        Registra una clase de empresa.
-
-        Args:
-            name: Nombre de la empresa (ej: 'maxxa')
-            company_class: Clase que hereda de BaseCompany
-        """
-        if not issubclass(company_class, BaseCompany):
-            raise ValueError(f"La clase {company_class.__name__} debe heredar de BaseCompany")
-
-        company_key = name.lower()
-        self._company_classes[company_key] = company_class
-
-        logging.info(f"Empresa registrada: {company_key} -> {company_class.__name__}")
 
     def set_injector(self, injector) -> None:
         """Establece el injector para crear instancias con dependencias"""
@@ -65,12 +47,7 @@ class CompanyRegistry:
         return self._company_instances.copy()
 
     def get_registered_companies(self) -> Dict[str, Type[BaseCompany]]:
-        """Retorna las clases registradas"""
         return self._company_classes.copy()
-
-    def get_company_instances(self) -> Dict[str, BaseCompany]:
-        """Retorna las instancias de empresas"""
-        return self._company_instances.copy()
 
     def clear(self) -> None:
         """Limpia el registro (útil para tests)"""
@@ -78,21 +55,25 @@ class CompanyRegistry:
         self._company_instances.clear()
 
 
-# Instancia global del registry
+# global instance of the company registry
 _company_registry = CompanyRegistry()
 
 
 def register_company(name: str, company_class: Type[BaseCompany]) -> None:
     """
-    Función pública para registrar empresas.
+    Public function to register a company.
 
     Args:
-        name: Nombre de la empresa
-        company_class: Clase que hereda de BaseCompany
+        name: Name of the company
+        company_class: Class that inherits from BaseCompany
     """
-    _company_registry.register_company(name, company_class)
+    if not issubclass(company_class, BaseCompany):
+        raise ValueError(f"La clase {company_class.__name__} debe heredar de BaseCompany")
+
+    company_key = name.lower()
+    _company_registry._company_classes[company_key] = company_class
 
 
 def get_company_registry() -> CompanyRegistry:
-    """Obtiene el registry global"""
+    """get the global company registry instance"""
     return _company_registry

@@ -88,7 +88,7 @@ class TestLLMClient:
         # 3. Create a mock IAToolkit instance
         toolkit_mock = MagicMock()
         # Make its _get_injector() method return our mock injector
-        toolkit_mock._get_injector.return_value = injector_mock
+        toolkit_mock.get_injector.return_value = injector_mock
 
         # 4. Use patch to replace `current_iatoolkit` with our mock toolkit
         with patch('infra.llm_client.current_iatoolkit', return_value=toolkit_mock):
