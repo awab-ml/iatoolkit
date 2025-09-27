@@ -365,6 +365,29 @@ class IAToolkit:
                 logging.exception(e)
                 click.echo(f"❌ Ocurrió un error inesperado durante la configuración: {e}")
 
+        @self.app.cli.command("populate-sample-db")
+        def populate_sample_db():
+            from companies.sample_company.sample_company import SampleCompany
+            """📦 Crea y puebla la base de datos de sample_company con datos de prueba."""
+            try:
+                company_instance = self.get_injector().get(SampleCompany)
+                click.echo("🚀 Obteniendo instancia de 'sample_company'...")
+
+                if not company_instance or not hasattr(company_instance, 'sample_database') or not company_instance.sample_database:
+                    click.echo("❌ Error: No se pudo obtener la instancia de 'sample_company' o su base de datos no está configurada.")
+                    click.echo("👉 Asegúrate de que 'sample_company' esté registrada y que la variable de entorno 'SAMPLE_DATABASE_URI' esté definida.")
+                    return
+
+                click.echo("⚙️  Creando y poblando la base de datos. Esto puede tardar unos momentos...")
+
+                company_instance.sample_database.create_database()
+                company_instance.sample_database.populate_database()
+
+                click.echo("✅ Base de datos de 'sample_company' poblada exitosamente.")
+
+            except Exception as e:
+                logging.exception(e)
+                click.echo(f"❌ Ocurrió un error inesperado: {e}")
 
     def _setup_context_processors(self):
         # Configura context processors para templates

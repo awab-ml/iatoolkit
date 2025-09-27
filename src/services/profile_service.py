@@ -79,12 +79,13 @@ class ProfileService:
         user_data = {
             "id": user.id,
             "email": user.email,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
+            "user_fullname": f'{user.first_name} {user.last_name}',
             "super_user": user.super_user,
             "company_id": company.id,
             "company": company.name,
             "company_short_name": company.short_name,
+            "user_is_local": True,       # origin of data
+            "extras": {}                 # company specific data
         }
         SessionManager.set('user', user_data)
 

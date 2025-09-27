@@ -182,22 +182,48 @@ class Dispatcher:
     def get_user_info(self, company_name: str, user_identifier: str, is_local_user: bool) -> dict:
         if company_name not in self.company_classes:
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
-                               f"Empresa no configurada: {company_name}")
+                                     f"Empresa no configurada: {company_name}")
 
-        # get the data from the session
+        raw_user_data = {}
         if is_local_user:
-            user_data = SessionManager.get('user', {})
-            return user_data
+            # source 1: local user login into IAToolkit
+            raw_user_data = SessionManager.get('user', {})
+        else:
+            # source 2: external company user
+            company_instance = self.company_classes[company_name]
+            try:
+                raw_user_data = company_instance.get_user_info(user_identifier)
+            except Exception as e:
+                logging.exception(e)
+                raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
+                                         f"Error en get_user_info de {company_name}: {str(e)}") from e
 
-        # non-local user, get data from the instance company
-        company_instance = self.company_classes[company_name]
-        try:
-            return company_instance.get_user_info(user_identifier)
-        except Exception as e:
-            logging.exception(e)
-            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
-                               f"Error en get_user_info de {company_name}: {str(e)}") from e
+        # always normalize the data for consistent structure
+        return self._normalize_user_data(raw_user_data, is_local_user)
 
+    def _normalize_user_data(self, raw_data: dict, is_local: bool) -> dict:
+        """
+        Asegura que los datos del usuario siempre tengan una estructura consistente.
+        """
+        # Valores por defecto para un perfil robusto
+        normalized_user = {
+            "id": raw_data.get("id", 0),
+            "user_email": raw_data.get("email", ""),
+            "user_fullname": raw_data.get("user_fullname", ""),
+            "super_user": raw_data.get("super_user", False),
+            "company_id": raw_data.get("company_id", 0),
+            "company_name": raw_data.get("company", ""),
+            "company_short_name": raw_data.get("company_short_name", ""),
+            "is_local": is_local,
+            "extras": raw_data.get("extras", {})
+        }
+
+        # get the extras from the raw data, if any
+        extras = raw_data.get("extras", {})
+        if isinstance(extras, dict):
+            normalized_user.update(extras)
+
+        return normalized_user
 
     def get_metadata_from_filename(self, company_name: str, filename: str) -> dict:
         if company_name not in self.company_classes:

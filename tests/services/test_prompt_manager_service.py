@@ -61,30 +61,29 @@ class TestPromptService:
 
     # --- Tests para get_system_prompt ---
 
-    @patch('services.prompt_manager_service.os.path.exists', return_value=True)
-    @patch('builtins.open', new_callable=mock_open)
-    def test_get_system_prompt_success(self, mock_file, mock_exists):
+    @patch('services.prompt_manager_service.importlib.resources.read_text')
+    def test_get_system_prompt_success(self, mock_read_text):
         """Prueba la obtención exitosa de los prompts de sistema concatenados."""
-        prompt1 = Prompt(filepath='prompts/system1.prompt')
-        prompt2 = Prompt(filepath='prompts/system2.prompt')
+        prompt1 = Prompt(filename='system1.prompt')
+        prompt2 = Prompt(filename='system2.prompt')
         self.llm_query_repo.get_system_prompts.return_value = [prompt1, prompt2]
 
-        # Configurar mock_open para devolver diferentes contenidos en cada llamada
-        mock_file.side_effect = [
-            mock_open(read_data='Contenido 1').return_value,
-            mock_open(read_data='Contenido 2').return_value
+        # Configurar el mock para devolver diferentes contenidos en cada llamada
+        mock_read_text.side_effect = [
+            'Contenido 1',
+            'Contenido 2'
         ]
 
         result = self.prompt_service.get_system_prompt()
 
         assert result == "Contenido 1\nContenido 2"
-        assert mock_file.call_count == 2
+        assert mock_read_text.call_count == 2
 
     @patch('services.prompt_manager_service.os.path.exists', return_value=False)
     @patch('services.prompt_manager_service.logging')
     def test_get_system_prompt_file_not_found(self, mock_logging, mock_exists):
         """Prueba que se loguea una advertencia si un archivo de prompt no existe."""
-        prompt1 = Prompt(filepath='prompts/missing.prompt')
+        prompt1 = Prompt(filename='missing.prompt')
         self.llm_query_repo.get_system_prompts.return_value = [prompt1]
 
         result = self.prompt_service.get_system_prompt()
@@ -109,7 +108,7 @@ class TestPromptService:
     @patch('builtins.open', new_callable=mock_open, read_data='Contenido específico del prompt.')
     def test_get_prompt_content_success(self, mock_file, mock_exists):
         """Prueba la obtención exitosa del contenido de un prompt específico."""
-        mock_prompt = Prompt(filepath='companies/test_co/prompts/my_prompt.prompt')
+        mock_prompt = Prompt(filename='my_prompt.prompt')
         self.llm_query_repo.get_prompt_by_name.return_value = mock_prompt
 
         result = self.prompt_service.get_prompt_content(self.mock_company, 'my_prompt')
@@ -146,7 +145,7 @@ class TestPromptService:
         assert prompt_object.name == 'new_prompt'
         assert prompt_object.company_id == self.mock_company.id
         assert not prompt_object.is_system_prompt
-        assert 'companies/test_co/prompts/new_prompt.prompt' in prompt_object.filepath
+        assert 'new_prompt.prompt' in prompt_object.filename
 
     @patch('services.prompt_manager_service.os.path.exists', return_value=False)
     def test_create_prompt_fails_if_file_does_not_exist(self, mock_exists):

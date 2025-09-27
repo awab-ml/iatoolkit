@@ -25,6 +25,7 @@ class MockSampleCompany(BaseCompany):
 
     def start_execution(self): pass
 
+    def get_user_info(self): pass
     def get_metadata_from_filename(self, filename: str) -> dict: return {}
 
 

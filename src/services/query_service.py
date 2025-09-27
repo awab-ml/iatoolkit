@@ -85,25 +85,25 @@ class QueryService:
 
             # 2. get dictionary with user information from company DB
             # user roles are read at this point from company db
-            user_info = self.dispatcher.get_user_info(
+            user_profile = self.dispatcher.get_user_info(
                 company_name=company_short_name,
                 user_identifier=user_identifier,
                 is_local_user=is_local_user
             )
 
             # add the user logged in to the user_info dictionary
-            user_info['user_id'] = user_identifier
+            user_profile['user_id'] = user_identifier
 
             # save the user information in the session context
             # it's needed for the jinja predefined prompts (filtering)
-            self.session_context.save_user_session_data(company_short_name, user_identifier, user_info)
+            self.session_context.save_user_session_data(company_short_name, user_identifier, user_profile)
 
             # 3. render the iatoolkit main system prompt with the company/user information
             system_prompt_template = self.prompt_service.get_system_prompt()
             rendered_system_prompt = self.util.render_prompt_from_string(
                 template_string=system_prompt_template,
                 question=None,
-                client_data=user_info,
+                client_data=user_profile,
                 company=company,
                 service_list=self.dispatcher.get_company_services(company)
             )

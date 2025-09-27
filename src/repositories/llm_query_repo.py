@@ -55,7 +55,7 @@ class LLMQueryRepo:
             prompt.order = new_prompt.order
             prompt.active = new_prompt.active
             prompt.is_system_prompt = new_prompt.is_system_prompt
-            prompt.filepath = new_prompt.filepath
+            prompt.filename = new_prompt.filename
             prompt.parameters = new_prompt.parameters
         else:
             self.session.add(new_prompt)

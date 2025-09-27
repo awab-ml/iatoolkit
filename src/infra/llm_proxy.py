@@ -115,10 +115,10 @@ class LLMProxy:
 
     def _create_openai_client(self, company: Company) -> OpenAI:
         """Crea un cliente de OpenAI con la API key."""
-        if company.llm_api_key:
-            decrypted_api_key = self.util.decrypt_key(company.llm_api_key)
+        if company.openai_api_key:
+            decrypted_api_key = self.util.decrypt_key(company.openai_api_key)
         else:
-            decrypted_api_key = os.getenv("IATOOLKIT_OPENAI_API_KEY", '')
+            decrypted_api_key = os.getenv("OPENAI_API_KEY", '')
         if not decrypted_api_key:
             raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
                                f"La empresa '{company.name}' no tiene API key de OpenAI.")
@@ -127,9 +127,13 @@ class LLMProxy:
     def _create_gemini_client(self, company: Company) -> Any:
         """Configura y devuelve el cliente de Gemini."""
 
-        gemini_api_key = os.getenv("GEMINI_API_KEY", "")
-        if not gemini_api_key:
+        if company.gemini_api_key:
+            decrypted_api_key = self.util.decrypt_key(company.gemini_api_key)
+        else:
+            decrypted_api_key = os.getenv("GEMINI_API_KEY", '')
+
+        if not decrypted_api_key:
             return None
-        genai.configure(api_key=gemini_api_key)
+        genai.configure(api_key=decrypted_api_key)
         return genai
 

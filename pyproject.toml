@@ -23,3 +23,7 @@ include = ["iatoolkit*", "services*"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.package-data]
+# 'src/system_prompts' relativo al paquete 'iatoolkit'
+iatoolkit = ["system_prompts/*.prompt"]

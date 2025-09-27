@@ -12,6 +12,7 @@ from repositories.models import Prompt, PromptCategory, Company
 import os
 from common.exceptions import IAToolkitException
 from pathlib import Path
+import importlib.resources
 
 
 class PromptService:
@@ -33,18 +34,16 @@ class PromptService:
 
         prompt_filename = prompt_name.lower() + '.prompt'
         if is_system_prompt:
-            template_dir = 'src/system_prompts'
+            if not importlib.resources.files('iatoolkit.system_prompts').joinpath(prompt_filename).is_file():
+                raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
+                                f'No existe el archivo de prompt de sistemas: {prompt_filename}')
         else:
             template_dir = f'companies/{company.short_name}/prompts'
 
-        # Guardar el filepath como una ruta relativa
-        relative_prompt_path = os.path.join(template_dir, prompt_filename)
-
-        # Validar la existencia del archivo usando la ruta absoluta
-        absolute_prompt_path = os.path.join(os.getcwd(), relative_prompt_path)
-        if not os.path.exists(absolute_prompt_path):
-            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
-                               f'No existe el archivo de prompt: {absolute_prompt_path}')
+            relative_prompt_path = os.path.join(template_dir, prompt_filename)
+            if not os.path.exists(relative_prompt_path):
+                raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
+                               f'No existe el archivo de prompt: {relative_prompt_path}')
 
         prompt = Prompt(
                 company_id=company.id if company else None,
@@ -53,7 +52,7 @@ class PromptService:
                 order=order,
                 category_id=category.id if category and not is_system_prompt else None,
                 active=active,
-                filepath=relative_prompt_path,
+                filename=prompt_filename,
                 is_system_prompt=is_system_prompt,
                 parameters=params
             )
@@ -75,7 +74,7 @@ class PromptService:
                 raise IAToolkitException(IAToolkitException.ErrorType.DOCUMENT_NOT_FOUND,
                                    f"No se encontró el prompt '{prompt_name}' para la empresa '{company.short_name}'")
 
-            absolute_filepath = os.path.join(execution_dir, user_prompt.filepath)
+            absolute_filepath = os.path.join(execution_dir, user_prompt.filename)
             if not os.path.exists(absolute_filepath):
                 raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                    f"El archivo para el prompt '{prompt_name}' no existe: {absolute_filepath}")
@@ -103,25 +102,18 @@ class PromptService:
         try:
             system_prompt_content = []
 
-            # get the filepaths for all system prompts
-            current_dir = Path(__file__).resolve().parent
-            project_root = current_dir.parent.parent
-
             # read all the system prompts from the database
             system_prompts = self.llm_query_repo.get_system_prompts()
 
             for prompt in system_prompts:
-                # build the absolute filepath for reading it
-                absolute_filepath = os.path.join(project_root, prompt.filepath)
-                if not os.path.exists(absolute_filepath):
-                    logging.warning(f"El archivo para el prompt de sistema no existe: {absolute_filepath}")
-                    continue
                 try:
-                    with open(absolute_filepath, 'r', encoding='utf-8') as f:
-                        system_prompt_content.append(f.read())
+                    content = importlib.resources.read_text('iatoolkit.system_prompts', prompt.filename)
+                    system_prompt_content.append(content)
+                except FileNotFoundError:
+                    logging.warning(f"El archivo para el prompt de sistema no existe en el paquete: {prompt.filename}")
                 except Exception as e:
                     raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
-                                       f"Error leyendo el archivo de prompt del sistema {absolute_filepath}: {e}")
+                                             f"Error leyendo el archivo de prompt del sistema '{prompt.filename}': {e}")
 
             # join the system prompts into a single string
             return "\n".join(system_prompt_content)

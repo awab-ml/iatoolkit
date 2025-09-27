@@ -33,14 +33,14 @@ class TestLLMProxy:
         self.company_both = MagicMock()
         self.company_both.short_name = 'comp_both'
         self.company_both.name = 'Both'
-        self.company_both.llm_api_key = 'oa_key'
+        self.company_both.openai_api_key = 'oa_key'
         self.company_both.gemini_api_key = 'g_key'
 
         # Compañía solo con OpenAI (la clave de gemini es None)
         self.company_openai = MagicMock()
         self.company_openai.short_name = 'comp_oa'
         self.company_openai.name = 'OpenAI'
-        self.company_openai.llm_api_key = 'oa_key'
+        self.company_openai.openai_api_key = 'oa_key'
 
         # Compañía solo con Gemini (la clave de openai es None)
         self.company_gemini = MagicMock()
@@ -51,9 +51,9 @@ class TestLLMProxy:
         self.company_none = MagicMock()
         self.company_none.short_name = 'comp_none'
         self.company_none.name = 'None'
-        self.company_none.llm_api_key = None
+        self.company_none.openai_api_key = None
 
-        patch.dict('os.environ', {'IATOOLKIT_OPENAI_API_KEY': 'fb_oa', 'GEMINI_API_KEY': 'fb_g'}).start()
+        patch.dict('os.environ', {'OPENAI_API_KEY': 'fb_oa', 'GEMINI_API_KEY': 'fb_g'}).start()
 
         # Instancia "fábrica" bajo prueba
         self.proxy_factory = LLMProxy(util=self.util_mock)
@@ -79,7 +79,8 @@ class TestLLMProxy:
         with patch.dict('os.environ', {}, clear=True):
             # Usar una compañía que realmente no tenga los atributos
             company_truly_none = MagicMock()
-            company_truly_none.llm_api_key = None
+            company_truly_none.openai_api_key = None
+            company_truly_none.gemini_api_key = None
 
             with pytest.raises(IAToolkitException, match="no tiene configuradas API keys"):
                 self.proxy_factory.create_for_company(company_truly_none)

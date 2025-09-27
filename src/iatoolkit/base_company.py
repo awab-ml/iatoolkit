@@ -24,6 +24,11 @@ class BaseCompany(ABC):
         raise NotImplementedError("La subclase debe implementar el método get_company_context()")
 
     @abstractmethod
+    # get context specific for this company
+    def get_user_info(self, **kwargs) -> str:
+        raise NotImplementedError("La subclase debe implementar el método get_user_info()")
+
+    @abstractmethod
     # execute the specific action configured in the intent table
     def handle_request(self, tag: str, params: dict) -> dict:
         raise NotImplementedError("La subclase debe implementar el método handle_request()")

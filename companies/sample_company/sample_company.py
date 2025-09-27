@@ -11,6 +11,7 @@ from iatoolkit import SqlService
 from iatoolkit import BaseCompany
 from injector import inject
 from companies.sample_company.configuration import FUNCTION_LIST
+from companies.sample_company.sample_company_database import SampleCompanyDatabase
 import os
 
 
@@ -22,11 +23,19 @@ class SampleCompany(BaseCompany):
             sql_service: SqlService):
         super().__init__(profile_repo, llm_query_repo)
         self.sql_service = sql_service
+        self.company = self.profile_repo.get_company_by_short_name('sample_company')
+        self.sample_db_manager = None
+        self.sample_database = None
 
         # connect to Internal database
         sample_db_uri = os.getenv('SAMPLE_DATABASE_URI')
+        if not sample_db_uri:
+            # if not exists use the same iatoolkit database
+            sample_db_uri = os.getenv('DATABASE_URI')
+
         if sample_db_uri:
             self.sample_db_manager = DatabaseManager(sample_db_uri, register_pgvector=False)
+            self.sample_database = SampleCompanyDatabase(self.sample_db_manager)
 
     def register_company(self):
         # Initialize the company in the database if not exists
@@ -49,10 +58,9 @@ class SampleCompany(BaseCompany):
 
     # Return a global context used by this company: business description, schemas, database models
     def get_company_context(self, **kwargs) -> str:
-        company_context = 'simplemente una empresa de banca de cajas.'
-        # add the schema for the bcu tables
-        # if self.sample_db_manager:
-        #     company_context += self.load_sample_schema()
+        company_context = ''
+        if self.sample_db_manager:
+            company_context += self.get_schema_definitions(self.sample_db_manager)
 
         return company_context
 
@@ -69,25 +77,41 @@ class SampleCompany(BaseCompany):
         else:
             return self.unsupported_operation(action)
 
-    def get_user_info(self, **kwargs) -> dict:
-        user_id = kwargs.get('user_id', '')
-        return {}
+    def get_user_info(self, user_identifier: str) -> dict:
+        user_data = {
+            "id": user_identifier,
+            "user_email": 'sample@sample_company.com',
+            "user_fullname": 'Sample User',
+            "super_user": False,
+            "company_id": self.company.id,
+            "company_name": self.company.name,
+            "company_short_name": self.company.short_name,
+            "is_local": False,
+            "extras": {}
+        }
+        return user_data
 
-    def load_sample_schema(self):
-        # each one of these entries must be a database table and
-        # the schema that describes it in /schema
+    def get_schema_definitions(self, db_manager: DatabaseManager) -> str:
+        """
+        Genera las definiciones de esquema para todas las tablas del modelo.
+        """
         model_tables = [
-            {'table_name': 'bcu_customer', 'schema_name': 'client'},
-            {'table_name': 'bcu_certificate', 'schema_name': 'certificate'},
-         ]
+            {'table_name': 'sample_customers', 'schema_name': 'customer'},
+            {'table_name': 'sample_products', 'schema_name': 'product'},
+            {'table_name': 'sample_orders', 'schema_name': 'order'},
+            {'table_name': 'sample_order_items', 'schema_name': 'order_item'},
+        ]
 
         db_context = ''
         for table in model_tables:
-            table_definition = self.sample_db_manager.get_table_schema(
-                        table_name=table['table_name'],
-                        schema_name=table['schema_name'],
-                        exclude_columns=['id', 'created', 'updated']
-                        )
-            db_context += table_definition
+            try:
+                table_definition = db_manager.get_table_schema(
+                    table_name=table['table_name'],
+                    schema_name=table['schema_name'],
+                    exclude_columns=[]
+                )
+                db_context += table_definition
+            except RuntimeError as e:
+                print(f"Advertencia al generar esquema para {table['table_name']}: {e}")
 
         return db_context

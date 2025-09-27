@@ -4,14 +4,11 @@ Eres un asistente que responde preguntas o ejecuta tareas según el contexto de 
 ## Nombre: {{company.name}}
 
 ### ** Información del usuario que esta consultando este chat**
-{% if user_email %}
-El nombre del usuario que consulta es: {{ user_full_name }}
-El email del usuario que consulta es: {{ user_email }}
-{% elif email %}
-El nombre del usuario que consulta es: {{ first_name }} {{ last_name }}
-El email del usuario que consulta es: {{ email }}
-La empresa del usuario que consulta es: {{ company_short_name }}
-{% endif %}
+Contexto del usuario:
+- Nombre: {{ user_fullname }}
+- Email: {{ user_email }}
+- Tipo de usuario: {% if user_is_local %}Interno{% else %}Externo{% endif %}
+- Empresa: {{ company_name }}
 
 {% if user_name %}
 El usuario que consulta se identifica con la variable `user_name` y tiene el

@@ -76,7 +76,7 @@ class TestLLMQueryRepo:
         new_prompt = Prompt(name="prompt1",
                                 company_id=self.company.id,
                                 description="an intelligent prompt",
-                                filepath='')
+                                filename='')
         result = self.repo.create_or_update_prompt(new_prompt=new_prompt)
         assert result.id is not None
         assert result.name == "prompt1"
@@ -93,18 +93,18 @@ class TestLLMQueryRepo:
                         active=True,
                         order=1,
                         description="an intelligent prompt",
-                        filepath='')
+                        filename='')
         self.session.add(prompt)
         self.session.commit()
 
         # Update the description
         upd_prompt = Prompt(name="prompt1",
-                        company_id=self.company.id,
+                            company_id=self.company.id,
                             category_id=category.id,
                             active=True,
                             order=3,
-                        description="a super intelligent prompt",
-                            filepath='')
+                            description="a super intelligent prompt",
+                            filename='')
         result = self.repo.create_or_update_prompt(new_prompt=upd_prompt)
         assert result.description == "a super intelligent prompt"
         assert result.id == prompt.id
@@ -280,12 +280,12 @@ class TestLLMQueryRepo:
                          company_id=self.company.id,
                          description="An active prompt",
                          active=True,
-                         filepath='')
+                         filename='')
         prompt2 = Prompt(name="inactive_prompt",
                          company_id=self.company.id,
                          description="An inactive prompt",
                          active=False,
-                         filepath='')
+                         filename='')
 
         self.session.add_all([prompt1, prompt2])
         self.session.commit()
@@ -319,13 +319,13 @@ class TestLLMQueryRepo:
         prompt1 = Prompt(name="main_company_prompt",
                          company_id=self.company.id,
                          description="Prompt for the main company",
-                         filepath='')
+                         filename='')
 
         # Create a prompt for the other company
         prompt2 = Prompt(name="other_company_prompt",
                          company_id=other_company.id,
                          description="Prompt for the other company",
-                         filepath='')
+                         filename='')
 
         self.session.add_all([prompt1, prompt2])
         self.session.commit()
