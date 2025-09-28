@@ -238,6 +238,10 @@ class Dispatcher:
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                f"Error en get_metadata_from_filename de {company_name}: {str(e)}") from e
 
+    def get_company_instance(self, company_name: str):
+        """Returns the instance for a given company name."""
+        return self.company_classes.get(company_name)
+
     def get_registered_companies(self) -> dict:
         """Obtiene todas las empresas registradas (para debugging/admin)"""
         return {

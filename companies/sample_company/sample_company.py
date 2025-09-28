@@ -13,6 +13,8 @@ from injector import inject
 from companies.sample_company.configuration import FUNCTION_LIST
 from companies.sample_company.sample_company_database import SampleCompanyDatabase
 import os
+import click
+import logging
 
 
 class SampleCompany(BaseCompany):
@@ -115,3 +117,24 @@ class SampleCompany(BaseCompany):
                 print(f"Advertencia al generar esquema para {table['table_name']}: {e}")
 
         return db_context
+
+    def register_cli_commands(self, app):
+
+        @app.cli.command("populate-sample-db")
+        def populate_sample_db():
+            """📦 Crea y puebla la base de datos de sample_company."""
+            if not self.sample_database:
+                click.echo("❌ Error: La base de datos de SampleCompany no está configurada.")
+                click.echo("👉 Asegúrate de que 'SAMPLE_DATABASE_URI' esté definida en tu entorno.")
+                return
+
+            try:
+                click.echo(
+                    "⚙️  Creando y poblando la base de datos para 'sample_company'. Esto puede tardar unos momentos...")
+                self.sample_database.create_database()
+                self.sample_database.populate_database()
+                click.echo("✅ Base de datos de 'sample_company' poblada exitosamente.")
+            except Exception as e:
+                logging.exception(e)
+                click.echo(f"❌ Ocurrió un error inesperado: {e}")
+

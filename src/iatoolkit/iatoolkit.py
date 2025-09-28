@@ -15,7 +15,6 @@ from urllib.parse import urlparse
 import redis
 import logging
 import os
-import click
 from typing import Optional, Dict, Any
 from repositories.database_manager import DatabaseManager
 from injector import Binder, singleton, Injector
@@ -319,75 +318,29 @@ class IAToolkit:
         Bcrypt(self.app)
 
     def _setup_cli_commands(self):
-        """⌨️ Configura comandos CLI básicos"""
+        from iatoolkit.cli import register_core_commands
         from services.dispatcher_service import Dispatcher
-        from services.profile_service import ProfileService
+        from iatoolkit.company_registry import get_company_registry
 
-        @self.app.cli.command("setup_all_companies")
-        def setup_all_companies():
-            """🗄️ Inicializa la base de datos del sistema"""
-            try:
-                dispatcher = self.get_injector().get(Dispatcher)
+        # 1. Register core commands
+        register_core_commands(self.app)
+        logging.info("✅ Comandos CLI del núcleo registrados.")
 
-                click.echo("🚀 Inicializando base de datos...")
-                dispatcher.setup_all_companies()
-                click.echo("✅ Base de datos inicializada correctamente")
+        # 2. Register company-specific commands
+        try:
+            # Get the dispatcher, which holds the company instances
+            dispatcher = self.get_injector().get(Dispatcher)
+            registry = get_company_registry()
 
-            except Exception as e:
-                logging.exception(e)
-                click.echo(f"❌ Error: {e}")
+            # Iterate through the registered company names
+            for company_name in registry.get_registered_companies():
+                company_instance = dispatcher.get_company_instance(company_name)
+                if company_instance:
+                    company_instance.register_cli_commands(self.app)
+                    logging.info(f"✅ Comandos CLI para la compañía '{company_name}' registrados.")
 
-
-        @self.app.cli.command("setup-company")
-        @click.argument("company_short_name")
-        def setup_company(company_short_name: str):
-            """⚙️ Ejecuta el proceso de configuración para una nueva empresa."""
-            try:
-                # step 1: init the database
-                dispatcher = self.get_injector().get(Dispatcher)
-                click.echo("🚀 step 1 of 2: init companies in the database...")
-                dispatcher.setup_all_companies()
-                click.echo("✅ database is ready.")
-
-                # step 2: generate the api key
-                profile_service = self.get_injector().get(ProfileService)
-                click.echo(f"🔑 step 2 of 2: generating api-key for use in '{company_short_name}'...")
-                result = profile_service.new_api_key(company_short_name)
-
-                if 'error' in result:
-                    click.echo(f"❌ Error in step 2: {result['error']}")
-                    click.echo("👉 Make sure company name is correct and it's initialized in your app.")
-                else:
-                    click.echo("Configuration es ready, add this variable to your environment")
-                    click.echo(f"IATOOLKIT_API_KEY={result['api-key']}")
-
-            except Exception as e:
-                logging.exception(e)
-                click.echo(f"❌ Ocurrió un error inesperado durante la configuración: {e}")
-
-        @self.app.cli.command("populate-sample-db")
-        def populate_sample_db():
-            from companies.sample_company.sample_company import SampleCompany
-            """📦 Crea y puebla la base de datos de sample_company con datos de prueba."""
-            try:
-                company_instance = self.get_injector().get(SampleCompany)
-                click.echo("🚀 Obteniendo instancia de 'sample_company'...")
-
-                if not company_instance or not hasattr(company_instance, 'sample_database') or not company_instance.sample_database:
-                    click.echo("❌ Error: No se pudo obtener la instancia de 'sample_company' o su base de datos no está configurada.")
-                    click.echo("👉 Asegúrate de que 'sample_company' esté registrada y que la variable de entorno 'SAMPLE_DATABASE_URI' esté definida.")
-                    return
-
-                click.echo("⚙️  Creando y poblando la base de datos. Esto puede tardar unos momentos...")
-
-                company_instance.sample_database.create_database()
-                company_instance.sample_database.populate_database()
-
-                click.echo("✅ Base de datos de 'sample_company' poblada exitosamente.")
-
-            except Exception as e:
-                logging.exception(e)
-                click.echo(f"❌ Ocurrió un error inesperado: {e}")
+        except Exception as e:
+            logging.error(f"❌ Error durante el registro de comandos de compañías: {e}")
 
     def _setup_context_processors(self):
         # Configura context processors para templates

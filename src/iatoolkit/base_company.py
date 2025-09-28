@@ -43,5 +43,11 @@ class BaseCompany(ABC):
     def get_metadata_from_filename(self, filename: str) -> dict:
         raise NotImplementedError("La subclase debe implementar el método get_query_context()")
 
+    def register_cli_commands(self, app):
+        """
+        optional method for a company definition of it's cli commands
+        """
+        pass
+
     def unsupported_operation(self, tag):
         raise NotImplementedError(f"La operación '{tag}' no está soportada por esta empresa.")
