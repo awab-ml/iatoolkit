@@ -11,7 +11,6 @@ from repositories.models import Company, Function
 from services.excel_service import ExcelService
 from services.mail_service import MailService
 from common.session_manager import SessionManager
-from iatoolkit.base_company import BaseCompany
 from common.util import Utility
 from injector import inject
 from typing import Dict
@@ -257,10 +256,6 @@ class Dispatcher:
     def get_company_instance(self, company_name: str):
         """Returns the instance for a given company name."""
         return self.company_instances.get(company_name)
-
-    def get_all_company_instances(self) -> Dict[str, BaseCompany]:
-        """Devuelve un diccionario con todas las instancias de empresas creadas."""
-        return self._company_instances.copy()
 
     def get_registered_companies(self) -> dict:
         """Gets all registered companies (for debugging/admin purposes)"""

@@ -23,6 +23,7 @@ from services.document_service import DocumentService
 from services.search_service import SearchService
 from repositories.profile_repo import ProfileRepo
 from repositories.llm_query_repo import LLMQueryRepo
+from services.query_service import QueryService
 from repositories.database_manager import DatabaseManager
 from infra.call_service import CallServiceClient
 from common.util import Utility
@@ -40,6 +41,7 @@ __all__ = [
     'Dispatcher',
     'DocumentService',
     'SearchService',
+    'QueryService',
     'ProfileRepo',
     'LLMQueryRepo',
     'DatabaseManager',
