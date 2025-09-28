@@ -318,7 +318,7 @@ class IAToolkit:
         Bcrypt(self.app)
 
     def _setup_cli_commands(self):
-        from iatoolkit.cli import register_core_commands
+        from iatoolkit.cli_commands import register_core_commands
         from services.dispatcher_service import Dispatcher
         from iatoolkit.company_registry import get_company_registry
 
