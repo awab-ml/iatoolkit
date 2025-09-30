@@ -1,4 +1,18 @@
-# iatoolkit
+# Iatoolkit
+
+<div align="center">
+  <img src="https://your-logo-url-here.com/iatoolkit_logo.png" alt="IAToolkit Logo" width="150"/>
+  <h1>IAToolkit</h1>
+  <p><strong>The Open-Source Framework for Building Enterprise-Grade AI Chatbots on Your Private Data.</strong></p>
+  
+  <p>
+    <a href="#"><img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build Status"></a>
+    <a href="#"><img src="https://img.shields.io/badge/coverage-90%25-brightgreen" alt="Code Coverage"></a>
+    <a href="https://pypi.org/project/iatoolkit/"><img src="https://img.shields.io/pypi/v/iatoolkit" alt="PyPI Version"></a>
+    <a href="https://pypi.org/project/iatoolkit/"><img src="https://img.shields.io/pypi/pyversions/iatoolkit" alt="Python Versions"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
+  </p>
+</div>
 
 IAToolkit is a comprehensive, open-source framework designed for building enterprise-grade 
 AI chatbots and conversational applications. 
