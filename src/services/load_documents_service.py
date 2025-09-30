@@ -21,6 +21,10 @@ from typing import Dict
 
 
 class LoadDocumentsService:
+    """
+    Orchestrates the process of loading, processing, and storing documents
+    from various sources for different companies.
+    """
     @inject
     def __init__(self,
                  file_connector_factory: FileConnectorFactory,
@@ -38,7 +42,6 @@ class LoadDocumentsService:
         self.vector_store = vector_store
         self.file_connector_factory = file_connector_factory
         self.dispatcher = dispatcher
-        self.company = None
 
         # lower warnings
         logging.getLogger().setLevel(logging.ERROR)
@@ -51,6 +54,17 @@ class LoadDocumentsService:
 
     # load the files for all of the companies.
     def load(self, doc_type: str = None):
+        """
+                Loads documents for all companies based on their configuration.
+                It can load all document types or a specific one if provided.
+
+                Args:
+                    doc_type (str, optional): A specific document type to load.
+                                              If None, all configured types are loaded.
+
+                Returns:
+                    Dict: A dictionary with a summary message.
+                """
         # doc_type: an optional document_type for loading
         files_loaded = 0
         companies = self.profile_repo.get_companies()
@@ -61,7 +75,6 @@ class LoadDocumentsService:
                 continue
 
             print(f"Cargando datos de ** {company.short_name} **")
-            self.company = company
 
             # Si hay configuraciones de tipos de documento específicos
             doc_types_config = load_config.get('document_types', {})
@@ -81,18 +94,34 @@ class LoadDocumentsService:
                     raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER,
                                        f"Falta configurar conector en empresa {company.short_name}")
 
-                files_loaded += self.load_data_source(connector)
+                files_loaded += self.load_data_source(company=company,
+                                                      connector_config=connector)
 
         return {'message': f'{files_loaded} files processed'}
 
-    # load the files for all of the companies.
-    def load_company_files(self, company: Company, connector: dict):
+    def load_company_files(self, company: Company,
+                           connector: dict,
+                           predefined_metadata: Dict = None,
+                           filters: Dict = None):
+        """
+        Loads all files for a specific company using a given connector.
+
+        Args:
+            company (Company): The company to load files for.
+            connector (dict): The connector configuration.
+
+        Returns:
+            Dict: A dictionary with a summary message.
+        """
         if not connector:
             raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER,
                         f"Falta configurar conector")
 
-        self.company = company
-        files_loaded = self.load_data_source(connector)
+        files_loaded = self.load_data_source(
+                            company=company,
+                            connector_config=connector,
+                            predefined_metadata=predefined_metadata,
+                            filters=filters)
 
         return {'message': f'{files_loaded} files processed'}
 
@@ -110,36 +139,42 @@ class LoadDocumentsService:
         # config specific filters
         filters = type_config.get('filters', {"filename_contains": ".pdf"})
 
-        return self.load_data_source(connector, predefined_metadata, filters)
+        return self.load_data_source(company=company,
+                                     connector_config=connector,
+                                     predefined_metadata=predefined_metadata,
+                                     filters=filters)
 
-    def load_data_source(self, connector_config: Dict, predefined_metadata: Dict = None, filters: Dict = None):
+    def load_data_source(self, company: Company, connector_config: Dict, predefined_metadata: Dict = None, filters: Dict = None):
         """
-        Carga archivos desde una fuente de datos usando un conector.
+        Loads files from a data source using a connector and a FileProcessor.
 
         Args:
-            connector_config: Configuración del conector
-            predefined_metadata: Metadatos predefinidos para todos los documentos de esta fuente
-            filters: Filtros específicos para esta carga
+            connector_config (Dict): The configuration for the file connector.
+            predefined_metadata (Dict, optional): Metadata to be added to all documents from this source.
+            filters (Dict, optional): Filters to apply to the files.
 
         Returns:
-            int o dict: Número de archivos procesados o diccionario de error
+            int: The number of processed files.
         """
         try:
-            # Si no se proporcionaron filtros, usar el predeterminado
             if not filters:
                 filters = {"filename_contains": ".pdf"}
 
             # Pasar metadata predefinida como parte del contexto al procesador
-            # para que esté disponible en la función load_file
-            extra_context = {}
+            # para que esté disponible en la función load_file_callback
+            context = {
+                'company': company,
+                'metadata': {}
+            }
+
             if predefined_metadata:
-                extra_context['metadata'] = predefined_metadata
+                context['metadata'] = predefined_metadata
 
             # config the processor
             processor_config = FileProcessorConfig(
-                context=extra_context,
+                callback=self.load_file_callback,
+                context=context,
                 filters=filters,
-                action=self.load_file,
                 continue_on_error=True,
                 echo=True
             )
@@ -155,14 +190,21 @@ class LoadDocumentsService:
             logging.exception("Loading files error: %s", str(e))
             return {"error": str(e)}
 
-    # load an individual filename
-    # this method is set up on the FileProcessorConfig object
-    def load_file(self, filename: str, content: bytes, context: dict = {}, company: Company = None):
-        if not company:
-            company = self.company
+    def load_file_callback(self, company: Company, filename: str, content: bytes, context: dict = {}):
+        """
+        Processes a single file: extracts text, generates metadata, and saves it
+        to the relational database and the vector store.
+        This method is intended to be used as the 'action' for FileProcessor.
+
+        Args:
+            company (Company): The company associated with the file.
+            filename (str): The name of the file.
+            content (bytes): The binary content of the file.
+            context (dict, optional): A context dictionary, may contain predefined metadata.
+        """
 
         # check if file exist in repositories
-        if self.doc_repo.get(company=company,filename=filename):
+        if self.doc_repo.get(company_id=company.id,filename=filename):
             return
 
         try:

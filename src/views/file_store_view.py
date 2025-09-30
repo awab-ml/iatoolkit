@@ -41,11 +41,11 @@ class FileStoreView(MethodView):
             # get the file content from base64
             content = base64.b64decode(base64_content)
 
-            new_document = self.doc_service.load_file(
+            new_document = self.doc_service.load_file_callback(
                 filename=filename,
                 content=content,
                 company=company,
-                metadata=metadata)
+                context={'metadata': metadata})
 
             return jsonify({
                 "document_id": new_document.id,

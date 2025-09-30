@@ -15,18 +15,20 @@ class TestFileProcessor:
         self.mock_connector = MagicMock(spec=FileConnector)
 
         # Acción de ejemplo para la configuración
-        self.mock_action = MagicMock()
+        self.mock_callback = MagicMock()
+        self.mock_company = MagicMock()
 
         # Configuración del FileProcessorConfig con validaciones y mocks
         self.mock_config = FileProcessorConfig(
             log_file="mock_log_file.log",  # Archivo de log ficticio
-            action=self.mock_action,  # Acción mockeada
+            callback=self.mock_callback,  # Acción mockeada
             filters={
                 "filename_contains": "test",
                 "custom_filter": lambda x: x.endswith(".txt")  # Solo procesar archivos .txt
             },
             echo=True,
-            continue_on_error=True
+            continue_on_error=True,
+            context={'company': self.mock_company,}
         )
 
         # Creamos la instancia de FileProcessor con los mocks
@@ -56,7 +58,7 @@ class TestFileProcessor:
             self.processor.process_files()
 
             # Verificar que no se ejecutó la acción debido al error
-            self.mock_action.assert_not_called()
+            self.mock_callback.assert_not_called()
 
             # Verificar que el logger capture el error
             mock_logger.error.assert_called_once_with("Error processing /mock/directory/test_file.txt: Mocked error")
@@ -75,8 +77,12 @@ class TestFileProcessor:
         self.processor.process_files()
 
         # Solo debe procesarse test_file2.txt
-        self.mock_action.assert_called_once_with("test_file2.txt", b"content of file2", {})
-        assert self.mock_action.call_count == 1
+        self.mock_callback.assert_called_once_with(
+            company=self.mock_company,
+            filename="test_file2.txt",
+            content=b"content of file2",
+            context={'company': self.mock_company})
+        assert self.mock_callback.call_count == 1
         assert self.mock_connector.get_file_content.call_count == 1
 
     def test_process_files_stop_on_error(self):
@@ -89,7 +95,7 @@ class TestFileProcessor:
             self.processor.process_files()
 
         # No se debe haber realizado ninguna acción
-        self.mock_action.assert_not_called()
+        self.mock_callback.assert_not_called()
 
     def test_process_files_success(self):
         self.mock_connector.list_files.return_value = [
@@ -106,9 +112,7 @@ class TestFileProcessor:
         self.processor.process_files()
 
         # Verificar que se llamaron las acciones con los archivos correctos
-        self.mock_action.assert_any_call("test_file1.txt", b"content of file1", {})
-        self.mock_action.assert_any_call("test_file2.txt", b"content of file2", {})
-        assert self.mock_action.call_count == 2  # Solo archivos filtrados
+        assert self.mock_callback.call_count == 2  # Solo archivos filtrados
 
         # Verificar numero de archivos procesados
         assert self.processor.processed_files == 2

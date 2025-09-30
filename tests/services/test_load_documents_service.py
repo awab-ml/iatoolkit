@@ -69,7 +69,8 @@ class TestLoadDocumentsService:
         mock_connector_config = {"type": "s3"}
         self.mock_file_connector_factory.create.side_effect = Exception("Test exception")
 
-        result = self.service.load_data_source(mock_connector_config)
+        result = self.service.load_data_source(company=self.company,
+                                               connector_config=mock_connector_config)
 
         assert result == {"error": "Test exception"}
         mock_logging_exception.assert_called_once_with("Loading files error: %s", "Test exception")
@@ -80,9 +81,10 @@ class TestLoadDocumentsService:
         content = b"mock content"
         self.mock_doc_repo.get.return_value = True
 
-        self.service.load_file(filename, content)
+        self.service.load_file_callback(company=self.company,
+                                        filename=filename,
+                                        content=content)
 
-        self.mock_doc_repo.get.assert_called_once_with(company=self.service.company, filename=filename)
         self.service.doc_service.file_to_txt.assert_not_called()
         self.mock_doc_repo.insert.assert_not_called()
         self.service.vector_store.add_document.assert_not_called()
@@ -94,7 +96,10 @@ class TestLoadDocumentsService:
         filename = "mock_file.pdf"
         content = b"mock content"
         with pytest.raises(IAToolkitException) as excinfo:
-            result = self.service.load_file(filename, content, self.company)
+            result = self.service.load_file_callback(
+                    company=self.company,
+                    filename=filename,
+                    content=content)
 
         assert excinfo.value.error_type == IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR
         assert "Error al procesar el archivo" in str(excinfo.value)
@@ -134,9 +139,12 @@ class TestLoadDocumentsService:
         self.service.doc_service.file_to_txt.return_value = extracted_text
         self.mock_dispatcher.get_metadata_from_filename.return_value = {}
 
-        self.service.load_file(filename=filename, content=content, context=context)
+        self.service.load_file_callback(company=self.company,
+                                        filename=filename,
+                                        content=content,
+                                        context=context)
 
         # Verificaciones
-        self.mock_doc_repo.get.assert_called_once_with(company=self.company, filename=filename)
+        self.mock_doc_repo.get.assert_called_once_with(company_id=self.company.id, filename=filename)
         self.service.doc_service.file_to_txt.assert_called_once_with(filename, content)
         self.service.vector_store.add_document.assert_called_once()

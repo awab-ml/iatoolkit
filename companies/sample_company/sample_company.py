@@ -175,7 +175,11 @@ class SampleCompany(BaseCompany):
 
             load_documents_service = IAToolkit.get_instance().get_injector().get(LoadDocumentsService)
             try:
-                result = load_documents_service.load_company_files(self.company, connector)
+                result = load_documents_service.load_company_files(
+                    company=self.company,
+                    connector=connector,
+                    predefined_metadata={},
+                    filters={"filename_contains": ".pdf"})
                 click.echo(result['message'])
             except Exception as e:
                 logging.exception(e)

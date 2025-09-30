@@ -20,12 +20,12 @@ class DocumentRepo:
         self.session.commit()
         return new_document
 
-    def get(self, company: Company, filename: str ) -> Document:
-        if not company or not filename:
+    def get(self, company_id, filename: str ) -> Document:
+        if not company_id or not filename:
             raise IAToolkitException(IAToolkitException.ErrorType.PARAM_NOT_FILLED,
                                'Falta empresa o filename')
 
-        return self.session.query(Document).filter_by(company_id=company.id, filename=filename).first()
+        return self.session.query(Document).filter_by(company_id=company_id, filename=filename).first()
 
     def get_by_id(self, document_id: int) -> Document:
         if not document_id:
