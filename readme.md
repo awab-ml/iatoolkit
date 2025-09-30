@@ -18,15 +18,15 @@ IAToolkit bridges the gap between powerful LLMs and your company's data.
 *   **🏢 Enterprise-Ready Multi-Tenancy**:
     *   Deploy isolated "Company" modules, each with its own data, tools, and context. Perfect for SaaS products or internal departmental agents.
 
-**🧠 LLM Agnostic**:
+*   **🧠 LLM Agnostic**:
     *   Switch between **OpenAI (GPT-*)** and **Google (Gemini-*)** with a single line change in your configuration. No code refactoring needed.
 
-**🛠️ Developer-First Experience**:
-    *   Built with Flask using a clean, **Dependency Injection** architecture.
+*   **🛠️ Developer-First Experience**:
+    *   Built with a clean, **Dependency Injection** architecture.
     *   High-quality code base with **90%+ test coverage**.
     *   Powerful Flask-based **CLI** for database setup, API key generation, and more.
 
-**🔒 Security & Observability Built-In**:
+*   **🔒 Security & Observability Built-In**:
     *   Comes with JWT-based authentication, user management, and secure session handling out of the box.
     *   Full traceability with detailed logging of all queries, function calls, token usage, and costs.
 
