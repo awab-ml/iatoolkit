@@ -106,7 +106,7 @@ class SampleCompany(BaseCompany):
         if action == "sql_query":
             sql_query = kwargs.get('query')
             return self.sql_service.exec_sql(self.sample_db_manager, sql_query)
-        elif action == "document_search":
+        elif action == "fund_search":
             query_string = kwargs.get('query')
             return self.search_service.search(self.company.id, query_string)
         else:

@@ -16,11 +16,9 @@ FUNCTION_LIST = [
                     "required": ["query"]
                 }
          },
-        {'name': 'busquedas en la base de datos documental',
-         'description': "información de contratos, manuales de procedimiento, etc"
-                        "utiliza este servicio cuando no tengas una fuente de contexto clara para responder a la pregunta."
-                        "esta es la base documental de la empresa",
-         'function_name': "document_search",
+        {'name': 'busquedas en documentos de fondos',
+         'description': "Buscar y recuperar fragmentos relevantes desde factsheets/reglamentos/prospectos PDF de fondos propios de la compañía (y sus filiales), con filtros por comisiones, clase de activo, riesgo, ISIN, etc.",
+         'function_name': "fund_search",
          'params': {
                     "type": "object",
                     "properties": {
