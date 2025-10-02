@@ -324,8 +324,10 @@ class IAToolkit:
         from iatoolkit.company_registry import get_company_registry
         from services.dispatcher_service import Dispatcher
 
+        # instantiate all the registered companies
         get_company_registry().instantiate_companies(self._injector)
 
+        # use the dispatcher to start the execution of every company
         dispatcher = self._injector.get(Dispatcher)
         dispatcher.start_execution()
 

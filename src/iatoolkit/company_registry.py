@@ -19,17 +19,15 @@ class CompanyRegistry:
 
     def instantiate_companies(self, injector) -> Dict[str, BaseCompany]:
         """
-        Instancia todas las empresas registradas con inyección de dependencias.
-
-        Returns:
-            Dict con instancias de empresas {name: instance}
+        intantiate all registered companies using the toolkit injector
         """
-
         for company_key, company_class in self._company_classes.items():
             if company_key not in self._company_instances:
                 try:
                     # use de injector to create the instance
                     company_instance = injector.get(company_class)
+
+                    # save the created instance in the registry
                     self._company_instances[company_key] = company_instance
                     logging.info(f"company '{company_key}' instantiated")
 
@@ -48,7 +46,6 @@ class CompanyRegistry:
         return self._company_classes.copy()
 
     def clear(self) -> None:
-        """Limpia el registro (útil para tests)"""
         self._company_classes.clear()
         self._company_instances.clear()
 

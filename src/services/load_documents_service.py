@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Fernando Libedinsky
-# Producto: IAToolkit
-# Todos los derechos reservados.
-# En trámite de registro en el Registro de Propiedad Intelectual de Chile.
+# Product: IAToolkit
+#
+# IAToolkit is open source software.
 
 from repositories.vs_repo import VSRepo
 from repositories.document_repo import DocumentRepo

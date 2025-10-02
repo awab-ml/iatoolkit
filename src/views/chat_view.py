@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Fernando Libedinsky
-# Producto: IAToolkit
-# Todos los derechos reservados.
-# En trámite de registro en el Registro de Propiedad Intelectual de Chile.
+# Product: IAToolkit
+#
+# IAToolkit is open source software.
 
 from flask import render_template, request, jsonify
 from services.profile_service import ProfileService

@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Fernando Libedinsky
-# Producto: IAToolkit
-# Todos los derechos reservados.
-# En trámite de registro en el Registro de Propiedad Intelectual de Chile.
+# Product: IAToolkit
+#
+# IAToolkit is open source software.
 
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
