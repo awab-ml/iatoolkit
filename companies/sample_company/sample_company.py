@@ -128,6 +128,11 @@ class SampleCompany(BaseCompany):
         }
         return user_data
 
+    def get_ui_component_config(self)-> dict:
+        return {
+            "enabled": False
+        }
+
     def get_schema_definitions(self, db_manager: DatabaseManager) -> str:
         """
         Genera las definiciones de esquema para todas las tablas del modelo.

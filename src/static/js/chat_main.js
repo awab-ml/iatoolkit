@@ -3,7 +3,13 @@
 let currentAbortController = null;
 let isRequestInProgress = false;
 
+let specificDataConfig;
+
+
 $(document).ready(function () {
+
+    // get the company specific configuration
+    specificDataConfig = window.company_ui_config;
 
     // this is the Send/stop message on the chat window
     $('#send-button').on('click', handleChatMessage);
@@ -70,6 +76,12 @@ const handleChatMessage = async function () {
     const selectedPrompt = $('#agent-select-value').val()
     const selectedDescription = $('#agent-select-description').val();
 
+    // dynamic lecture of the value of the specific data input
+    let specificDataValue = '';
+    if (specificDataConfig && specificDataConfig.enabled) {
+        // use the ID
+        specificDataValue = $('#' + specificDataConfig.id).val().trim();
+    }
 
     if (!question && !selectedPrompt) {
         Swal.fire({
@@ -94,14 +106,21 @@ const handleChatMessage = async function () {
     const files = window.filePond.getFiles();
     const filesBase64 = await Promise.all(files.map(fileItem => toBase64(fileItem.file))); // fileItem.file es el objeto File nativo
 
+    const client_data = {
+        prompt_name: selectedPrompt,
+        question: question,
+    };
+
+    // add the data only if the specific data input is enabled and has a value
+    if (specificDataConfig && specificDataConfig.enabled && specificDataValue) {
+        // use the `data_key` dynamic from the config
+        client_data[specificDataConfig.data_key] = specificDataValue;
+    }
+
     const data = {
         question: question,
         prompt_name: selectedPrompt,
-        client_data: {
-            prompt_name: selectedPrompt,
-            client_identity: clientName,
-            question: question,
-        },
+        client_data: client_data,
         files: filesBase64.map(fileData => ({
             filename: fileData.name,
             content: fileData.base64

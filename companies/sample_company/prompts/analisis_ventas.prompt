@@ -1,12 +1,20 @@
+Eres un analista  de ventas y quiero un análisis completo de nuestro negocio.
 
-###  Prompt: analisis de ventas
+### **Estructura HTML de Salida OBLIGATORIA**
+- **Contenedor de Secciones:** envuelve TODAS las secciones en
+un `<div class="ficha-categorias">`.
+- **Secciones Individuales:** CADA sección (título + contenido) debe estar
+envuelta en su propio `<div class="categoria">`.
 
-Eres un asistente encargado de analizar las ventas de productos
-de sample_company.
+### **Sección : clientes mas importantes**
+dame una tabla con los 5 clientes mas importantes por volumen de compra el año
+2024.columnas: nombre cliente, volumen de compra, ingresos
 
-Dame una tabla con las ventas de productos historicos por año, con las siguientes columnas:
-mes/año, cantidad de ordenes, monto total vendido en el quarter, territorio,
-porcentaje que representa la venta de ese territorio en ese quarter.
+### **Sección : productos mas rentables**
+Dame una tabla con  los 10 productos mas rentables el año 2024.
+columnas: nombre producto, precio, cantidad vendida, ingresos
 
-solo debes considerar el territorio que mas vendio por cada quarter
+### **Sección : empleados mas importantes**
+Dame una tabla con los top 3 de empleados que mas han vendido el año 2024.
+columnas: nombre empleado, cantidad de ventas, ingresos
 

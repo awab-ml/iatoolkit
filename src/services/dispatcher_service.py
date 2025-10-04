@@ -217,6 +217,19 @@ class Dispatcher:
 
         return normalized_user
 
+    def get_ui_component_config(self, company_name: str) -> dict:
+        if company_name not in self.company_instances:
+            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
+                               f"Empresa no configurada: {company_name}")
+
+        company_instance = self.company_instances[company_name]
+        try:
+            return company_instance.get_ui_component_config()
+        except Exception as e:
+            logging.exception(e)
+            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
+                               f"Error en get_ui_component_config de {company_name}: {str(e)}") from e
+
     def get_metadata_from_filename(self, company_name: str, filename: str) -> dict:
         if company_name not in self.company_instances:
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
@@ -234,13 +247,6 @@ class Dispatcher:
         """Returns the instance for a given company name."""
         return self.company_instances.get(company_name)
 
-    def get_registered_companies(self) -> dict:
-        """Gets all registered companies (for debugging/admin purposes)"""
-        return {
-            "registered_classes": list(self.company_registry.get_registered_companies().keys()),
-            "instantiated": list(self.company_instances.keys()),
-            "count": len(self.company_instances)
-        }
 
 
 # iatoolkit system prompts

@@ -46,7 +46,7 @@
         <div class="row g-2 mb-2 first-line-input-container">
             <div class="col-md">
                 <div class="position-relative">
-                    <!-- Grupo de botones con la clase .dropup para que se abra hacia arriba -->
+                    <!-- selector de prompts -->
                     <div class="btn-group dropup w-100">
                         <!-- El botón que el usuario verá y que mostrará la opción seleccionada -->
                         <button type="button" id="agent-select-button"
@@ -95,24 +95,28 @@
 
             </div>
 
+            {% if company_ui_config and company_ui_config.enabled %}
+
             <div class="col-md">
-                <!-- Contenedor con posicionamiento relativo para el input y el botón -->
+                <!-- opcional: datos especificos para enviar al chatbot -->
                 <div class="position-relative">
                     <div class="form-floating">
-                        <input type="text" id="client-input"
+                        <input type="text" id="{{ company_ui_config.id }}"
                                class="form-control form-control-soft"
-                               placeholder="Identifica al cliente con su RUT  ...">
-                        <label for="client-input">
-                            Identifica un cliente con su RUT o parte del nombre ...
+                               placeholder="{{ company_ui_config.placeholder }}">
+                        <label for="{{ company_ui_config.id }}">
+                            {{ company_ui_config.label }}
                         </label>
                     </div>
-                    <!-- Botón para limpiar, ahora dentro del contenedor relativo -->
-                    <button type="button" id="clear-client-input-button" class="btn"
+                    <!-- clean button -->
+                    <button type="button" id="clear-{{ company_ui_config.id }}-button" class="btn"
                             style="display: none; border: none;">
                         <i class="bi bi-x-circle-fill"></i>
                     </button>
                 </div>
             </div>
+
+            {% endif %}
 
         </div>
 
@@ -173,7 +177,6 @@
     </div>
 </div>
 
-<!-- ****   FIN de la copia de HTML  -->
 
 <!-- Incluir los modales desde un archivo externo -->
 {% include 'chat_modals.html' %}
@@ -194,5 +197,7 @@
     window.companyShortName = "{{ company_short_name }}";
     window.iatoolkit_base_url = "{{ iatoolkit_base_url }}";
     window.externalUserId = "{{ external_user_id }}";
+    window.company_ui_config = {{ company_ui_config | tojson }};
+
 </script>
 {% endblock %}
