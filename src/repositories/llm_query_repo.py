@@ -85,7 +85,7 @@ class LLMQueryRepo:
         return self.session.query(Prompt).filter_by(company_id=company.id, is_system_prompt=False).all()
 
     def get_system_prompts(self) -> list[Prompt]:
-        return self.session.query(Prompt).filter_by(is_system_prompt=True).order_by(Prompt.order).all()
+        return self.session.query(Prompt).filter_by(is_system_prompt=True, active=True).order_by(Prompt.order).all()
 
     def get_prompt_by_name(self, company: Company, prompt_name: str):
         return self.session.query(Prompt).filter_by(company_id=company.id, name=prompt_name).first()

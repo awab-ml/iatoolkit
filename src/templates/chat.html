@@ -45,25 +45,6 @@
         <!-- PRIMERA FILA: Input de cliente y selector de preguntas -->
         <div class="row g-2 mb-2 first-line-input-container">
             <div class="col-md">
-                <!-- Contenedor con posicionamiento relativo para el input y el botón -->
-                <div class="position-relative">
-                    <div class="form-floating">
-                        <input type="text" id="client-input"
-                               class="form-control form-control-soft"
-                               placeholder="Identifica al cliente con su RUT  ...">
-                        <label for="client-input">
-                            Identifica un cliente con su RUT o parte del nombre ...
-                        </label>
-                    </div>
-                    <!-- Botón para limpiar, ahora dentro del contenedor relativo -->
-                    <button type="button" id="clear-client-input-button" class="btn"
-                            style="display: none; border: none;">
-                        <i class="bi bi-x-circle-fill"></i>
-                    </button>
-                </div>
-            </div>
-
-                <div class="col-md">
                 <div class="position-relative">
                     <!-- Grupo de botones con la clase .dropup para que se abra hacia arriba -->
                     <div class="btn-group dropup w-100">
@@ -71,7 +52,7 @@
                         <button type="button" id="agent-select-button"
                                 class="btn btn-light border dropdown-toggle w-100 text-start" data-bs-toggle="dropdown"
                                 aria-expanded="false">
-                            List of available prompts ....
+                            Prompts disponibles ....
                         </button>
 
                         <!-- El menú desplegable que contiene las opciones -->
@@ -113,6 +94,26 @@
                 <input type="hidden" id="agent-select-description" name="agent-select-description">
 
             </div>
+
+            <div class="col-md">
+                <!-- Contenedor con posicionamiento relativo para el input y el botón -->
+                <div class="position-relative">
+                    <div class="form-floating">
+                        <input type="text" id="client-input"
+                               class="form-control form-control-soft"
+                               placeholder="Identifica al cliente con su RUT  ...">
+                        <label for="client-input">
+                            Identifica un cliente con su RUT o parte del nombre ...
+                        </label>
+                    </div>
+                    <!-- Botón para limpiar, ahora dentro del contenedor relativo -->
+                    <button type="button" id="clear-client-input-button" class="btn"
+                            style="display: none; border: none;">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </button>
+                </div>
+            </div>
+
         </div>
 
         <!-- SEGUNDA FILA: Textarea principal -->

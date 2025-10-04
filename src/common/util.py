@@ -237,7 +237,7 @@ class Utility:
 
             description = details.get('description', '')
             data_type = details.get('type', 'any')
-            output.append(f"{indent_str}- **`{name}`** ({data_type}): {description}")
+            output.append(f"{indent_str}- **`{name.lower()}`** ({data_type}): {description}")
 
             child_indent_str = '  ' * (indent_level + 1)
 

@@ -8,7 +8,7 @@ from iatoolkit import ProfileRepo, LLMQueryRepo, PromptService, DatabaseManager
 from iatoolkit import SqlService, LoadDocumentsService, SearchService
 from injector import inject
 from companies.sample_company.configuration import FUNCTION_LIST
-from companies.sample_company.sample_northwind_database import SampleCompanyDatabase
+from companies.sample_company.sample_database import SampleCompanyDatabase
 import os
 import click
 import logging
@@ -143,7 +143,7 @@ class SampleCompany(BaseCompany):
             {'table_name': 'employees', 'schema_name': 'employee'},
             {'table_name': 'employee_territories', 'schema_name': 'employee_territory' },
             {'table_name': 'orders', 'schema_name': 'order' },
-            {'table_name': 'orders_details', 'schema_name': 'order_detail'},
+            {'table_name': 'order_details', 'schema_name': 'order_detail'},
 
         ]
 
