@@ -134,7 +134,8 @@ class TestPromptService:
             prompt_name='new_prompt',
             description='A new prompt',
             order=1,
-            company=self.mock_company
+            company=self.mock_company,
+            custom_fields = [{'data_key': 'key', 'label': ' a label'}]
         )
 
         self.llm_query_repo.create_or_update_prompt.assert_called_once()
@@ -146,6 +147,20 @@ class TestPromptService:
         assert prompt_object.company_id == self.mock_company.id
         assert not prompt_object.is_system_prompt
         assert 'new_prompt.prompt' in prompt_object.filename
+        assert prompt_object.custom_fields == [{'data_key': 'key', 'label': ' a label', 'type': 'text'}]
+
+    @patch('services.prompt_manager_service.os.path.exists', return_value=True)
+    def test_create_prompt_when_invalid_custom_fields(self, mock_exists):
+        with pytest.raises(IAToolkitException) as exc_info:
+            self.prompt_service.create_prompt(
+                prompt_name='new_prompt',
+                description='A new prompt',
+                order=1,
+                company=self.mock_company,
+                custom_fields=[{'label': ' a label'}]
+            )
+
+        assert exc_info.value.error_type == IAToolkitException.ErrorType.INVALID_PARAMETER
 
     @patch('services.prompt_manager_service.os.path.exists', return_value=False)
     def test_create_prompt_fails_if_file_does_not_exist(self, mock_exists):

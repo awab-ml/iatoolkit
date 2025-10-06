@@ -106,8 +106,8 @@ function renderDynamicInputs(fields) {
     fields.forEach(field => {
         const colDiv = $('<div class="col-md"></div>');
         const formFloating = $('<div class="form-floating"></div>');
-        const input = $(`<input type="${field.type || 'text'}" class="form-control form-control-soft" id="${field.id}" placeholder="${field.placeholder}">`);
-        const label = $(`<label for="${field.id}">${field.label}</label>`);
+        const input = $(`<input type="${field.type || 'text'}" class="form-control form-control-soft" id="${field.data_key}-id" ">`);
+        const label = $(`<label for="${field.data_key}-id">${field.label}</label>`);
 
         formFloating.append(input, label);
         colDiv.append(formFloating);
@@ -136,7 +136,7 @@ const handleChatMessage = async function () {
         isEditable = false; // Prompts are not editable
 
         (selectedPrompt.custom_fields || []).forEach(field => {
-            const value = $('#' + field.id).val().trim();
+            const value = $('#' + field.data_key + '-id').val().trim();
             if (value) {
                 clientData[field.data_key] = value;
             }

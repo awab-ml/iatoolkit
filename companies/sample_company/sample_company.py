@@ -78,18 +78,14 @@ class SampleCompany(BaseCompany):
                     'order': 1,
                     'custom_fields': [
                         {
-                            "id": "sales_id_input_from",
+                            "data_key": "init_date",
                             "label": "Fecha desde",
-                            "placeholder": "desde ...",
                             "type": "date",
-                            "data_key": "fecha_inicio"
                         },
                         {
-                            "id": "sales_id_input_to",
+                            "data_key": "end_date",
                             "label": "Fecha hasta",
-                            "placeholder": "hasta...",
                             "type": "date",
-                            "data_key": "fecha_fin"
                         }
                     ]
                 },
@@ -100,11 +96,8 @@ class SampleCompany(BaseCompany):
                     'order': 2,
                     'custom_fields': [
                         {
-                            "id": "supplier_id_input",
+                            "data_key": "supplier_id",
                             "label": "Identificador del Proveedor",
-                            "placeholder": "Ingrese nombre del proveedor...",
-                            "type": "text",
-                            "data_key": "supplier_id"
                         }
                     ]
                 }

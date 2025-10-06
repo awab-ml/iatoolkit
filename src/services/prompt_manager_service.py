@@ -29,8 +29,7 @@ class PromptService:
                       category: PromptCategory = None,
                       active: bool = True,
                       is_system_prompt: bool = False,
-                      custom_fields: list = [],
-                      params: dict = {}
+                      custom_fields: list = []
                       ):
 
         prompt_filename = prompt_name.lower() + '.prompt'
@@ -46,6 +45,16 @@ class PromptService:
                 raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
                                f'No existe el archivo de prompt: {relative_prompt_path}')
 
+        if custom_fields:
+            for f in custom_fields:
+                if ('data_key' not in f) or ('label' not in f):
+                    raise IAToolkitException(IAToolkitException.ErrorType.INVALID_PARAMETER,
+                               f'El campo custom_fields debe contener los campos: data_key y label')
+
+                # add default value for data_type
+                if 'type' not in f:
+                    f['type'] = 'text'
+
         prompt = Prompt(
                 company_id=company.id if company else None,
                 name=prompt_name,
@@ -55,8 +64,7 @@ class PromptService:
                 active=active,
                 filename=prompt_filename,
                 is_system_prompt=is_system_prompt,
-                custom_fields=custom_fields,
-                parameters=params
+                custom_fields=custom_fields
             )
 
         try:
