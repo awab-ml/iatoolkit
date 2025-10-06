@@ -1,131 +1,142 @@
-
-// variables for controlling the cancellation of the request
+// Global variables for request management
 let currentAbortController = null;
 let isRequestInProgress = false;
 
+// Global variable for company-specific UI config
 let specificDataConfig;
 
 
 $(document).ready(function () {
 
-    // get the company specific configuration
+    // Get company-specific UI configuration from the window object
     specificDataConfig = window.company_ui_config;
 
-    // this is the Send/stop message on the chat window
+    // --- MAIN EVENT HANDLERS ---
     $('#send-button').on('click', handleChatMessage);
     $('#stop-button').on('click', abortCurrentRequest);
 
-    $('#question').on('keypress', function (event) {
+
+    // --- TEXTAREA FUNCTIONALITY ---
+    const questionTextarea = $('#question');
+
+    // Handle Enter key press for sending message
+    questionTextarea.on('keypress', function (event) {
         if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
+            event.preventDefault(); // Prevent new line on Enter
             handleChatMessage();
         }
     });
 
-    // Evento para el selector de prompts
-    $('.input-area').on('click', '.dropdown-menu .dropdown-item', function(event) {
-        // Prevenir la acción por defecto del enlace (que es navegar a '#')
-        event.preventDefault();
+    // Auto-resize textarea and manage send button state on input
+    questionTextarea.on('input', function () {
+        autoResizeTextarea(this);
+        updateSendButtonState();
+    });
 
-        // get the  text and y description, save in hidden field
+
+    // --- PROMPT ASSISTANT FUNCTIONALITY ---
+    // This listener is now attached to '.input-area' which is the correct parent container
+    $('.input-area').on('click', '.dropdown-menu a.dropdown-item', function (event) {
+        event.preventDefault();
         const selectedPrompt = $(this).data('value');
         const selectedDescription = $(this).text().trim();
 
-        // display the selected option
-        $('#prompt-select-button').text(selectedDescription);
-
-        // save values for handling in the call
+        $('#prompt-select-button').text(selectedDescription).addClass('item-selected');
         $('#prompt-select-value').val(selectedPrompt);
         $('#prompt-select-description').val(selectedDescription);
-
-        // Aplica el estilo de "seleccionado" al botón.
-        $('#prompt-select-button').addClass('item-selected');
-
-        // muestra el boton para limpiar la selección
         $('#clear-selection-button').show();
+
+        // Enable the send button as a prompt has been selected
+        updateSendButtonState();
     });
 
-    // Evento para el botón de limpiar la selección de prompts
+    // Handle the clear button for the prompt selector
     $('#clear-selection-button').on('click', function() {
         resetPromptSelect();
+        // Update send button state, disabling it if necessary
+        updateSendButtonState();
     });
 
 
-    // Solo se activa si el componente está configurado y habilitado
+    // --- COMPANY-SPECIFIC DATA INPUT FUNCTIONALITY (if enabled) ---
     if (specificDataConfig && specificDataConfig.enabled) {
-        // Usa el ID dinámico de la configuración
-        $('#' + specificDataConfig.id).on('input', function () {
+        const specificInput = $('#' + specificDataConfig.id);
+        const clearSpecificInputButton = $('#clear-' + specificDataConfig.id + '-button');
+
+        specificInput.on('input', function () {
             if ($(this).val().trim() !== '') {
                 $(this).addClass('has-content');
-                // Usa el ID dinámico para el botón de limpiar
-                $('#clear-' + specificDataConfig.id + '-button').show();
+                clearSpecificInputButton.show();
             } else {
                 $(this).removeClass('has-content');
-                $('#clear-' + specificDataConfig.id + '-button').hide();
+                clearSpecificInputButton.hide();
             }
         });
 
-        // Evento para el botón de limpiar dinámico
-        $('#clear-' + specificDataConfig.id + '-button').on('click', function () {
-            resetSpecificDataInput();
-        });
+        clearSpecificInputButton.on('click', resetSpecificDataInput);
     }
 
+    // Set initial state for the send button (it should be disabled)
+    updateSendButtonState();
+});
 
-});  // fin del document.ready
 
+/**
+ * Main function to handle sending a chat message.
+ */
 const handleChatMessage = async function () {
-    // Si hay una solicitud en progreso, abortar
+    // Abort if a request is already in progress
     if (isRequestInProgress) {
         abortCurrentRequest();
         return;
     }
 
     const question = $('#question').val().trim();
-    const selectedPrompt = $('#prompt-select-value').val()
+    const selectedPrompt = $('#prompt-select-value').val();
     const selectedDescription = $('#prompt-select-description').val();
-
-    // dynamic lecture of the value of the specific data input
     let specificDataValue = '';
+
+    // Prevent sending if both inputs are empty (button should be disabled anyway)
+    if (!question && !selectedPrompt) {
+        return;
+    }
+
+    // Get value from company-specific field if it exists
     if (specificDataConfig && specificDataConfig.enabled) {
         specificDataValue = $('#' + specificDataConfig.id).val().trim();
     }
 
-    if (!question && !selectedPrompt) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Ingresa una pregunta o selecciona un prompt',
-            text: 'Por favor, escribe una pregunta o selecciona una predefinida'
-        });
-        return;
-    }
+    // Determine what to display in the user's message bubble
+    const displayMessage = question || selectedDescription;
+    displayUserMessage(displayMessage, selectedDescription, specificDataValue, selectedPrompt);
 
-    // Mostrar el prompt al usuario en el chat
-    displayUserMessage(question, selectedDescription, specificDataValue, selectedPrompt);
     showSpinner();
+    toggleSendStopButtons(true);
 
-    // Cambiar botón a modo "Detener"
-    setButtonToStop();
-
-    // limpiar widgets
+    // Reset all UI elements to their initial state
     $('#question').val('');
+    autoResizeTextarea($('#question')[0]); // Reset textarea height
     resetPromptSelect();
-
     if (specificDataConfig && specificDataConfig.enabled) {
         resetSpecificDataInput();
     }
 
-    const files = window.filePond.getFiles();
-    const filesBase64 = await Promise.all(files.map(fileItem => toBase64(fileItem.file))); // fileItem.file es el objeto File nativo
+    // Close the prompt assistant collapse area
+    const promptCollapseEl = document.getElementById('prompt-assistant-collapse');
+    const promptCollapse = bootstrap.Collapse.getInstance(promptCollapseEl);
+    if (promptCollapse) {
+        promptCollapse.hide();
+    }
 
+    const files = window.filePond.getFiles();
+    const filesBase64 = await Promise.all(files.map(fileItem => toBase64(fileItem.file)));
+
+    // Prepare data payload
     const client_data = {
         prompt_name: selectedPrompt,
         question: question,
     };
-
-    // add the data only if the specific data input is enabled and has a value
     if (specificDataConfig && specificDataConfig.enabled && specificDataValue) {
-        // use the `data_key` dynamic from the config
         client_data[specificDataConfig.data_key] = specificDataValue;
     }
 
@@ -142,252 +153,228 @@ const handleChatMessage = async function () {
 
     try {
         const responseData = await callLLMAPI("/llm_query", data, "POST");
-        if (responseData) {
-            const {answer, aditional_data} = responseData;
-            if (answer) {
-                const answerSection = $('<div>').addClass('answer-section llm-output');
-                answerSection.append(answer);
-                displayBotMessage(answerSection);
-            }
-
-            /* this code is for the document classification use case
-            if (aditional_data && 'classify_documents' in aditional_data && aditional_data.classify_documents.length > 0) {
-                display_document_validation(aditional_data.classify_documents);
-            }
-            */
+        if (responseData && responseData.answer) {
+            const answerSection = $('<div>').addClass('answer-section llm-output').append(responseData.answer);
+            displayBotMessage(answerSection);
+        }
+        // Example for other use cases like document classification
+        if (responseData && responseData.aditional_data && 'classify_documents' in responseData.aditional_data && responseData.aditional_data.classify_documents.length > 0) {
+             display_document_validation(responseData.aditional_data.classify_documents);
         }
     } catch (error) {
-        console.error("Error en handleFormSubmission:", error);
-
+        console.error("Error in handleChatMessage:", error);
         if (error.name === 'AbortError') {
-            // Verificar si fue aborto manual o timeout automático
-            if (window.isManualAbort) {
-                const abortMessage = $('<div>')
-                    .addClass('error-section alert alert-warning')
-                    .append('Solicitud cancelada por el usuario');
-                displayBotMessage(abortMessage);
-                window.isManualAbort = false; // Resetear la bandera
-            } else {
-                const timeoutError = $('<div>')
-                    .addClass('error-section alert alert-danger')
-                    .append('La solicitud ha excedido el tiempo límite de respuesta, intente nuevamente');
-                displayBotMessage(timeoutError);
-            }
+            const message = window.isManualAbort ? 'Request cancelled by user' : 'Request timed out. Please try again.';
+            const alertClass = window.isManualAbort ? 'alert-warning' : 'alert-danger';
+            const errorDiv = $('<div>').addClass(`error-section alert ${alertClass}`).append(message);
+            displayBotMessage(errorDiv);
+            window.isManualAbort = false; // Reset flag
         } else {
-            const commError = $('<div>')
-                .addClass('error-section alert alert-danger')
-                .append(`Error de conexión: ${error.message}`);
+            const commError = $('<div>').addClass('error-section alert alert-danger').append(`Connection error: ${error.message}`);
             displayBotMessage(commError);
         }
-        hideSpinner();
-        setButtonToSend();
     } finally {
         hideSpinner();
-        setButtonToSend();
-        window.filePond.removeFiles(); // Esto disparará 'removefile' y actualizará los iconos
+        toggleSendStopButtons(false);
+        updateSendButtonState(); // Re-evaluate send button state
+        window.filePond.removeFiles();
     }
 };
 
 
-// Función genérica para llamadas al API
-const callLLMAPI = async function(apiPath, data, method, timeoutMs = 500000) {
-    const companyShortName = window.companyShortName;
-    const serverBaseUrl = window.iatoolkit_base_url;
-
-    // destination url
-    const url = `${serverBaseUrl}/${companyShortName}${apiPath}`;
-
-    // add the session JWT if it exists
-    const headers = {"Content-Type": "application/json"};
-    if (typeof sessionJWT !== 'undefined' && sessionJWT) {
-        headers['X-Chat-Token'] = sessionJWT;
-    }
-
-    // Crear AbortController para manejar el timeout
-        const controller = new AbortController();
-        currentAbortController = controller; // Asignar al controlador global
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-        try {
-            const response = await fetch(url, {
-                method: method,
-                headers: headers,
-                body: JSON.stringify(data),
-                signal: controller.signal,
-                credentials: 'include'
-            });
-
-            clearTimeout(timeoutId); // Limpiar el timeout si la respuesta llega a tiempo
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                const endpointError = $('<div>').addClass('error-section');
-                endpointError.append(`<p>${errorData.error_message || 'Error desconocido del servidor'}</p>`);
-                displayBotMessage(endpointError);
-                return null;
-            }
-
-            const responseData = await response.json();
-            return responseData;
-        } catch (error) {
-            clearTimeout(timeoutId); // Limpiar el timeout en caso de error
-
-            if (error.name === 'AbortError') {
-                // Re-lanzar el error para que se maneje en handleChatMessage
-                throw error;
-            } else {
-                const commError = $('<div>').addClass('error-section');
-                commError.append(`<p>Error de conexión: ${error.message}</p>`);
-                displayBotMessage(commError);
-            }
-            return null;
-        }
-    };
-
-    // Función para mostrar mensaje del usuario
-    const displayUserMessage = function(question, selectedDescription, specificDataValue, selectedPrompt) {
-        const chatContainer = $('#chat-container');
-        const userMessage = $('<div>').addClass('message shadow-sm');
-
-        let pencil = true;
-        let messageText;
-        if (specificDataValue && question && !selectedPrompt) {
-            messageText = $('<span>').text(`${specificDataValue}: ${question}`);
-            }
-        else if (specificDataValue && !question && selectedPrompt) {
-            messageText = $('<span>').text(`${specificDataValue}: ${selectedDescription}`);
-            }
-        else if ( ! specificDataValue && selectedPrompt) {
-            messageText = $('<span>').text(`${selectedDescription}`);
-            pencil = false;
-            }
-        else {
-            messageText = $('<span>').text(question);
-            pencil = true;
-        }
-
-        userMessage.append(messageText);
-
-        if ( pencil ){
-            const editIcon = $('<i>')
-            .addClass('bi bi-pencil-fill edit-icon')
-            .attr('title', 'Editar consulta')
-            .on('click', function () {
-                $('#question').val(question);
-            });
-        userMessage.append(editIcon);
-        }
-
-        chatContainer.append(userMessage);
-    };
-
-// display the aswer from the LLM
-function displayBotMessage(section) {
-    const chatContainer = $('#chat-container');
-    chatContainer.append(section);
-    chatContainer.scrollTop(chatContainer[0].scrollHeight);
-}
-
-    // Función para cambiar el botón a modo "Detener"
-    function setButtonToStop() {
-        const sendButton = $('#send-button');
-        sendButton
-            .removeClass('btn-primary')
-            .addClass('btn-danger stop-mode')
-            .html('<div class="spinner" style="width: 1rem; height: 1rem; margin-right: 4px; border: 2px solid #f3f3f3; border-top: 2px solid #fff; border-radius: 50%; animation: spin 1s linear infinite; display: inline-block;"></div>Detener')
-            .prop('disabled', false);
-        isRequestInProgress = true;
-    }
-
-    // Función para cambiar el botón de vuelta a modo "Enviar"
-    function setButtonToSend() {
-        const sendButton = $('#send-button');
-        sendButton
-            .removeClass('btn-danger stop-mode')
-            .addClass('btn-primary')
-            .text('Enviar')
-            .prop('disabled', false);
-        isRequestInProgress = false;
-        currentAbortController = null;
-    }
-
-
 /**
- * Función para abortar la solicitud en curso.
+ * Auto-resizes the textarea to fit its content.
+ * @param {HTMLElement} element The textarea element.
  */
-const abortCurrentRequest = function () {
-    if (currentAbortController && isRequestInProgress) {
-        window.isManualAbort = true;            // Flag para saber que fue el usuario quien canceló
-        currentAbortController.abort();
-        toggleSendStopButtons(false);   // Volver a mostrar 'Enviar'
-        hideSpinner();
+function autoResizeTextarea(element) {
+    element.style.height = 'auto'; // Temporarily shrink to re-calculate scroll height
+    element.style.height = (element.scrollHeight) + 'px';
+}
+
+/**
+ * Enables or disables the send button based on whether there's content
+ * in the textarea or a prompt has been selected.
+ */
+function updateSendButtonState() {
+    const question = $('#question').val().trim();
+    const selectedPrompt = $('#prompt-select-value').val();
+    const sendButton = $('#send-button');
+
+    if (question || selectedPrompt) {
+        sendButton.removeClass('disabled');
+    } else {
+        sendButton.addClass('disabled');
     }
-};
-
-
-// Función para mostrar spinner
-const showSpinner = function () {
-    // Primero, nos aseguramos de que no haya otros spinners
-    if ($('#spinner').length) $('#spinner').remove();
-
-    // Determinar la clase de accesibilidad correcta según la versión de Bootstrap.
-    // Bootstrap 5 introduce el objeto global 'bootstrap', que no existe en la v4.
-    const accessibilityClass = (typeof bootstrap !== 'undefined') ? 'visually-hidden' : 'sr-only';
-
-    const chatContainer = $('#chat-container');
-    const spinner = $(`
-            <div id="spinner" style="display: flex; align-items: center; justify-content: start; margin: 10px 0; padding: 10px;">
-                <div class="spinner-border text-primary" role="status" style="width: 1.5rem; height: 1.5rem; margin-right: 15px;">
-                    <span class="${accessibilityClass}">Cargando...</span>
-                </div>
-                <span style="font-weight: bold; font-size: 15px;">Cargando...</span>
-            </div>
-        `);
-
-    chatContainer.append(spinner);
-    chatContainer.scrollTop(chatContainer[0].scrollHeight);
-};
-
-function hideSpinner() {
-    $('#spinner').fadeOut(function () {
-        $(this).remove();
-    });
 }
 
 
 /**
- * Cambia la visibilidad entre el botón de Enviar y el de Detener.
- * @param {boolean} showStop - Si es true, muestra Detener y oculta Enviar. Si es false, hace lo contrario.
+ * Toggles the main action button between 'Send' and 'Stop'.
+ * @param {boolean} showStop - If true, shows the Stop button. Otherwise, shows the Send button.
  */
 const toggleSendStopButtons = function (showStop) {
     $('#send-button-container').toggle(!showStop);
     $('#stop-button-container').toggle(showStop);
 };
 
-
+/**
+ * Resets the prompt selector to its default state.
+ */
 function resetPromptSelect() {
-    // 1. Restaura el texto original del botón visible
-    $('#prompt-select-button').text('Available prompts  ....');
-
-    // 2. Limpia los valores de los inputs ocultos
+    $('#prompt-select-button').text('Prompts disponibles ....').removeClass('item-selected');
     $('#prompt-select-value').val('');
     $('#prompt-select-description').val('');
-
-    // oculta el boton de limpiar
-    $('#prompt-select-button').removeClass('item-selected');
     $('#clear-selection-button').hide();
 }
 
+/**
+ * Resets the company-specific data input field.
+ */
 function resetSpecificDataInput() {
     if (specificDataConfig && specificDataConfig.enabled) {
         const input = $('#' + specificDataConfig.id);
-        input.val(''); // Limpia el texto
-        input.removeClass('has-content'); // Quita el estilo
-        $('#clear-' + specificDataConfig.id + '-button').hide(); // Oculta el botón 'X'
+        input.val('').removeClass('has-content');
+        $('#clear-' + specificDataConfig.id + '-button').hide();
     }
 }
 
-function toBase64(file) { // file aquí es el objeto File nativo
+
+/**
+ * Generic function to make API calls to the backend.
+ * @param {string} apiPath - The API endpoint path.
+ * @param {object} data - The data payload to send.
+ * @param {string} method - The HTTP method (e.g., 'POST').
+ * @param {number} timeoutMs - Timeout in milliseconds.
+ * @returns {Promise<object|null>} The response data or null on error.
+ */
+const callLLMAPI = async function(apiPath, data, method, timeoutMs = 500000) {
+    const url = `${window.iatoolkit_base_url}/${window.companyShortName}${apiPath}`;
+
+    const headers = {"Content-Type": "application/json"};
+    if (window.sessionJWT) {
+        headers['X-Chat-Token'] = window.sessionJWT;
+    }
+
+    const controller = new AbortController();
+    currentAbortController = controller;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: headers,
+            body: JSON.stringify(data),
+            signal: controller.signal,
+            credentials: 'include'
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            const endpointError = $('<div>').addClass('error-section').append(`<p>${errorData.error_message || 'Unknown server error'}</p>`);
+            displayBotMessage(endpointError);
+            return null;
+        }
+        return await response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw error; // Re-throw to be handled by handleChatMessage
+        } else {
+            const commError = $('<div>').addClass('error-section').append(`<p>Connection error: ${error.message}</p>`);
+            displayBotMessage(commError);
+        }
+        return null;
+    }
+};
+
+
+/**
+ * Displays the user's message in the chat container.
+ */
+const displayUserMessage = function(question, selectedDescription, specificDataValue, selectedPrompt) {
+    const chatContainer = $('#chat-container');
+    const userMessage = $('<div>').addClass('message shadow-sm');
+    let messageText;
+    let isEditable = true;
+
+    if (specificDataValue && question && !selectedPrompt) {
+        messageText = $('<span>').text(`${specificDataValue}: ${question}`);
+    } else if (specificDataValue && !question && selectedPrompt) {
+        messageText = $('<span>').text(`${specificDataValue}: ${selectedDescription}`);
+        isEditable = false;
+    } else if (!specificDataValue && selectedPrompt) {
+        messageText = $('<span>').text(`${selectedDescription}`);
+        isEditable = false;
+    } else {
+        messageText = $('<span>').text(question);
+    }
+
+    userMessage.append(messageText);
+
+    if (isEditable && question) {
+        const editIcon = $('<i>').addClass('bi bi-pencil-fill edit-icon').attr('title', 'Edit query').on('click', function () {
+            $('#question').val(question).focus();
+            autoResizeTextarea($('#question')[0]);
+            updateSendButtonState();
+        });
+        userMessage.append(editIcon);
+    }
+    chatContainer.append(userMessage);
+};
+
+/**
+ * Appends a message from the bot to the chat container.
+ * @param {jQuery} section - The jQuery object to append.
+ */
+function displayBotMessage(section) {
+    const chatContainer = $('#chat-container');
+    chatContainer.append(section);
+    chatContainer.scrollTop(chatContainer[0].scrollHeight);
+}
+
+/**
+ * Aborts the current in-progress API request.
+ */
+const abortCurrentRequest = function () {
+    if (currentAbortController && isRequestInProgress) {
+        window.isManualAbort = true;
+        currentAbortController.abort();
+    }
+};
+
+/**
+ * Shows the loading spinner in the chat.
+ */
+const showSpinner = function () {
+    if ($('#spinner').length) return;
+    const accessibilityClass = (typeof bootstrap !== 'undefined') ? 'visually-hidden' : 'sr-only';
+    const spinner = $(`
+        <div id="spinner" style="display: flex; align-items: center; justify-content: start; margin: 10px 0; padding: 10px;">
+            <div class="spinner-border text-primary" role="status" style="width: 1.5rem; height: 1.5rem; margin-right: 15px;">
+                <span class="${accessibilityClass}">Loading...</span>
+            </div>
+            <span style="font-weight: bold; font-size: 15px;">Loading...</span>
+        </div>
+    `);
+    $('#chat-container').append(spinner).scrollTop($('#chat-container')[0].scrollHeight);
+};
+
+/**
+ * Hides the loading spinner.
+ */
+function hideSpinner() {
+    $('#spinner').fadeOut(function () {
+        $(this).remove();
+    });
+}
+
+/**
+ * Converts a File object to a Base64 encoded string.
+ * @param {File} file The file to convert.
+ * @returns {Promise<{name: string, base64: string}>}
+ */
+function toBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve({name: file.name, base64: reader.result.split(",")[1]});
@@ -396,12 +383,15 @@ function toBase64(file) { // file aquí es el objeto File nativo
     });
 }
 
-
+/**
+ * Displays the document validation results.
+ * @param {Array<object>} document_list
+ */
 function display_document_validation(document_list) {
     const requiredFields = ['document_name', 'document_type', 'causes', 'is_valid'];
     for (const doc of document_list) {
         if (!requiredFields.every(field => field in doc)) {
-            console.warn("Documento con estructura incorrecta:", doc);
+            console.warn("Document with incorrect structure:", doc);
             continue;
         }
         const docValidationSection = $('<div>').addClass('document-section card mt-2 mb-2');
@@ -409,7 +399,7 @@ function display_document_validation(document_list) {
         const headerDiv = $('<div>').addClass('d-flex justify-content-between align-items-center mb-2');
         const filenameSpan = $(`
                 <div>
-                    <span class="text-primary fw-bold">Archivo: </span>
+                    <span class="text-primary fw-bold">File: </span>
                     <span class="text-secondary">${doc.document_name}</span>
                 </div>`);
         const badge_style = doc.is_valid ? 'bg-success' : 'bg-danger';
@@ -421,18 +411,16 @@ function display_document_validation(document_list) {
 
         if (!doc.is_valid && doc.causes && doc.causes.length > 0) {
             const rejectionSection = $('<div>').addClass('rejection-reasons mt-2');
-            rejectionSection.append('<h6 class="text-danger">Causales de Rechazo:</h6>');
+            rejectionSection.append('<h6 class="text-danger">Rejection Causes:</h6>');
             const causesList = doc.causes.map(cause => `<li class="text-secondary">${cause}</li>`).join('');
             rejectionSection.append(`<ul class="list-unstyled">${causesList}</ul>`);
             cardBody.append(rejectionSection);
         } else if (doc.is_valid) {
             const validSection = $('<div>').addClass('mt-2');
-            validSection.append('<p class="text-success fw-bold">Documento válido.</p>');
+            validSection.append('<p class="text-success fw-bold">Valid document.</p>');
             cardBody.append(validSection);
         }
         docValidationSection.append(cardBody);
         displayBotMessage(docValidationSection);
     }
 }
-
-
