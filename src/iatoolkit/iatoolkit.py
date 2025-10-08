@@ -264,15 +264,15 @@ class IAToolkit:
         binder.bind(TaskRepo, to=TaskRepo)
 
     def _bind_services(self, binder: Binder):
-        from iatoolkit.services import QueryService
+        from iatoolkit.services.query_service import QueryService
         from iatoolkit.services.tasks_service import TaskService
-        from iatoolkit.services import BenchmarkService
+        from iatoolkit.services.benchmark_service import BenchmarkService
         from iatoolkit.services.document_service import DocumentService
         from iatoolkit.services.prompt_manager_service import PromptService
         from iatoolkit.services.excel_service import ExcelService
-        from iatoolkit.services import MailService
+        from iatoolkit.services.mail_service import MailService
         from iatoolkit.services.load_documents_service import LoadDocumentsService
-        from iatoolkit.services import ProfileService
+        from iatoolkit.services.profile_service import ProfileService
         from iatoolkit.services.jwt_service import JWTService
         from iatoolkit.services.dispatcher_service import Dispatcher
 
@@ -290,10 +290,10 @@ class IAToolkit:
 
     def _bind_infrastructure(self, binder: Binder):
         from iatoolkit.infra.llm_client import llmClient
-        from iatoolkit.infra import LLMProxy
-        from iatoolkit.infra import GoogleChatApp
+        from iatoolkit.infra.llm_proxy import LLMProxy
+        from iatoolkit.infra.google_chat_app import GoogleChatApp
         from iatoolkit.infra.mail_app import MailApp
-        from iatoolkit.common import IAuthentication
+        from iatoolkit.common.auth import IAuthentication
         from iatoolkit.common.util import Utility
 
 
@@ -307,10 +307,10 @@ class IAToolkit:
 
     def _bind_views(self, binder: Binder):
         """Vincula las vistas después de que el injector ha sido creado"""
-        from iatoolkit.views import LLMQueryView
-        from iatoolkit.views import HomeView
-        from iatoolkit.views import ChatView
-        from iatoolkit.views import ChangePasswordView
+        from iatoolkit.views.llmquery_view import LLMQueryView
+        from iatoolkit.views.home_view import HomeView
+        from iatoolkit.views.chat_view import ChatView
+        from iatoolkit.views.change_password_view import ChangePasswordView
 
         binder.bind(HomeView, to=HomeView)
         binder.bind(ChatView, to=ChatView)
@@ -355,7 +355,7 @@ class IAToolkit:
         # Configura context processors para templates
         @self.app.context_processor
         def inject_globals():
-            from iatoolkit.common import SessionManager
+            from iatoolkit.common.session_manager import SessionManager
             return {
                 'url_for': url_for,
                 'iatoolkit_version': self.version,
@@ -367,16 +367,14 @@ class IAToolkit:
     def _get_default_static_folder(self) -> str:
         try:
             current_dir = os.path.dirname(os.path.abspath(__file__))  # .../src/iatoolkit
-            src_dir = os.path.dirname(current_dir)  # .../src
-            return os.path.join(src_dir, "static")
+            return os.path.join(current_dir, "static")
         except:
             return 'static'
 
     def _get_default_template_folder(self) -> str:
         try:
             current_dir = os.path.dirname(os.path.abspath(__file__))  # .../src/iatoolkit
-            src_dir = os.path.dirname(current_dir)  # .../src
-            return os.path.join(src_dir, "templates")
+            return os.path.join(current_dir, "templates")
         except:
             return 'templates'
 

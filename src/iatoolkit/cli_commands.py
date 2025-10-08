@@ -6,7 +6,7 @@
 import click
 import logging
 from iatoolkit import IAToolkit
-from iatoolkit.services import ProfileService
+from iatoolkit.services.profile_service import ProfileService
 
 def register_core_commands(app):
     """Registra los comandos CLI del núcleo de IAToolkit."""
