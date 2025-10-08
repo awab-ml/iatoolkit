@@ -5,11 +5,11 @@
 
 # companies/base_company.py
 from abc import ABC, abstractmethod
-from typing import Any
-from repositories.profile_repo import ProfileRepo
-from repositories.llm_query_repo import LLMQueryRepo
-from services.prompt_manager_service import PromptService
-from repositories.models import Company, Function, PromptCategory
+from iatoolkit.repositories.profile_repo import ProfileRepo
+from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
+
+from iatoolkit.services.prompt_manager_service import PromptService
+from iatoolkit.repositories.models import Company, Function, PromptCategory
 from iatoolkit import IAToolkit
 
 

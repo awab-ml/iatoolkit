@@ -16,20 +16,24 @@ from .base_company import BaseCompany
 
 # --- Services ---
 # Assuming they are in a 'services' sub-package
-from services.sql_service import SqlService
-from services.excel_service import ExcelService
-from services.dispatcher_service import Dispatcher
-from services.document_service import DocumentService
-from services.search_service import SearchService
-from services.load_documents_service import LoadDocumentsService
-from repositories.profile_repo import ProfileRepo
-from repositories.llm_query_repo import LLMQueryRepo
-from services.query_service import QueryService
-from services.prompt_manager_service import PromptService
-from repositories.database_manager import DatabaseManager
-from infra.call_service import CallServiceClient
-from common.util import Utility
-from repositories.models import Base, Company, Function, TaskType, Prompt, PromptCategory
+from iatoolkit.services.sql_service import SqlService
+from iatoolkit.services.excel_service import ExcelService
+from iatoolkit.services.dispatcher_service import Dispatcher
+from iatoolkit.services.document_service import DocumentService
+from iatoolkit.services.search_service import SearchService
+from iatoolkit.services.load_documents_service import LoadDocumentsService
+from iatoolkit.repositories.profile_repo import ProfileRepo
+from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
+
+from iatoolkit.services.query_service import QueryService
+from iatoolkit.services.prompt_manager_service import PromptService
+from iatoolkit.repositories.database_manager import DatabaseManager
+
+from iatoolkit.infra.call_service import CallServiceClient
+from iatoolkit.common.util import Utility
+
+
+from iatoolkit.repositories.models import Base, Company, Function, TaskType, Prompt, PromptCategory
 
 
 __all__ = [

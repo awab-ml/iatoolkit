@@ -6,7 +6,7 @@
 import click
 import logging
 from iatoolkit import IAToolkit
-from services.profile_service import ProfileService
+from iatoolkit.services import ProfileService
 
 def register_core_commands(app):
     """Registra los comandos CLI del núcleo de IAToolkit."""
@@ -33,7 +33,9 @@ def register_core_commands(app):
     @app.cli.command("encrypt-key")
     @click.argument("key")
     def encrypt_llm_api_key(key: str):
-        from common.util import Utility
+        from iatoolkit.common.util import Utility
+
+
 
         util = IAToolkit.get_instance().get_injector().get(Utility)
         try:
@@ -46,7 +48,7 @@ def register_core_commands(app):
     @app.cli.command("exec-tasks")
     @click.argument("company_short_name")
     def exec_pending_tasks(company_short_name: str):
-        from services.tasks_service import TaskService
+        from iatoolkit.services.tasks_service import TaskService
         task_service = IAToolkit.get_instance().get_injector().get(TaskService)
 
         try:

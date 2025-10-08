@@ -8,13 +8,14 @@ from flask_session import Session
 from flask_injector import FlaskInjector
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
-from common.exceptions import IAToolkitException
+from iatoolkit.common.exceptions import IAToolkitException
 from urllib.parse import urlparse
 import redis
 import logging
 import os
 from typing import Optional, Dict, Any
-from repositories.database_manager import DatabaseManager
+from iatoolkit.repositories.database_manager import DatabaseManager
+
 from injector import Binder, singleton, Injector
 from importlib.metadata import version as _pkg_version, PackageNotFoundError
 
@@ -122,7 +123,7 @@ class IAToolkit:
 
     def _register_routes(self):
         """Registers routes by passing the configured injector."""
-        from common.routes import register_views
+        from iatoolkit.common.routes import register_views
 
         # Pass the injector to the view registration function
         register_views(self._injector, self.app)
@@ -249,11 +250,12 @@ class IAToolkit:
             )
 
     def _bind_repositories(self, binder: Binder):
-        from repositories.document_repo import DocumentRepo
-        from repositories.profile_repo import ProfileRepo
-        from repositories.llm_query_repo import LLMQueryRepo
-        from repositories.vs_repo import VSRepo
-        from repositories.tasks_repo import TaskRepo
+        from iatoolkit.repositories.document_repo import DocumentRepo
+        from iatoolkit.repositories.profile_repo import ProfileRepo
+        from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
+
+        from iatoolkit.repositories.vs_repo import VSRepo
+        from iatoolkit.repositories.tasks_repo import TaskRepo
 
         binder.bind(DocumentRepo, to=DocumentRepo)
         binder.bind(ProfileRepo, to=ProfileRepo)
@@ -262,17 +264,17 @@ class IAToolkit:
         binder.bind(TaskRepo, to=TaskRepo)
 
     def _bind_services(self, binder: Binder):
-        from services.query_service import QueryService
-        from services.tasks_service import TaskService
-        from services.benchmark_service import BenchmarkService
-        from services.document_service import DocumentService
-        from services.prompt_manager_service import PromptService
-        from services.excel_service import ExcelService
-        from services.mail_service import MailService
-        from services.load_documents_service import LoadDocumentsService
-        from services.profile_service import ProfileService
-        from services.jwt_service import JWTService
-        from services.dispatcher_service import Dispatcher
+        from iatoolkit.services import QueryService
+        from iatoolkit.services.tasks_service import TaskService
+        from iatoolkit.services import BenchmarkService
+        from iatoolkit.services.document_service import DocumentService
+        from iatoolkit.services.prompt_manager_service import PromptService
+        from iatoolkit.services.excel_service import ExcelService
+        from iatoolkit.services import MailService
+        from iatoolkit.services.load_documents_service import LoadDocumentsService
+        from iatoolkit.services import ProfileService
+        from iatoolkit.services.jwt_service import JWTService
+        from iatoolkit.services.dispatcher_service import Dispatcher
 
         binder.bind(QueryService, to=QueryService)
         binder.bind(TaskService, to=TaskService)
@@ -287,12 +289,14 @@ class IAToolkit:
         binder.bind(Dispatcher, to=Dispatcher)
 
     def _bind_infrastructure(self, binder: Binder):
-        from infra.llm_client import llmClient
-        from infra.llm_proxy import LLMProxy
-        from infra.google_chat_app import GoogleChatApp
-        from infra.mail_app import MailApp
-        from common.auth import IAuthentication
-        from common.util import Utility
+        from iatoolkit.infra.llm_client import llmClient
+        from iatoolkit.infra import LLMProxy
+        from iatoolkit.infra import GoogleChatApp
+        from iatoolkit.infra.mail_app import MailApp
+        from iatoolkit.common import IAuthentication
+        from iatoolkit.common.util import Utility
+
+
 
         binder.bind(LLMProxy, to=LLMProxy, scope=singleton)
         binder.bind(llmClient, to=llmClient, scope=singleton)
@@ -303,10 +307,10 @@ class IAToolkit:
 
     def _bind_views(self, binder: Binder):
         """Vincula las vistas después de que el injector ha sido creado"""
-        from views.llmquery_view import LLMQueryView
-        from views.home_view import HomeView
-        from views.chat_view import ChatView
-        from views.change_password_view import ChangePasswordView
+        from iatoolkit.views import LLMQueryView
+        from iatoolkit.views import HomeView
+        from iatoolkit.views import ChatView
+        from iatoolkit.views import ChangePasswordView
 
         binder.bind(HomeView, to=HomeView)
         binder.bind(ChatView, to=ChatView)
@@ -320,7 +324,7 @@ class IAToolkit:
 
     def _init_dispatcher_and_company_instances(self):
         from iatoolkit.company_registry import get_company_registry
-        from services.dispatcher_service import Dispatcher
+        from iatoolkit.services.dispatcher_service import Dispatcher
 
         # instantiate all the registered companies
         get_company_registry().instantiate_companies(self._injector)
@@ -351,7 +355,7 @@ class IAToolkit:
         # Configura context processors para templates
         @self.app.context_processor
         def inject_globals():
-            from common.session_manager import SessionManager
+            from iatoolkit.common import SessionManager
             return {
                 'url_for': url_for,
                 'iatoolkit_version': self.version,
@@ -386,7 +390,7 @@ class IAToolkit:
         return self._injector
 
     def get_dispatcher(self):
-        from services.dispatcher_service import Dispatcher
+        from iatoolkit.services.dispatcher_service import Dispatcher
         if not self._injector:
             raise IAToolkitException(
                 IAToolkitException.ErrorType.CONFIG_ERROR,
@@ -406,14 +410,9 @@ class IAToolkit:
 def current_iatoolkit() -> IAToolkit:
     return IAToolkit.get_instance()
 
-# 🚀 Función de conveniencia para inicialización rápida
+# Función de conveniencia para inicialización rápida
 def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:
     toolkit = IAToolkit(config)
     toolkit.create_iatoolkit()
 
     return toolkit.app
-
-if __name__ == "__main__":
-    app = create_app()
-    if app:
-        app.run(debug=True)
