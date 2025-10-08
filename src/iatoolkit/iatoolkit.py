@@ -57,9 +57,7 @@ class IAToolkit:
 
     @classmethod
     def get_instance(cls) -> 'IAToolkit':
-        """
-        Obtiene la instancia única de IAToolkit
-        """
+        # get the global IAToolkit instance
         global _iatoolkit_instance
         if _iatoolkit_instance is None:
             _iatoolkit_instance = cls()
