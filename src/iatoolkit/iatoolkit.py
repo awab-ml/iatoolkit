@@ -8,10 +8,7 @@ from flask_session import Session
 from flask_injector import FlaskInjector
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
-from common.auth import IAuthentication
-from common.util import Utility
 from common.exceptions import IAToolkitException
-from common.session_manager import SessionManager
 from urllib.parse import urlparse
 import redis
 import logging
@@ -294,6 +291,8 @@ class IAToolkit:
         from infra.llm_proxy import LLMProxy
         from infra.google_chat_app import GoogleChatApp
         from infra.mail_app import MailApp
+        from common.auth import IAuthentication
+        from common.util import Utility
 
         binder.bind(LLMProxy, to=LLMProxy, scope=singleton)
         binder.bind(llmClient, to=llmClient, scope=singleton)
@@ -352,6 +351,7 @@ class IAToolkit:
         # Configura context processors para templates
         @self.app.context_processor
         def inject_globals():
+            from common.session_manager import SessionManager
             return {
                 'url_for': url_for,
                 'iatoolkit_version': self.version,
