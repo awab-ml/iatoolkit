@@ -37,6 +37,16 @@ class SampleCompany(BaseCompany):
             self.sample_db_manager = DatabaseManager(sample_db_uri, register_pgvector=False)
             self.sample_database = SampleCompanyDatabase(self.sample_db_manager)
 
+    def handle_request(self, action: str, **kwargs) -> str:
+        if action == "sql_query":
+            sql_query = kwargs.get('query')
+            return self.sql_service.exec_sql(self.sample_db_manager, sql_query)
+        elif action == "document_search":
+            query_string = kwargs.get('query')
+            return self.search_service.search(self.company.id, query_string)
+        else:
+            return self.unsupported_operation(action)
+
     def register_company(self):
         # Initialize the company in the database if not exists
         self.company = self._create_company(
@@ -67,11 +77,41 @@ class SampleCompany(BaseCompany):
             
     # Return company specific context
     def get_company_context(self, **kwargs) -> str:
-        company_context = ''
-        if self.sample_db_manager:
-            company_context += self.get_schema_definitions(self.sample_db_manager)
+        if not self.sample_db_manager:
+            return ''
 
-        return company_context
+        # this list should contain all the tables that are used
+        # by this company and the schema file for the table.
+        # the schema should exist in the schema folder.
+        database_tables = [
+            {'table_name': 'products', 'schema_name': 'product'},
+            {'table_name': 'regions', 'schema_name': 'region'},
+            {'table_name': 'shippers', 'schema_name': 'shipper'},
+            {'table_name': 'suppliers', 'schema_name': 'supplier'},
+            {'table_name': 'categories', 'schema_name': 'category'},
+            {'table_name': 'customers', 'schema_name': 'customer'},
+            {'table_name': 'territories', 'schema_name': 'territory'},
+            {'table_name': 'employees', 'schema_name': 'employee'},
+            {'table_name': 'employee_territories', 'schema_name': 'employee_territory'},
+            {'table_name': 'orders', 'schema_name': 'order'},
+            {'table_name': 'order_details', 'schema_name': 'order_detail'},
+
+        ]
+
+        db_context = ''
+        for table in database_tables:
+            try:
+                table_definition = self.sample_db_manager.get_table_schema(
+                    table_name=table['table_name'],
+                    schema_name=table['schema_name'],
+                    exclude_columns=[]
+                )
+                db_context += table_definition
+            except RuntimeError as e:
+                logging.warning(f"Advertencia al generar esquema para {table['table_name']}: {e}")
+
+        return db_context
+
 
     def start_execution(self) -> dict:
         return {}
@@ -80,16 +120,6 @@ class SampleCompany(BaseCompany):
         if filename.startswith('contract_'):
             return {'type': 'employee_contract'}
         return {}
-
-    def handle_request(self, action: str, **kwargs) -> str:
-        if action == "sql_query":
-            sql_query = kwargs.get('query')
-            return self.sql_service.exec_sql(self.sample_db_manager, sql_query)
-        elif action == "document_search":
-            query_string = kwargs.get('query')
-            return self.search_service.search(self.company.id, query_string)
-        else:
-            return self.unsupported_operation(action)
 
     def get_user_info(self, user_identifier: str) -> dict:
         user_data = {
@@ -104,38 +134,6 @@ class SampleCompany(BaseCompany):
         }
         return user_data
 
-    def get_schema_definitions(self, db_manager: DatabaseManager) -> str:
-        """
-        Genera las definiciones de esquema para todas las tablas del modelo.
-        """
-        model_tables = [
-            {'table_name': 'products', 'schema_name': 'product'},
-            {'table_name': 'regions', 'schema_name': 'region'},
-            {'table_name': 'shippers', 'schema_name': 'shipper'},
-            {'table_name': 'suppliers', 'schema_name': 'supplier'},
-            {'table_name': 'categories', 'schema_name': 'category'},
-            {'table_name': 'customers', 'schema_name': 'customer' },
-            {'table_name': 'territories', 'schema_name': 'territory'},
-            {'table_name': 'employees', 'schema_name': 'employee'},
-            {'table_name': 'employee_territories', 'schema_name': 'employee_territory' },
-            {'table_name': 'orders', 'schema_name': 'order' },
-            {'table_name': 'order_details', 'schema_name': 'order_detail'},
-
-        ]
-
-        db_context = ''
-        for table in model_tables:
-            try:
-                table_definition = db_manager.get_table_schema(
-                    table_name=table['table_name'],
-                    schema_name=table['schema_name'],
-                    exclude_columns=[]
-                )
-                db_context += table_definition
-            except RuntimeError as e:
-                logging.warning(f"Advertencia al generar esquema para {table['table_name']}: {e}")
-
-        return db_context
 
     def register_cli_commands(self, app):
 
