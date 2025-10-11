@@ -4,15 +4,20 @@
 
 {% block content %}
 <!-- Sección de encabezado con el usuario conectado -->
-<div class="company-section d-flex justify-content-between align-items-center px-3 py-2"
+<div id="company-section" class="company-section d-flex justify-content-between align-items-center px-3 py-2"
      style="{{ branding.header_style }}">
 
-    <!-- Izquierda: Nombre de la Empresa -->
-    <span style="{{ branding.primary_text_style }}">
-        {{ branding.name }}
-    </span>
+    <!-- Izquierda: Nombre de la Empresa y atribución "Powered by" -->
+    <div class="d-flex align-items-center">
+        <span style="{{ branding.primary_text_style }}">
+            {{ branding.name }}
+        </span>
+        <span class="ms-2" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Powered by IAToolkit">
+            <i class="bi bi-info-circle" style="color: {{ branding.header_text_color }}; opacity: 0.7; font-size: 0.9rem;"></i>
+        </span>
+    </div>
 
-    <!-- Derecha: Grupo de información y acciones del usuario -->
+    <!-- Derecha: Grupo de información y acciones para el usuario -->
     <div class="d-flex align-items-center">
         <!-- 1. ID de Usuario -->
         <span style="{{ branding.secondary_text_style }}">
@@ -32,13 +37,7 @@
             <i class="bi bi-emoji-smile"></i>
         </a>
 
-        <!-- 4. Powered by (oculto en un tooltip) -->
-        <span class="ms-4" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Powered by IAToolkit">
-            <i class="bi bi-info-circle" style="color: {{ branding.header_text_color }}; opacity: 0.7; font-size: 0.9rem;"></i>
-        </span>
-
-
-        <!-- 5. Icono de cerrar sesión (al final) -->
+        <!-- Icono de cerrar sesión (al final) -->
         {% if user.email %}
             <a href="{{ url_for('logout', company_short_name=company_short_name) }}"
                  class="ms-3 action-icon-style" title="Cerrar sesión" style="color: {{ branding.header_text_color }} !important;">
@@ -50,7 +49,7 @@
 </div>
 
 <div id="chat-container"
-     class="mt-2 p-3 border border-2 rounded flex-grow-1"
+     class="chat-block mt-2 flex-grow-1"
      style="overflow-y: auto;">
         <div id="chat-messages">
         <!-- Mensaje de bienvenida estático -->
@@ -65,7 +64,7 @@
     <input type="file" id="file-upload" class="filepond" data-max-files="5" multiple>
 </div>
 
-<div class="input-area mt-2 mb-2">
+<div id="input-area" class="input-area chat-block  mt-2 mb-2">
 
     <!-- 1. Contenido Colapsable del Asistente de prompts -->
     <div class="collapse" id="prompt-assistant-collapse">
@@ -110,7 +109,7 @@
     </div>
 
     <!-- 2. La Barra de Entrada Principal -->
-    <div class="chat-input-bar d-flex align-items-center">
+    <div id="chat-input-bar" class="chat-input-bar d-flex align-items-center">
         <!-- Iconos de la izquierda -->
         <div class="d-flex align-items-center">
             <!-- BOTÓN  PARA CONTROLAR EL COLLAPSE -->
