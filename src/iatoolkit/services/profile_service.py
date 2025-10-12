@@ -17,7 +17,6 @@ import secrets
 import string
 from datetime import datetime, timezone
 from iatoolkit.services.user_session_context_service import UserSessionContextService
-from iatoolkit.services.query_service import QueryService
 
 
 class ProfileService:
@@ -25,50 +24,43 @@ class ProfileService:
     def __init__(self,
                  profile_repo: ProfileRepo,
                  session_context_service: UserSessionContextService,
-                 query_service: QueryService,
                  mail_app: MailApp):
         self.profile_repo = profile_repo
         self.session_context = session_context_service
-        self.query_service = query_service
         self.mail_app = mail_app
         self.bcrypt = Bcrypt()
 
 
     def login(self, company_short_name: str, email: str, password: str) -> dict:
         try:
-            # check if exits
+            # check if user exists
             user = self.profile_repo.get_user_by_email(email)
             if not user:
-                return {"error": "Usuario no encontrado"}
+                return {'success': False, "message": "Usuario no encontrado"}
 
             # check the encrypted password
             if not check_password_hash(user.password, password):
-                return {"error": "Contraseña inválida"}
+                return {'success': False, "message": "Contraseña inválida"}
 
             company = self.get_company_by_short_name(company_short_name)
             if not company:
-                return {"error": "Empresa no encontrada"}
+                return {'success': False, "message": "Empresa no encontrada"}
 
-            # check that user belongs to  company
+            # check that user belongs to company
             if company not in user.companies:
-                return {"error": "Usuario no esta autorizado para esta empresa"}
+                return {'success': False, "message": "Usuario no esta autorizado para esta empresa"}
 
             if not user.verified:
-                return {"error": "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."}
+                return {'success': False,
+                        "message": "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."}
 
-            # clear history save user data into session manager
+            # save user data into session manager
             self.set_user_session(user=user, company=company)
 
-            # initialize company context
-            self.query_service.llm_init_context(
-                company_short_name=company_short_name,
-                local_user_id=user.id
-            )
-
-            return {"message": "Login exitoso"}
+            return {'success': True, "user": user, "message": "Login exitoso"}
         except Exception as e:
-            logging.exception(f"login error: {str(e)}")
-            return {"error": str(e)}
+            return {'success': False, "message": str(e)}
+
 
     def set_user_session(self, user: User, company: Company):
         SessionManager.set('user_id', user.id)

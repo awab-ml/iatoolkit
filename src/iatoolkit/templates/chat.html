@@ -26,7 +26,7 @@
     <div class="d-flex align-items-center">
         <!-- 1. ID de Usuario -->
         <span style="{{ branding.secondary_text_style }}">
-            {{ external_user_id or user.email }}
+            {{ external_user_id or user_email }}
         </span>
 
         <!-- 2. Separador Vertical -->
@@ -43,7 +43,7 @@
         </a>
 
         <!-- Icono de cerrar sesión (al final) -->
-        {% if user.email %}
+        {% if user_email %}
             <a href="{{ url_for('logout', company_short_name=company_short_name) }}"
                  class="ms-3 action-icon-style" title="Cerrar sesión" style="color: {{ branding.header_text_color }} !important;">
                 <i class="bi bi-box-arrow-right"></i>

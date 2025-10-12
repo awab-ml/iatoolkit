@@ -26,9 +26,8 @@ def register_views(injector, app):
     from iatoolkit.views.tasks_view import TaskView
     from iatoolkit.views.tasks_review_view import TaskReviewView
     from iatoolkit.views.home_view import HomeView
-    from iatoolkit.views.chat_view import ChatView
-    from iatoolkit.views.login_view import LoginView
-    from iatoolkit.views.external_chat_login_view import ExternalChatLoginView
+    from iatoolkit.views.login_view import LoginView, InitiateLoginView
+    from iatoolkit.views.external_chat_login_view import InitiateExternalChatView, ExternalChatLoginView
     from iatoolkit.views.signup_view import SignupView
     from iatoolkit.views.verify_user_view import VerifyAccountView
     from iatoolkit.views.forgot_password_view import ForgotPasswordView
@@ -42,16 +41,19 @@ def register_views(injector, app):
 
     app.add_url_rule('/', view_func=HomeView.as_view('home'))
 
-    # main chat for iatoolkit front
-    app.add_url_rule('/<company_short_name>/chat', view_func=ChatView.as_view('chat'))
-
     # front if the company internal portal
     app.add_url_rule('/<company_short_name>/chat_login', view_func=ExternalChatLoginView.as_view('external_chat_login'))
-    app.add_url_rule('/<company_short_name>/external_login/<external_user_id>', view_func=ExternalLoginView.as_view('external_login'))
+    app.add_url_rule('/<company_short_name>/external_login/<external_user_id>',
+                     view_func=ExternalLoginView.as_view('external_login'))
+    app.add_url_rule('/<company_short_name>/initiate_external_chat',
+                         view_func=InitiateExternalChatView.as_view('initiate_chat_login'))
+
     app.add_url_rule('/auth/chat_token', view_func=ChatTokenRequestView.as_view('chat-token'))
 
     # main pages for the iatoolkit frontend
     app.add_url_rule('/<company_short_name>/login', view_func=LoginView.as_view('login'))
+    app.add_url_rule('/<company_short_name>/initiate_login', view_func=InitiateLoginView.as_view('initiate_login'))
+
     app.add_url_rule('/<company_short_name>/signup',view_func=SignupView.as_view('signup'))
     app.add_url_rule('/<company_short_name>/logout', 'logout', logout)
     app.add_url_rule('/logout', 'logout', logout)

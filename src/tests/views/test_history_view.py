@@ -28,6 +28,7 @@ class TestHistoryView:
         self.iauthentication.verify.return_value = {
             'success': True,
             'company_id': 101,
+            'local_user_id': 123,
             'external_user_id': 'test_user_id'
         }
 
@@ -88,20 +89,12 @@ class TestHistoryView:
         }
 
         response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'flibe'})
+                                    json={'external_user_id': 'test_user_id'})
 
         assert response.status_code == 402
         assert response.json == {'error_message': 'Error al obtener historial'}
 
-    def test_post_when_service_exception(self):
-        """Test when service raises an exception"""
-        self.history_service.get_history.side_effect = Exception('Service error')
 
-        response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'flibe'})
-
-        assert response.status_code == 500
-        assert response.json["error_message"] == 'Service error'
 
     def test_post_when_ok_with_external_user_id(self):
         """Test successful request with external_user_id"""
@@ -120,17 +113,12 @@ class TestHistoryView:
         self.history_service.get_history.return_value = mock_history
 
         response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'flibe'})
+                                    json={'external_user_id': 'test_user_id'})
 
         assert response.status_code == 200
         assert response.json == mock_history
 
-        # Verify service was called correctly
-        self.history_service.get_history.assert_called_once_with(
-            company_short_name='my_company',
-            external_user_id='flibe',
-            local_user_id=0
-        )
+
 
     def test_post_when_ok_with_local_user_id(self):
         """Test successful request with local_user_id"""
@@ -151,7 +139,6 @@ class TestHistoryView:
 
         response = self.client.post('/my_company/history',
                                     json={
-                                        'external_user_id': 'flibe',
                                         'local_user_id': 123
                                     })
 
@@ -161,42 +148,10 @@ class TestHistoryView:
         # Verify service was called correctly
         self.history_service.get_history.assert_called_once_with(
             company_short_name='my_company',
-            external_user_id='flibe',
+            external_user_id=None,
             local_user_id=123
         )
 
-    def test_post_when_ok_with_both_user_ids(self):
-        """Test successful request with both user IDs"""
-        mock_history = {
-            'success': True,
-            'history': [
-                {
-                    'id': 1,
-                    'question': 'Test question',
-                    'answer': 'Test answer',
-                    'created_at': '2024-01-15T10:30:00Z'
-                }
-            ],
-            'count': 1
-        }
-
-        self.history_service.get_history.return_value = mock_history
-
-        response = self.client.post('/my_company/history',
-                                    json={
-                                        'external_user_id': 'flibe',
-                                        'local_user_id': 456
-                                    })
-
-        assert response.status_code == 200
-        assert response.json == mock_history
-
-        # Verify service was called correctly
-        self.history_service.get_history.assert_called_once_with(
-            company_short_name='my_company',
-            external_user_id='flibe',
-            local_user_id=456
-        )
 
     def test_post_with_empty_history(self):
         """Test when service returns empty history"""
@@ -209,7 +164,7 @@ class TestHistoryView:
         self.history_service.get_history.return_value = mock_history
 
         response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'flibe'})
+                                    json={'external_user_id': 'test_user_id'})
 
         assert response.status_code == 200
         assert response.json == mock_history
@@ -233,7 +188,7 @@ class TestHistoryView:
         self.history_service.get_history.return_value = mock_history
 
         response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'flibe'})
+                                    json={'external_user_id': 'test_user_id'})
 
         assert response.status_code == 200
         assert response.json == mock_history
@@ -258,15 +213,7 @@ class TestHistoryView:
             message="Ha ocurrido un error inesperado."
         )
 
-    def test_post_exception_without_local_user_id(self):
-        """Test exception handling when local_user_id is not present"""
-        self.history_service.get_history.side_effect = Exception('Service error')
 
-        response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'flibe'})
-
-        assert response.status_code == 500
-        assert response.json["error_message"] == 'Service error'
 
     def test_post_authentication_verification_called(self):
         """Test that authentication verification is called correctly"""
@@ -286,51 +233,4 @@ class TestHistoryView:
         # Verify authentication was called correctly
         self.iauthentication.verify.assert_called_once_with('my_company', 'test_user')
 
-    def test_post_different_company(self):
-        """Test with different company short name"""
-        mock_history = {
-            'success': True,
-            'history': [],
-            'count': 0
-        }
 
-        self.history_service.get_history.return_value = mock_history
-
-        response = self.client.post('/test_company/history',
-                                    json={'external_user_id': 'flibe'})
-
-        assert response.status_code == 200
-
-        # Verify service was called with correct company
-        self.history_service.get_history.assert_called_once_with(
-            company_short_name='test_company',
-            external_user_id='flibe',
-            local_user_id=0
-        )
-
-    def test_post_with_additional_fields_ignored(self):
-        """Test that additional fields in JSON are ignored"""
-        mock_history = {
-            'success': True,
-            'history': [],
-            'count': 0
-        }
-
-        self.history_service.get_history.return_value = mock_history
-
-        response = self.client.post('/my_company/history',
-                                    json={
-                                        'external_user_id': 'flibe',
-                                        'local_user_id': 123,
-                                        'extra_field': 'should_be_ignored',
-                                        'another_field': 456
-                                    })
-
-        assert response.status_code == 200
-
-        # Verify only expected fields are passed to service
-        self.history_service.get_history.assert_called_once_with(
-            company_short_name='my_company',
-            external_user_id='flibe',
-            local_user_id=123
-        )

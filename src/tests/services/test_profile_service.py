@@ -23,13 +23,11 @@ class TestProfileService:
         self.repo = MagicMock(ProfileRepo)
         self.mail_app = MagicMock(MailApp)
         self.session_context = MagicMock(UserSessionContextService)
-        self.query_service = MagicMock(QueryService)
 
         # init the service with the mock
         self.service = ProfileService(
             profile_repo=self.repo,
             session_context_service=self.session_context,
-            query_service=self.query_service,
             mail_app=self.mail_app)
 
         self.mock_user = User(email='test@opensoft.cl',
@@ -53,7 +51,7 @@ class TestProfileService:
                                       'a password'
                                       )
 
-        assert "an error" == response['error']
+        assert not response['success']  and response['message'] == "an error"
 
     def test_login_when_user_not_exist(self):
         self.repo.get_user_by_email.return_value = None
@@ -61,7 +59,7 @@ class TestProfileService:
                                       'fernando',
                                       'a password')
 
-        assert "Usuario no encontrado" == response['error']
+        assert not response['success']  and response['message'] == "Usuario no encontrado"
 
     def test_login_when_invalid_password(self):
         # Simula un usuario válido pero con una contraseña incorrecta
@@ -75,7 +73,7 @@ class TestProfileService:
                                       'wrong_password'
                                       )
 
-        assert "Contraseña inválida" == response['error']
+        assert not response['success']  and response['message'] =="Contraseña inválida"
 
     def test_login_when_company_not_in_user_companies(self):
         self.repo.get_user_by_email.return_value = self.mock_user
@@ -87,7 +85,7 @@ class TestProfileService:
                                       'password'
                                       )
 
-        assert "Usuario no esta autorizado para esta empresa" == response['error']
+        assert not response['success']  and response['message'] == "Usuario no esta autorizado para esta empresa"
 
     def test_login_when_unverified_account(self):
         self.mock_user.password = generate_password_hash("password").decode("utf-8")
@@ -99,7 +97,7 @@ class TestProfileService:
                                       'password'
                                       )
 
-        assert "Tu cuenta no ha sido verificada" in response['error']
+        assert not response['success']  and "Tu cuenta no ha sido verificada" in response['message']
 
     @patch("iatoolkit.services.profile_service.SessionManager")
     def test_login_when_ok(self, mock_session):
@@ -112,7 +110,7 @@ class TestProfileService:
                                       'password'
                                       )
 
-        assert "Login exitoso" == response['message']
+        assert response['success'] and response['user'] == self.mock_user
 
     def test_signup_when_invalid_company(self):
         self.repo.get_company_by_short_name.return_value = None

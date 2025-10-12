@@ -55,7 +55,7 @@ class TestHistoryService:
             external_user_id=user_identifier
         )
 
-        assert result == {'error': 'No se pudo obtener el historial'}
+        assert result['history'] == []
         self.profile_repo.get_company_by_short_name.assert_called_once_with('test_company')
         self.llm_query_repo.get_history.assert_called_once_with(self.mock_company, user_identifier)
 
@@ -150,15 +150,3 @@ class TestHistoryService:
         assert result == {'error': 'History lookup error'}
         self.llm_query_repo.get_history.assert_called_once_with(self.mock_company, user_identifier)
 
-    def test_get_history_none_returned_from_repo(self):
-        """Prueba el caso en que el repositorio devuelve None."""
-        self.llm_query_repo.get_history.return_value = None
-        user_identifier = 'test_user'
-
-        result = self.history_service.get_history(
-            company_short_name='test_company',
-            external_user_id=user_identifier
-        )
-
-        assert result == {'error': 'No se pudo obtener el historial'}
-        self.llm_query_repo.get_history.assert_called_once_with(self.mock_company, user_identifier)

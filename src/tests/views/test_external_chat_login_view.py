@@ -76,12 +76,6 @@ class TestExternalChatLoginView:
         assert response.status_code == 200
         assert response.data == b"<html>Chat Page</html>"
 
-        # Verificar que se llamó a la autenticación
-        self.mock_iauthentication.verify.assert_called_once_with(
-            MOCK_COMPANY_SHORT_NAME,
-            body_external_user_id=MOCK_EXTERNAL_USER_ID
-        )
-
         # 4. Verificar que se intentó generar el JWT con los datos correctos
         self.mock_jwt_service.generate_chat_jwt.assert_called_once_with(
             company_id=self.mock_company.id,

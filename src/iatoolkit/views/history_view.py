@@ -34,7 +34,7 @@ class HistoryView(MethodView):
             return jsonify(iaut), 401
 
         external_user_id = data.get("external_user_id")
-        local_user_id = data.get("local_user_id", 0)
+        local_user_id = iaut.get("local_user_id", 0)
 
         try:
             response = self.history_service.get_history(

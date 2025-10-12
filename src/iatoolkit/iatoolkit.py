@@ -315,12 +315,8 @@ class IAToolkit:
         """Vincula las vistas después de que el injector ha sido creado"""
         from iatoolkit.views.llmquery_view import LLMQueryView
         from iatoolkit.views.home_view import HomeView
-        from iatoolkit.views.chat_view import ChatView
-        from iatoolkit.views.change_password_view import ChangePasswordView
 
         binder.bind(HomeView, to=HomeView)
-        binder.bind(ChatView, to=ChatView)
-        binder.bind(ChangePasswordView, to=ChangePasswordView)
         binder.bind(LLMQueryView, to=LLMQueryView)
 
         logging.info("✅ Views configuradas correctamente")

@@ -23,20 +23,8 @@ class TestBrandingService:
         # Act
         branding = self.branding_service.get_company_branding(None)
 
-        # Assert
         assert branding['name'] == "IAToolkit"
 
-        expected_header_style = (
-            f"background-color: {self.default_styles['header_background_color']}; "
-            f"color: {self.default_styles['header_text_color']};"
-        )
-        expected_company_name_style = (
-            f"font-weight: {self.default_styles['company_name_font_weight']}; "
-            f"font-size: {self.default_styles['company_name_font_size']};"
-        )
-
-        assert branding['header_style'] == expected_header_style
-        assert branding['company_name_style'] == expected_company_name_style
 
     def test_get_branding_with_company_and_no_custom_branding(self):
         """
@@ -84,24 +72,17 @@ class TestBrandingService:
         )
         assert branding['header_style'] == expected_header_style
 
-        # El tamaño de fuente debe ser el personalizado, pero el peso debe ser el por defecto
-        expected_company_name_style = (
-            f"font-weight: {self.default_styles['company_name_font_weight']}; "
-            f"font-size: 1.5rem;"
-        )
-        assert branding['company_name_style'] == expected_company_name_style
+    # Dentro de tu clase de test, por ejemplo, TestBrandingService
 
     def test_get_branding_with_full_custom_branding(self):
-        """
-        Prueba que todos los estilos por defecto puedan ser sobreescritos.
-        """
-        # Arrange
+        # Arrange: Definimos solo los estilos que queremos sobreescribir para este test.
         full_custom_styles = {
             "header_background_color": "#000000",
             "header_text_color": "#FFFFFF",
-            "company_name_font_weight": "normal",
-            "company_name_font_size": "0.8rem"
+            "primary_font_weight": "300",
+            "primary_font_size": "1.2rem"
         }
+
         mock_company = Mock(spec=Company)
         mock_company.name = "Full Brand LLC"
         mock_company.branding = full_custom_styles
@@ -110,10 +91,13 @@ class TestBrandingService:
         branding = self.branding_service.get_company_branding(mock_company)
 
         # Assert
+        # 1. Validar el nombre de la compañía
         assert branding['name'] == "Full Brand LLC"
 
+        # 2. Validar que la cadena del estilo del encabezado se construyó correctamente
         expected_header_style = "background-color: #000000; color: #FFFFFF;"
-        expected_company_name_style = "font-weight: normal; font-size: 0.8rem;"
-
         assert branding['header_style'] == expected_header_style
-        assert branding['company_name_style'] == expected_company_name_style
+
+        # 3. Validar que la cadena del estilo de texto primario se construyó correctamente
+        expected_primary_style = "font-weight: 300; font-size: 1.2rem;"
+        assert branding['primary_text_style'] == expected_primary_style

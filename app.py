@@ -35,4 +35,4 @@ if __name__ == "__main__":
                 logging.error(f"Failed to parse IATOOLKIT_BASE_URL: '{base_url}'. Error: {e}. Using default {run_port}.")
         else:
             logging.info(f"IATOOLKIT_BASE_URL not set. Using default {run_port}.")
-        app.run(port=run_port)
+        app.run(debug=True, port=run_port)

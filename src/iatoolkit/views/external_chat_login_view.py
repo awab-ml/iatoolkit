@@ -5,7 +5,7 @@
 
 import os
 import logging
-from flask import request, jsonify, render_template
+from flask import request, jsonify, render_template, url_for, session
 from flask.views import MethodView
 from injector import inject
 from iatoolkit.common.auth import IAuthentication
@@ -14,6 +14,34 @@ from iatoolkit.services.query_service import QueryService
 from iatoolkit.services.prompt_manager_service import PromptService
 from iatoolkit.services.jwt_service import JWTService
 from iatoolkit.services.branding_service import BrandingService
+
+class InitiateExternalChatView(MethodView):
+    @inject
+    def __init__(self,
+                 iauthentication: IAuthentication,
+                 ):
+        self.iauthentication = iauthentication
+
+    def post(self, company_short_name: str):
+        data = request.get_json()
+        if not data or 'external_user_id' not in data:
+            return jsonify({"error": "Falta external_user_id"}), 400
+
+        external_user_id = data['external_user_id']
+
+        # 1. verify access credentials quickly
+        iaut = self.iauthentication.verify(
+            company_short_name,
+            body_external_user_id=external_user_id
+        )
+        if not iaut.get("success"):
+            return jsonify(iaut), 401
+
+        # 2. Render the shell page, passing the final data URL and user id
+        return render_template("login_shell.html",
+                               data_source_url=url_for('external_chat_login', company_short_name=company_short_name),
+                               external_user_id=external_user_id
+                               )
 
 class ExternalChatLoginView(MethodView):
     @inject
@@ -39,19 +67,12 @@ class ExternalChatLoginView(MethodView):
 
         external_user_id = data['external_user_id']
 
-        # 1. get access credentials
-        iaut = self.iauthentication.verify(
-            company_short_name,
-            body_external_user_id=external_user_id
-        )
-        if not iaut.get("success"):
-            return jsonify(iaut), 401
-
         company = self.profile_service.get_company_by_short_name(company_short_name)
         if not company:
             return jsonify({"error": "Empresa no encontrada"}), 404
 
         try:
+
             # 1. generate a new JWT, our secure access token.
             token = self.jwt_service.generate_chat_jwt(
                 company_id=company.id,
@@ -75,19 +96,15 @@ class ExternalChatLoginView(MethodView):
             branding_data = self.branding_service.get_company_branding(company)
 
             # 5. render the chat page with the company/user information.
-            user_agent = request.user_agent
-            is_mobile = user_agent.platform in ["android", "iphone", "ipad"] or "mobile" in user_agent.string.lower()
-
             chat_html = render_template("chat.html",
                                         company_short_name=company_short_name,
-                                        branding=branding_data,
-                                        external_user_id=external_user_id,
-                                        is_mobile=is_mobile,
                                         auth_method='jwt',  # login method is JWT
                                         session_jwt=token,  # pass the token to the front-end
-                                        iatoolkit_base_url=os.getenv('IATOOLKIT_BASE_URL'),
+                                        external_user_id=external_user_id,
+                                        branding=branding_data,
                                         prompts=prompts,
-                                        external_login=True)
+                                        iatoolkit_base_url=os.getenv('IATOOLKIT_BASE_URL'),
+                                        )
             return chat_html, 200
 
         except Exception as e:
