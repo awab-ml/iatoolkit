@@ -1,7 +1,7 @@
 import pytest
 from flask import Flask
 from unittest.mock import MagicMock, patch
-from iatoolkit.views.external_chat_login_view import ExternalChatLoginView
+from iatoolkit.views.login_external_id_view import ExternalChatLoginView
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.query_service import QueryService
 from iatoolkit.services.prompt_manager_service import PromptService
@@ -50,7 +50,7 @@ class TestExternalChatLoginView:
             jwt_service=self.mock_jwt_service
         )
 
-        self.app.add_url_rule('/<company_short_name>/chat_login', view_func=view_func, methods=['POST'])
+        self.app.add_url_rule('/<company_short_name>/external_login', view_func=view_func, methods=['POST'])
         self.client = self.app.test_client()
 
     def test_login_success(self):
@@ -63,11 +63,11 @@ class TestExternalChatLoginView:
         # 3. Configurar el mock para que devuelva un token
         self.mock_jwt_service.generate_chat_jwt.return_value = MOCK_JWT_TOKEN
 
-        with patch('iatoolkit.views.external_chat_login_view.render_template') as mock_render:
+        with patch('iatoolkit.views.login_external_id_view.render_template') as mock_render:
             mock_render.return_value = "<html>Chat Page</html>"
 
             response = self.client.post(
-                f'/{MOCK_COMPANY_SHORT_NAME}/chat_login',
+                f'/{MOCK_COMPANY_SHORT_NAME}/external_login',
                 headers={'Authorization': f'Bearer {MOCK_API_KEY}'},
                 json={'external_user_id': MOCK_EXTERNAL_USER_ID}
             )
@@ -105,7 +105,7 @@ class TestExternalChatLoginView:
         self.mock_jwt_service.generate_chat_jwt.return_value = None
 
         response = self.client.post(
-            f'/{MOCK_COMPANY_SHORT_NAME}/chat_login',
+            f'/{MOCK_COMPANY_SHORT_NAME}/external_login',
             headers={'Authorization': f'Bearer {MOCK_API_KEY}'},
             json={'external_user_id': MOCK_EXTERNAL_USER_ID}
         )

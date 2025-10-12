@@ -97,6 +97,9 @@ class LoginView(MethodView):
         # 1. The user is already authenticated by the session cookie set by InitiateLoginView.
         # We just retrieve the user and company IDs from the session.
         user_id = SessionManager.get('user_id')
+        if not user_id:
+            return render_template('error.html', message="Usuario no encontrado"), 404
+
         user_email = SessionManager.get('user')['email']
 
         try:
