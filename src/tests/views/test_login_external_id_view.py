@@ -6,10 +6,10 @@ from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.query_service import QueryService
 from iatoolkit.services.prompt_manager_service import PromptService
 from iatoolkit.services.branding_service import BrandingService
+from iatoolkit.services.onboarding_service import OnboardingService
 from iatoolkit.services.jwt_service import JWTService
 from iatoolkit.common.auth import IAuthentication
 from iatoolkit.repositories.models import Company
-
 
 
 # --- Constantes para los Tests ---
@@ -33,6 +33,7 @@ class TestInitiateExternalChatView:
         self.mock_iauthentication = MagicMock(spec=IAuthentication)
         self.mock_branding_service = MagicMock(spec=BrandingService)
         self.mock_profile_service = MagicMock(spec=ProfileService)
+        self.mock_onboarding_service = MagicMock(spec=OnboardingService)
 
         self.mock_company = Company(id=1, name="Test Company", short_name=MOCK_COMPANY_SHORT_NAME)
         self.mock_profile_service.get_company_by_short_name.return_value = self.mock_company
@@ -43,7 +44,8 @@ class TestInitiateExternalChatView:
             'initiate_external_chat',
             iauthentication=self.mock_iauthentication,
             branding_service=self.mock_branding_service,
-            profile_service=self.mock_profile_service
+            profile_service=self.mock_profile_service,
+            onboarding_service=self.mock_onboarding_service
         )
         self.app.add_url_rule('/<company_short_name>/initiate_external_chat', view_func=view_func, methods=['POST'])
 
@@ -55,6 +57,7 @@ class TestInitiateExternalChatView:
     def test_initiate_success(self, mock_render):
         """Prueba que una iniciación exitosa devuelve la página shell."""
         self.mock_iauthentication.verify.return_value = {"success": True}
+        self.mock_onboarding_service.get_onboarding_cards.return_value = [{'title': 'Card'}]
         mock_render.return_value = "<html>Shell Page</html>"
 
         response = self.client.post(
@@ -66,6 +69,7 @@ class TestInitiateExternalChatView:
         assert response.data == b"<html>Shell Page</html>"
         self.mock_iauthentication.verify.assert_called_once()
         self.mock_branding_service.get_company_branding.assert_called_once()
+        self.mock_onboarding_service.get_onboarding_cards.assert_called_once_with(self.mock_company)
 
         mock_render.assert_called_once()
         # Corregido: Verificar los nuevos argumentos pasados a render_template
@@ -73,6 +77,8 @@ class TestInitiateExternalChatView:
         assert 'iframe_src_url' in call_kwargs
         assert MOCK_EXTERNAL_USER_ID in call_kwargs['iframe_src_url']
         assert 'branding' in call_kwargs
+        assert 'onboarding_cards' in call_kwargs
+        assert call_kwargs['onboarding_cards'] == [{'title': 'Card'}]
 
     def test_initiate_auth_failure(self):
         """Prueba que una autenticación fallida devuelve un error 401."""

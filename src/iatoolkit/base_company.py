@@ -26,10 +26,16 @@ class BaseCompany(ABC):
         self.company = self.profile_repo.get_company_by_short_name(short_name)
         return self.company
 
-    def _create_company(self, short_name: str, name: str, branding: dict | None = None) -> Company:
+    def _create_company(self,
+                        short_name: str,
+                        name: str,
+                        branding: dict | None = None,
+                        onboarding_cards: dict | None = None
+                        ) -> Company:
         company_obj = Company(short_name=short_name,
                               name=name,
-                              branding=branding)
+                              branding=branding,
+                              onboarding_cards=onboarding_cards)
         self.company = self.profile_repo.create_company(company_obj)
         return self.company
 

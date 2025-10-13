@@ -12,6 +12,7 @@ from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.query_service import QueryService
 from iatoolkit.services.prompt_manager_service import PromptService
 from iatoolkit.services.branding_service import BrandingService
+from iatoolkit.services.onboarding_service import OnboardingService
 from iatoolkit.repositories.models import Company, User
 
 # --- Constantes para los Tests ---
@@ -33,6 +34,7 @@ class TestInitiateLoginView:
         # Mocks para las dependencias de InitiateLoginView
         self.mock_profile_service = MagicMock(spec=ProfileService)
         self.mock_branding_service = MagicMock(spec=BrandingService)
+        self.mock_onboarding_service = MagicMock(spec=OnboardingService)
 
         self.test_company = Company(id=1, name="Empresa de Prueba", short_name=MOCK_COMPANY_SHORT_NAME)
         self.mock_profile_service.get_company_by_short_name.return_value = self.test_company
@@ -41,7 +43,8 @@ class TestInitiateLoginView:
         # Registrar la vista a probar
         initiate_view = InitiateLoginView.as_view("initiate_login",
                                                   profile_service=self.mock_profile_service,
-                                                  branding_service=self.mock_branding_service)
+                                                  branding_service=self.mock_branding_service,
+                                                  onboarding_service=self.mock_onboarding_service)
         self.app.add_url_rule(f"/<company_short_name>/initiate_login", view_func=initiate_view, methods=["POST"])
 
         # Registrar un endpoint falso para que url_for('login') funcione,
@@ -53,6 +56,7 @@ class TestInitiateLoginView:
         """Prueba que un login exitoso en initiate_login devuelve la página shell."""
         # Arrange: Simular una respuesta de login exitosa
         self.mock_profile_service.login.return_value = {'success': True, 'user': User(id=1)}
+        self.mock_onboarding_service.get_onboarding_cards.return_value = [{'title': 'Test Card'}]
         mock_render_template.return_value = "<html>Shell Page</html>"
 
         # Act
@@ -63,6 +67,7 @@ class TestInitiateLoginView:
         assert response.status_code == 200
         self.mock_profile_service.login.assert_called_once()
         self.mock_branding_service.get_company_branding.assert_called_once_with(self.test_company)
+        self.mock_onboarding_service.get_onboarding_cards.assert_called_once_with(self.test_company)
 
         # Verificar que se renderizó la plantilla correcta con los datos correctos
         mock_render_template.assert_called_once()
@@ -70,6 +75,8 @@ class TestInitiateLoginView:
         assert call_args[0] == "login_shell.html"
         assert 'data_source_url' in call_kwargs
         assert 'branding' in call_kwargs
+        assert 'onboarding_cards' in call_kwargs
+        assert call_kwargs['onboarding_cards'] == [{'title': 'Test Card'}]
 
     @patch("iatoolkit.views.login_view.render_template")
     def test_failed_initiation_renders_login_again(self, mock_render_template):

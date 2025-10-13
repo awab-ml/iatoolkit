@@ -58,6 +58,7 @@ class Company(Base):
     gemini_api_key = Column(String, nullable=True)
 
     branding = Column(JSON, nullable=True)
+    onboarding_cards = Column(JSON, nullable=True)
     parameters = Column(JSON, nullable=True, default={})
     created_at = Column(DateTime, default=datetime.now)
     allow_jwt = Column(Boolean, default=True, nullable=True)

@@ -1,4 +1,4 @@
-<!-- templates/iatoolkit/shell.html -->
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -106,24 +106,8 @@
 
     <script>
         $(function() {
-            const cardsData = [
-                { icon: 'fas fa-users', title: 'Clientes',
-                    text: 'Conozco en detalle a los clientes de Maxxa: antiguedad, contactos, apoderados, historial de operaciones.<br><br><strong>Ejemplo:</strong> cuantos clientes nuevos de garantia se incorporaron a mi cartera este año?' },
-                { icon: 'fas fa-cubes', title: 'Productos',
-                    text: 'Productos contratados por los clientes: garantias, credito en cuotas, software.<br><br><strong>Ejemplo:</strong> Cuantos clientes de software tengo en cartera?' },
-                { icon: 'fas fa-exchange-alt', title: 'Operaciones',
-                    text: 'Operaciones de garantia y créditos: tasas, comisiones, acredores, fondos, cobranza, etc.<br><br><strong>Ejemplo:</strong> Dame una tabla con los clientes de mi cartera han emitido mas de 20 garantias este año? columnas: rut, nombre, #garantias, monto, comisión' },
-                { icon: 'fas fa-landmark', title: 'Chilecompra',
-                    text: 'Historial completo de la participacion en chilecompra de un cliente. <br><br><strong>Ejemplo:</strong> Que porcentaje de garantias FC adjudicadas en los últimos 12 meses por el cliente 1234567-8 las compro en Maxxa.' },
-                { icon: 'fas fa-comments', title: 'Equipos Comerciales',
-                    text: 'Conozco los equipos comerciales de crédito y garantia. <br><br><strong>Ejemplo:</strong> dime las 10 licitaciones mas grandes que han ganado clientes de mi cartera este año.' },
-                { icon: 'fas fa-cogs', title: 'Personaliza tus Prompts',
-                    text: 'Utiliza la varita magica y podras explorar los prompts predefinidos que he preparado para ti.' },
-                { icon: 'fas fa-table', title: 'Tablas y Excel',
-                    text: 'Puedes pedirme la respuesta en formato de tablas o excel. <br><br><strong>Ejemplo:</strong> dame una tabla con los 10 certificados mas grande este año, columnas: rut, cliente, fecha, monto, tasa, comision, acreedor...' },
-                { icon: 'fas fa-shield-alt', title: 'Seguridad y Confidencialidad',
-                    text: 'Toda tu información es procesada de forma segura y confidencial dentro de nuestro entorno protegido.' }
-            ];
+            const cardsData = {{ onboarding_cards | tojson }};
+
             let currentCardIndex = 0, autoRotateInterval;
             const $cardContainer = $('#card-container'), $cardIcon = $('#card-icon'), $cardTitle = $('#card-title'), $cardText = $('#card-text'), $progressDots = $('#progress-dots');
             function displayCard(index) {

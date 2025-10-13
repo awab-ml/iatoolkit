@@ -14,17 +14,21 @@ from iatoolkit.services.query_service import QueryService
 from iatoolkit.services.prompt_manager_service import PromptService
 from iatoolkit.services.jwt_service import JWTService
 from iatoolkit.services.branding_service import BrandingService
+from iatoolkit.services.onboarding_service import OnboardingService
+
 
 class InitiateExternalChatView(MethodView):
     @inject
     def __init__(self,
                  iauthentication: IAuthentication,
                  branding_service: BrandingService,
-                 profile_service: ProfileService
+                 profile_service: ProfileService,
+                 onboarding_service: OnboardingService
                  ):
         self.iauthentication = iauthentication
         self.branding_service = branding_service
         self.profile_service = profile_service
+        self.onboarding_service = onboarding_service
 
     def post(self, company_short_name: str):
         data = request.get_json()
@@ -45,8 +49,9 @@ class InitiateExternalChatView(MethodView):
         if not iaut.get("success"):
             return jsonify(iaut), 401
 
-        # 2. Get branding data for the shell page
+        # 2. Get branding and onboarding data for the shell page
         branding_data = self.branding_service.get_company_branding(company)
+        onboarding_cards = self.onboarding_service.get_onboarding_cards(company)
 
         # Generamos la URL para el SRC del iframe, añadiendo el usuario como un query parameter.
         target_url = url_for('external_login',  # Apunta a la vista del chat
@@ -57,7 +62,8 @@ class InitiateExternalChatView(MethodView):
         # Renderizamos el shell para un iframe.
         return render_template("login_shell.html",
                                iframe_src_url=target_url,  # Le cambiamos el nombre para más claridad
-                               branding=branding_data
+                               branding=branding_data,
+                               onboarding_cards=onboarding_cards
                                )
 
 class ExternalChatLoginView(MethodView):

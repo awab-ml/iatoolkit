@@ -6,7 +6,8 @@
 from iatoolkit import IAToolkit, BaseCompany, DatabaseManager
 from iatoolkit import SqlService, LoadDocumentsService, SearchService
 from injector import inject
-from companies.sample_company.configuration import FUNCTION_LIST, PROMPT_LIST
+from companies.sample_company.configuration import (FUNCTION_LIST,
+                PROMPT_LIST, ONBOARDING_CARDS)
 from companies.sample_company.sample_database import SampleCompanyDatabase
 import os
 import click
@@ -68,7 +69,8 @@ class SampleCompany(BaseCompany):
         self.company = self._create_company(
             name='Sample Company',
             short_name='sample_company',
-            branding=sample_company_branding
+            branding=sample_company_branding,
+            onboarding_cards=ONBOARDING_CARDS
         )
 
         # create or update the function list
