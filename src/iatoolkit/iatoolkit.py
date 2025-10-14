@@ -15,6 +15,8 @@ import logging
 import os
 from typing import Optional, Dict, Any
 from iatoolkit.repositories.database_manager import DatabaseManager
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 
 from injector import Binder, singleton, Injector
 from importlib.metadata import version as _pkg_version, PackageNotFoundError
@@ -149,6 +151,8 @@ class IAToolkit:
             self.version = _pkg_version("iatoolkit")
         except PackageNotFoundError:
             pass
+
+        self.app.wsgi_app = ProxyFix(self.app.wsgi_app, x_proto=1)
 
         self.app.config.update({
             'VERSION': self.version,
