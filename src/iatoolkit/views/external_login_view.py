@@ -66,7 +66,7 @@ class InitiateExternalChatView(MethodView):
 
         # 4. Generate the URL for the iframe's SRC, now with the secure token.
         environment = os.environ.get("FLASK_ENV", "dev")
-        scheme='http' if environment != "dev" else "https"
+        scheme='https' if environment != "dev" else "http"
         target_url = url_for('external_login',
                              company_short_name=company_short_name,
                              init_token=initiation_token,
