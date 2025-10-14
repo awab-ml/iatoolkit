@@ -113,8 +113,9 @@ class IAToolkit:
         return self.config.get(key, os.getenv(key, default))
 
     def _setup_logging(self):
-        log_level_str = self._get_config_value('FLASK_ENV', 'production')
-        log_level = logging.INFO if log_level_str in ('dev', 'development') else logging.WARNING
+        # Lee el nivel de log desde una variable de entorno, con 'INFO' como valor por defecto.
+        log_level_name = os.getenv('LOG_LEVEL', 'INFO').upper()
+        log_level = getattr(logging, log_level_name, logging.INFO)
 
         logging.basicConfig(
             level=log_level,

@@ -55,7 +55,7 @@ class IAuthentication:
             elif api_key_error_info is not None:
                 # explicit error in API Key (inválida, incorrecta, error interno)
                 logging.warning(f"Fallo de autenticación API Key: {api_key_error_info}")
-                return {"error_message": "Fallo de autenticación API Key"}
+                return {"error_message": api_key_error_info}
             else:
                 # 3. no JWT and API Key auth, try by Session
                 self.check_if_user_is_logged_in(company_short_name)  # raise exception or redirect if not logged in

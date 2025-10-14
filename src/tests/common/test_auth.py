@@ -135,7 +135,7 @@ class TestAuth:
             with self.app.test_request_context():
                 result = self.iauth_service.verify('some_company')
 
-            assert result == {"error_message": "Fallo de autenticación API Key"}
+            assert result == {"error_message": "Error de API Key"}
 
     def test_verify_with_session_success(self):
         with patch.object(self.iauth_service, '_authenticate_via_chat_jwt') as mock_auth_jwt, \
