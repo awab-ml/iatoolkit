@@ -5,6 +5,26 @@ $(document).ready(function () {
         $('#historyModal').modal('show');
     });
 
+    // Evento delegado para el icono de copiar.
+    // Se adjunta UNA SOLA VEZ al cuerpo de la tabla y funciona para todas las filas
+    // que se añadan dinámicamente.
+    $('#history-table-body').on('click', '.copy-query-icon', function() {
+        const queryText = $(this).data('query');
+
+        // Copiar el texto al textarea del chat
+        if (queryText) { // Buena práctica: Asegurarse de que el dato no es indefinido
+            $('#question').val(queryText);
+            autoResizeTextarea($('#question')[0]);
+            $('#send-button').removeClass('disabled');
+
+            // Cerrar el modal
+            $('#historyModal').modal('hide');
+
+            // Hacer focus en el textarea
+            $('#question').focus();
+        }
+    });
+
     // Variables globales para el historial
     let historyData = [];
 
@@ -36,16 +56,17 @@ $(document).ready(function () {
                 // Mostrar contenido
                 historyContent.show();
             } else {
-                throw new Error('No se recibieron datos del historial');
+                throw new Error('La respuesta del servidor no contenía el formato esperado.');
             }
         } catch (error) {
             console.error("Error al cargar historial:", error);
+
+            const friendlyErrorMessage = "No hemos podido cargar tu historial en este momento. Por favor, cierra esta ventana y vuelve a intentarlo en unos instantes.";
             const errorHtml = `
-                <div class="alert alert-branded-danger alert-dismissible show" role="alert">
-                    <strong>Error al cargar el historial:</strong> ${error.message}
-                    <button type="button" class="close" data-dismiss="alert">
-                        <span>&times;</span>
-                    </button>
+                <div class="text-center p-4">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem; opacity: 0.8;"></i>
+                    <h5 class="mt-3 mb-2">Ocurrió un Problema</h5>
+                    <p class="text-muted">${friendlyErrorMessage}</p>
                 </div>
             `;
             historyError.html(errorHtml).show();
@@ -61,58 +82,52 @@ $(document).ready(function () {
         // Limpiar tabla
         historyTableBody.empty();
 
-        // Filtrar solo consultas que son strings simples (no objetos JSON)
+        // Filtrar solo consultas que son strings simples
         const filteredHistory = historyData.filter(item => {
             try {
-                // Intentar parsear como JSON
-                const parsed = JSON.parse(item.query);
-                // Si se puede parsear y es un objeto, filtrarlo
+                JSON.parse(item.query);
                 return false;
             } catch (e) {
-                // Si no se puede parsear, es un string simple, incluirlo
                 return true;
             }
         });
 
-        // Poblar tabla solo con las consultas filtradas
+        // Poblar tabla con un método más seguro
         filteredHistory.forEach((item, index) => {
-            const row = $(`
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${formatDate(item.created_at)}</td>
-                    <td class="query-cell" style="cursor: pointer;" title="Haz clic para copiar esta consulta al chat">${item.query}</td>
-                </tr>
-            `);
+            const icon = $('<i>').addClass('bi bi-pencil-fill');
+
+            const link = $('<a>')
+                .attr('href', 'javascript:void(0);')
+                .addClass('copy-query-icon')
+                .attr('title', 'Copiar consulta al chat')
+                .data('query', item.query) // Usar .data() es más seguro que un atributo de string
+                .append(icon);
+
+            const row = $('<tr>').append(
+                $('<td>').text(index + 1),
+                $('<td>').addClass('date-cell').text(formatDate(item.created_at)),
+                $('<td>').text(item.query), // Usar .text() para evitar inyección de HTML
+                $('<td>').addClass('text-center').append(link)
+            );
+
             historyTableBody.append(row);
         });
 
-        // Agregar evento de clic a las celdas de consulta
-        historyTableBody.on('click', '.query-cell', function() {
-            const queryText = $(this).text();
-            
-            // Copiar el texto al textarea del chat
-            $('#question').val(queryText);
-            $('#send-button').removeClass('disabled');
-            
-            // Cerrar el modal
-            $('#historyModal').modal('hide');
-            
-            // Hacer focus en el textarea para que el usuario pueda editar si lo desea
-            $('#question').focus();
-        });
+        // El event handler ya no se adjunta aquí.
     }
 
-    // Función para formatear fecha
+    // Función para formatear fecha (sin cambios)
     function formatDate(dateString) {
         const date = new Date(dateString);
-        return date.toLocaleDateString('es-CL', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+
+        const padTo2Digits = (num) => num.toString().padStart(2, '0');
+
+        const day = padTo2Digits(date.getDate());
+        const month = padTo2Digits(date.getMonth() + 1);
+        const year = date.getFullYear();
+        const hours = padTo2Digits(date.getHours());
+        const minutes = padTo2Digits(date.getMinutes());
+
+        return `${day}-${month}-${year} ${hours}:${minutes}`;
     }
-
 });
-

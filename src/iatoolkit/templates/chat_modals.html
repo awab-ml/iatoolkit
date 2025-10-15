@@ -80,22 +80,19 @@
                     </div>
                     <p class="mt-2">Cargando historial...</p>
                 </div>
-                <div id="history-error" style="display: none;" class="alert alert-danger">
+                <div id="history-error" style="display: none;">
                     <!-- Los errores se mostrarán aquí -->
                 </div>
                 <div id="history-content" style="display: none;">
-                    <!-- Texto explicativo -->
-                    <div class="alert alert-branded-info mb-3" role="alert">
-                        <i class="bi bi-info-circle me-2"></i>
-                        <strong>Tip:</strong> Haz clic en cualquier pregunta del historial para copiarla automáticamente al área de texto.
-                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-striped table-hover">
                             <thead class="thead-branded">
                                 <tr>
-                                    <th scope="col">#</th>
+                                    <th scope="col" style="width: 5%;">#</th>
                                     <th scope="col">Fecha</th>
                                     <th scope="col">Consulta</th>
+                                    <th scope="col" style="width: 5%;"></th>
                                 </tr>
                             </thead>
                             <tbody id="history-table-body">
