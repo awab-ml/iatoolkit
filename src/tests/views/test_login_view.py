@@ -41,11 +41,11 @@ class TestInitiateLoginView:
         self.mock_branding_service.get_company_branding.return_value = {"css_variables": ":root{}", "name": "Test"}
 
         # Registrar la vista a probar
-        initiate_view = InitiateLoginView.as_view("initiate_login",
+        initiate_view = InitiateLoginView.as_view("chat",
                                                   profile_service=self.mock_profile_service,
                                                   branding_service=self.mock_branding_service,
                                                   onboarding_service=self.mock_onboarding_service)
-        self.app.add_url_rule(f"/<company_short_name>/initiate_login", view_func=initiate_view, methods=["POST"])
+        self.app.add_url_rule(f"/<company_short_name>/chat", view_func=initiate_view, methods=["POST"])
 
         # Registrar un endpoint falso para que url_for('login') funcione
         @self.app.route("/<company_short_name>/login", endpoint='login')
@@ -53,14 +53,14 @@ class TestInitiateLoginView:
 
     @patch("iatoolkit.views.login_view.render_template")
     def test_successful_initiation_returns_shell(self, mock_render_template):
-        """Prueba que un login exitoso en initiate_login devuelve la página shell."""
+        """Prueba que un login exitoso devuelve la página shell."""
         # Arrange
         self.mock_profile_service.login.return_value = {'success': True, 'user': User(id=1)}
         self.mock_onboarding_service.get_onboarding_cards.return_value = [{'title': 'Test Card'}]
         mock_render_template.return_value = "<html>Shell Page</html>"
 
         # Act
-        response = self.client.post(f"/{MOCK_COMPANY_SHORT_NAME}/initiate_login",
+        response = self.client.post(f"/{MOCK_COMPANY_SHORT_NAME}/chat",
                                     data={"email": MOCK_USER_EMAIL, "password": MOCK_USER_PASSWORD})
 
         # Assert
@@ -80,13 +80,13 @@ class TestInitiateLoginView:
 
     @patch("iatoolkit.views.login_view.render_template")
     def test_failed_initiation_renders_login_again(self, mock_render_template):
-        """Prueba que un login fallido en initiate_login vuelve a renderizar la página de login con un error."""
+        """Prueba que un login fallido  vuelve a renderizar la página de login con un error."""
         # Arrange
         self.mock_profile_service.login.return_value = {'success': False, 'message': 'Credenciales inválidas'}
         mock_render_template.return_value = "<html>Login con Error</html>"
 
         # Act
-        response = self.client.post(f"/{MOCK_COMPANY_SHORT_NAME}/initiate_login",
+        response = self.client.post(f"/{MOCK_COMPANY_SHORT_NAME}/chat",
                                     data={"email": "wrong@user.com", "password": "bad"})
 
         # Assert
