@@ -37,14 +37,16 @@ def register_views(injector, app):
     from iatoolkit.views.chat_token_request_view import ChatTokenRequestView
     from iatoolkit.views.download_file_view import DownloadFileView
 
-    # landing page
+    # iatoolkit home page
     app.add_url_rule('/<company_short_name>', view_func=IndexView.as_view('index'))
-    app.add_url_rule('/<company_short_name>/initiate_external_chat',
-                     view_func=InitContextView.as_view('initiate_external_chat'))
 
-    # login for external portals
+    # init (ir reset) the  context (with api-key)
     app.add_url_rule('/<company_short_name>/<external_user_id>/init-context',
                          view_func=InitContextView.as_view('init-context'))
+
+    # external login (with api-key)
+    app.add_url_rule('/<company_short_name>/initiate_external_chat',
+                     view_func=InitiateExternalChatView.as_view('initiate_external_chat'))
     app.add_url_rule('/<company_short_name>/external_login',
                      view_func=ExternalChatLoginView.as_view('external_login'))
     app.add_url_rule('/auth/chat_token',
