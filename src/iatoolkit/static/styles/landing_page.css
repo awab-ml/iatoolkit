@@ -1,0 +1,156 @@
+/* static/styles/landing_page.css */
+
+/* --- Configuración General --- */
+body {
+    background-color: #ffffff; /* Cambiado a blanco para que el hero destaque */
+}
+
+/* --- 1. Barra de Navegación Superior --- */
+.landing-navbar {
+    background-color: var(--brand-primary-color, #0d6efd);
+    padding: 1rem 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.landing-navbar .navbar-brand {
+    color: var(--brand-text-on-primary, #FFFFFF);
+    font-weight: 700;
+    font-size: 1.8rem; /* Aumentado el tamaño del texto */
+}
+
+/* --- 2. Sección Principal (Hero) --- */
+.hero-section {
+    padding: 5rem 0; /* <-- ESTA LÍNEA RESTAURA EL ESPACIADO SUPERIOR E INFERIOR */
+    background-color: #f8f9fa; /* Fondo gris claro para la sección principal */
+}
+
+/* Estilos para el texto de la propuesta de valor */
+.value-proposition {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+    /* Se ajusta el padding para la nueva posición a la izquierda */
+    padding-left: 2rem;
+}
+
+.value-proposition .hero-title {
+    font-size: 2.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #212529;
+}
+
+.value-proposition .hero-accelerator {
+    color: var(--brand-primary-color, #0d6efd);
+}
+
+.value-proposition .hero-subtitle {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-top: 1.5rem;
+}
+
+/* --- Estilo para el título del widget de login --- */
+.hero-section .bg-light h4 {
+    color: var(--brand-primary-color, #0d6efd);
+}
+
+/* --- Estilo para el texto introductorio del widget --- */
+.widget-intro-text {
+    font-style: italic;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+
+/* --- 3. Sección de Características --- */
+.features-section {
+    padding: 5rem 0;
+    background-color: #ffffff; /* Fondo blanco para esta sección */
+}
+
+/* (El resto del archivo CSS permanece sin cambios) */
+.feature-item {
+    text-align: center;
+    padding: 2rem;
+    background-color: #f8f9fa; /* Fondo gris claro para cada tarjeta */
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    height: 100%; /* CLAVE: Asegura que todas las tarjetas en una fila tengan el mismo alto */
+}
+
+.feature-icon {
+    font-size: 3rem;
+    color: var(--brand-primary-color); /* Usar color primario para más impacto */
+    margin-bottom: 1.5rem;
+    display: inline-block;
+}
+
+.feature-item h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.feature-item p {
+    color: #6c757d;
+}
+
+.opensource-box {
+    background-color: #343a40;
+    color: #f8f9fa;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    height: 100%; /* CLAVE: Asegura que tenga el mismo alto */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: center;
+}
+
+.opensource-icon {
+    font-size: 3rem; /* Tamaño consistente con los otros iconos */
+    color: var(--brand-text-on-primary, #FFFFFF);
+    opacity: 0.9;
+    margin-bottom: 1.5rem;
+}
+
+.opensource-content h3 {
+    font-weight: 600;
+    font-size: 1.4rem; /* Tamaño consistente */
+    margin-bottom: 1rem;
+}
+
+.opensource-content p {
+    margin-bottom: 1.5rem;
+    color: #adb5bd;
+}
+
+.opensource-content .btn {
+    width: 100%;
+}
+
+.pypi-link {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #495057;
+    font-size: 0.9rem;
+    color: #ced4da;
+}
+
+.pypi-link code {
+    background-color: #212529;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    color: #e83e8c;
+}
+
+/* --- 4. Footer --- */
+.landing-footer {
+    background-color: #343a40;
+    color: #adb5bd;
+    padding: 2rem 0;
+    text-align: center;
+    font-size: 0.9rem;
+}
