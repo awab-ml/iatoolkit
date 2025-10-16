@@ -16,11 +16,10 @@ import os
 from typing import Optional, Dict, Any
 from iatoolkit.repositories.database_manager import DatabaseManager
 from werkzeug.middleware.proxy_fix import ProxyFix
-
-
 from injector import Binder, singleton, Injector
 from importlib.metadata import version as _pkg_version, PackageNotFoundError
 
+IATOOLKIT_VERSION = "0.21.0"
 
 # global variable for the unique instance of IAToolkit
 _iatoolkit_instance: Optional['IAToolkit'] = None
@@ -53,7 +52,7 @@ class IAToolkit:
         self.app = None
         self.db_manager = None
         self._injector = None
-        self.version = "0.0.0+dev"
+        self.version = IATOOLKIT_VERSION
 
     @classmethod
     def get_instance(cls) -> 'IAToolkit':

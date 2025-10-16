@@ -80,8 +80,8 @@ BRANDING = {
 ONBOARDING_CARDS = [
     {
         'icon': 'fas fa-database',
-        'title': 'Base de Datos Northwind',
-        'text': 'Tengo acceso completo a la base de datos de Northwind. Puedo consultar información sobre clientes, órdenes, productos y empleados.<br><br><strong>Ejemplo:</strong> ¿Cuál es el producto más vendido en Brasil?'
+        'title': 'Sample Company',
+        'text': 'Conozco los clientes, productos, ventas, empleados, territorios, etc..<br><br><strong>Ejemplo:</strong> ¿Cuál fue el producto más vendido en Alemania el año 2024?'
     },
     {
         'icon': 'fas fa-file-alt',
@@ -92,5 +92,11 @@ ONBOARDING_CARDS = [
         'icon': 'fas fa-cogs',
         'title': 'Análisis SQL',
         'text': 'Puedes pedirme que ejecute consultas SQL directamente sobre la base de datos y te entregaré los resultados.<br><br><strong>Ejemplo:</strong> "SQL: SELECT * FROM Orders WHERE ShipCountry = \'France\' LIMIT 5"'
-    }
+    },
+    {'icon': 'fas fa-cogs', 'title': 'Personaliza tus Prompts',
+     'text': 'Utiliza la varita magica y podras explorar los prompts predefinidos que he preparado para ti.'},
+    {'icon': 'fas fa-table', 'title': 'Tablas y Excel',
+     'text': 'Puedes pedirme la respuesta en formato de tablas o excel. <br><br><strong>Ejemplo:</strong> dame una tabla con los 10 certificados mas grande este año, columnas: rut, cliente, fecha, monto, tasa, comision, acreedor...'},
+    {'icon': 'fas fa-shield-alt', 'title': 'Seguridad y Confidencialidad',
+     'text': 'Toda tu información es procesada de forma segura y confidencial dentro de nuestro entorno protegido.'}
 ]

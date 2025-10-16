@@ -88,7 +88,7 @@ def register_views(injector, app):
     # this endpoint is for upload documents into the vector store (api-key)
     app.add_url_rule('/load', view_func=FileStoreView.as_view('load'))
 
-    # login testing /login_testing
+    # login testing (old home page)
     app.add_url_rule('/login_testing', view_func=HomeView.as_view('home'))
 
     app.add_url_rule(
@@ -122,7 +122,7 @@ def register_views(injector, app):
         except FileNotFoundError:
             abort(404)
 
-    # Redirección opcional: hacer que la raíz '/' vaya a la landing de sample_company
+    # hacer que la raíz '/' vaya al home de iatoolkit
     @app.route('/')
     def root_redirect():
         return redirect(url_for('index', company_short_name='sample_company'))

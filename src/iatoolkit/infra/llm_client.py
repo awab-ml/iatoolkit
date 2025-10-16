@@ -21,6 +21,7 @@ import tiktoken
 from typing import Dict, Optional, List
 from iatoolkit.services.dispatcher_service import Dispatcher
 
+CONTEXT_ERROR_MESSAGE = 'Tu consulta supera el límite de contexto, recarga la página para limpiarlo (esto demora un poco ...)'
 
 class llmClient:
     _llm_clients_cache = {}      # class attribute, for the clients cache
@@ -116,7 +117,7 @@ class llmClient:
 
                 # in case of context error
                 if "context_length_exceeded" in str(e):
-                    error_message = 'Tu consulta supera el limite de contexto, sale e ingresa de nuevo a IAToolkit'
+                    error_message = CONTEXT_ERROR_MESSAGE
 
                 raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
 
@@ -256,9 +257,9 @@ class llmClient:
 
             # in case of context error
             if "context_length_exceeded" in str(e):
-                error_message = 'Tu consulta supera el limite de contexto, sale e ingresa de nuevo a IAToolkit'
+                error_message = CONTEXT_ERROR_MESSAGE
             elif "string_above_max_length" in str(e):
-                error_message = 'La respuesta es muy larga, trata de filtrar/restringuir tu consulta'
+                error_message = 'La respuesta es muy extensa, trata de filtrar/restringuir tu consulta'
 
             raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
 

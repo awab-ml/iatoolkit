@@ -54,7 +54,7 @@ class SampleCompany(BaseCompany):
             name='Sample Company',
             short_name='sample_company',
             branding=BRANDING,
-            onboarding_cards={}
+            onboarding_cards=ONBOARDING_CARDS
         )
 
         # create or update the function list
