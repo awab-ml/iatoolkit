@@ -96,6 +96,39 @@ body {
     color: var(--brand-primary-color, #0d6efd);
 }
 
+.author-section {
+  background: #ffffff;
+}
+
+.author-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+}
+
+.author-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--brand-primary-color, #0d6efd);
+  color: var(--brand-text-on-primary, #fff);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem;
+}
+
+.author-bio {
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.author-linkedin {
+  color: var(--brand-primary-color, #0d6efd);
+  text-decoration: none;
+}
+.author-linkedin:hover {
+  text-decoration: underline;
+}
+
 /* --- Estilo para el texto introductorio del widget --- */
 .widget-intro-text {
     font-style: italic;
