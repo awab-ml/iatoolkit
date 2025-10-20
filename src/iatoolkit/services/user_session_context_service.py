@@ -16,6 +16,23 @@ class UserSessionContextService:
     Usa RedisSessionManager para persistencia directa en Redis.
     """
 
+    def _get_context_version_key(self, company_short_name: str, user_identifier: str) -> Optional[str]:
+        user_identifier = (user_identifier or "").strip()
+        if not user_identifier:
+            return None
+        return f"context_version:{company_short_name}/{user_identifier}"
+
+    def clear_all_context(self, company_short_name: str, user_identifier: str):
+        # clear all the context session for a user
+        self.clear_llm_history(company_short_name, user_identifier)
+        self.clear_user_session_data(company_short_name, user_identifier)
+
+        # remove version of context
+        version_key = self._get_context_version_key(company_short_name, user_identifier)
+        if version_key:
+            RedisSessionManager.remove(version_key)
+
+
     def _get_llm_history_key(self, company_short_name: str, user_identifier: str) -> str:
         user_identifier = (user_identifier or "").strip()
         if not user_identifier:
@@ -83,3 +100,16 @@ class UserSessionContextService:
         data_key = self._get_user_data_key(company_short_name, user_identifier)
         if data_key:
             RedisSessionManager.remove(data_key)
+
+    def save_context_version(self, company_short_name: str, user_identifier: str, version: str) -> None:
+        # save the hash version of the context for user/company
+        version_key = self._get_context_version_key(company_short_name, user_identifier)
+        if version_key:
+            RedisSessionManager.set(version_key, version)
+
+    def get_context_version(self, company_short_name: str, user_identifier: str) -> Optional[str]:
+        # get the hash version of the context for user/company
+        version_key = self._get_context_version_key(company_short_name, user_identifier)
+        if not version_key:
+            return None
+        return RedisSessionManager.get(version_key, None)

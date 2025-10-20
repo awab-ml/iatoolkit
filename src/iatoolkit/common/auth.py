@@ -159,7 +159,7 @@ class IAuthentication:
             if company_short_name:
                 return redirect(url_for('login', company_short_name=company_short_name))
             else:
-                return redirect(url_for('home'))
+                return redirect(url_for('chat'))
 
         if company_short_name != SessionManager.get('company_short_name'):
             return redirect(url_for('login', company_short_name=company_short_name))

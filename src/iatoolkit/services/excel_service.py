@@ -23,21 +23,21 @@ class ExcelService:
 
     def excel_generator(self, **kwargs) -> str:
         """
-                Genera un Excel a partir de una lista de diccionarios.
+        Genera un Excel a partir de una lista de diccionarios.
 
-                Parámetros esperados en kwargs:
-                  - filename: str (nombre lógico a mostrar, ej. "reporte_clientes.xlsx") [obligatorio]
-                  - data: list[dict] (filas del excel) [obligatorio]
-                  - sheet_name: str = "hoja 1"
+        Parámetros esperados en kwargs:
+          - filename: str (nombre lógico a mostrar, ej. "reporte_clientes.xlsx") [obligatorio]
+          - data: list[dict] (filas del excel) [obligatorio]
+          - sheet_name: str = "hoja 1"
 
-                Retorna:
-                     {
-                        "filename": "reporte.xlsx",
-                        "attachment_token": "8b7f8a66-...-c1c3.xlsx",
-                        "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        "download_link": "/download/8b7f8a66-...-c1c3.xlsx"
-                        }
-                """
+        Retorna:
+             {
+                "filename": "reporte.xlsx",
+                "attachment_token": "8b7f8a66-...-c1c3.xlsx",
+                "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "download_link": "/download/8b7f8a66-...-c1c3.xlsx"
+                }
+        """
         try:
             # get the parameters
             fname = kwargs.get('filename')

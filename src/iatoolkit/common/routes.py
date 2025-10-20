@@ -35,7 +35,6 @@ def register_views(injector, app):
     from iatoolkit.views.user_feedback_view import UserFeedbackView
     from iatoolkit.views.prompt_view import PromptView
     from iatoolkit.views.chat_token_request_view import ChatTokenRequestView
-    from iatoolkit.views.download_file_view import DownloadFileView
 
     # iatoolkit home page
     app.add_url_rule('/<company_short_name>', view_func=IndexView.as_view('index'))
@@ -88,18 +87,6 @@ def register_views(injector, app):
     # this endpoint is for upload documents into the vector store (api-key)
     app.add_url_rule('/load', view_func=FileStoreView.as_view('load'))
 
-    # login testing (old home page)
-    app.add_url_rule('/login_test', view_func=LoginTest.as_view('login_test'))
-
-    app.add_url_rule(
-        '/about',  # URL de la ruta
-        view_func=lambda: render_template('about.html'))
-
-    app.add_url_rule('/version', 'version',
-                     lambda: jsonify({"iatoolkit_version": current_app.config.get('VERSION', 'N/A')}))
-
-    app.add_url_rule('/<company_short_name>/<external_user_id>/download-file/<path:filename>',
-                     view_func=DownloadFileView.as_view('download-file'))
 
     @app.route('/download/<path:filename>')
     def download_file(filename):
@@ -121,6 +108,17 @@ def register_views(injector, app):
             )
         except FileNotFoundError:
             abort(404)
+
+    # login testing (old home page)
+    app.add_url_rule('/login_test', view_func=LoginTest.as_view('login_test'))
+
+    app.add_url_rule(
+        '/about',  # URL de la ruta
+        view_func=lambda: render_template('about.html'))
+
+    app.add_url_rule('/version', 'version',
+                     lambda: jsonify({"iatoolkit_version": current_app.config.get('VERSION', 'N/A')}))
+
 
     # hacer que la raíz '/' vaya al home de iatoolkit
     @app.route('/')

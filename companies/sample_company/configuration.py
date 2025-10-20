@@ -81,7 +81,13 @@ ONBOARDING_CARDS = [
     {
         'icon': 'fas fa-database',
         'title': 'Sample Company',
-        'text': 'Conozco los clientes, productos, ventas, empleados, territorios, etc..<br><br><strong>Ejemplo:</strong> ¿Cuál fue el producto más vendido en Alemania el año 2024?'
+        'text': 'Es una empresa ficticia para mostrarte como interactuar utilizar la IA a través de IAToolkit. Los datos dispobibles son un ejemplo de una empresa '
+        'tipica que vende productos, gestiona ordenes de compra, proveedores, empleados y territorios. Se dispone de datos de los años 204 y 2025.'
+    },
+    {
+        'icon': 'fas fa-database',
+        'title': 'Datos disponibles',
+        'text': 'Conozco los datos de: clientes, productos, ventas, empleados, territorios, etc..<br><br><strong>Ejemplo:</strong> ¿Cuál fue el producto más vendido en Alemania el año 2024?'
     },
     {
         'icon': 'fas fa-file-alt',

@@ -309,7 +309,6 @@ class IAToolkit:
         binder.bind(Dispatcher, to=Dispatcher)
         binder.bind(BrandingService, to=BrandingService)
 
-
     def _bind_infrastructure(self, binder: Binder):
         from iatoolkit.infra.llm_client import llmClient
         from iatoolkit.infra.llm_proxy import LLMProxy
@@ -317,8 +316,6 @@ class IAToolkit:
         from iatoolkit.infra.mail_app import MailApp
         from iatoolkit.common.auth import IAuthentication
         from iatoolkit.common.util import Utility
-
-
 
         binder.bind(LLMProxy, to=LLMProxy, scope=singleton)
         binder.bind(llmClient, to=llmClient, scope=singleton)

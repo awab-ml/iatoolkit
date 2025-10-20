@@ -138,7 +138,7 @@ class TestLLMClient:
         self.mock_proxy.create_response.return_value = context_response
 
         response_id = self.client.set_company_context(
-            company=self.company, company_base_context="System prompt"
+            company=self.company, company_base_context="System prompt", model = "gpt"
         )
 
         assert response_id == 'ctx1'

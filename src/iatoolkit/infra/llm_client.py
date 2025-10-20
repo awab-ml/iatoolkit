@@ -266,16 +266,14 @@ class llmClient:
     def set_company_context(self,
             company: Company,
             company_base_context: str,
-            model: str = None) -> str:
+            model) -> str:
 
-        if model:
-            self.model = model
-        logging.info(f"initializing model '{self.model}' with company context: {self.count_tokens(company_base_context)} tokens...")
+        logging.info(f"initializing model '{model}' with company context: {self.count_tokens(company_base_context)} tokens...")
 
         llm_proxy = self.llm_proxy_factory.create_for_company(company)
         try:
             response = llm_proxy.create_response(
-                model=self.model,
+                model=model,
                 input=[{
                     "role": "system",
                     "content": company_base_context

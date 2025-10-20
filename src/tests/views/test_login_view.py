@@ -127,7 +127,7 @@ class TestLoginView:
         self.app.add_url_rule("/<company_short_name>/login", view_func=view, methods=["GET", "POST"])
 
         # Endpoint falso para probar la redirección
-        @self.app.route("/<company_short_name>/home", endpoint='home')
+        @self.app.route("/<company_short_name>/chat", endpoint='home')
         def dummy_home(company_short_name): return "Home Page"
 
     @patch("iatoolkit.views.login_view.render_template")
@@ -169,4 +169,4 @@ class TestLoginView:
 
         # Assert
         assert response.status_code == 302  # 302 es el código para redirección
-        assert response.location.endswith(f"/{MOCK_COMPANY_SHORT_NAME}/home")
+        assert response.location.endswith(f"/{MOCK_COMPANY_SHORT_NAME}/chat")

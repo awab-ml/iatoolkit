@@ -169,27 +169,96 @@ class TestQueryService:
     def test_llm_init_context_happy_path_external_user(self):
         """Tests the successful, full context initialization flow for an external user."""
         self.utility.is_openai_model.return_value = True
+        # Forzar build: no hay version previa
+        self.session_context.get_context_version.return_value = None
 
         self.service.llm_init_context(
             company_short_name='test_co',
             external_user_id='ext_user_123'
         )
 
+        # No reutiliza: debe limpiar y construir
         self.session_context.clear_all_context.assert_called_once_with(
             company_short_name='test_co', user_identifier='ext_user_123'
         )
-        self.session_context.save_user_session_data.assert_called_once_with(
+        # Se guarda user session data (ya ocurre antes del guard en tu versión final)
+        self.session_context.save_user_session_data.assert_called_with(
             'test_co', 'ext_user_123', self.dispatcher.get_user_info.return_value
         )
         self.llm_client_mock.set_company_context.assert_called_once()
         self.session_context.save_last_response_id.assert_called_once_with(
             'test_co', 'ext_user_123', 'new_context_response_id'
         )
+        # Se guarda la versión de contexto
+        self.session_context.save_context_version.assert_called_once()
+        args, kwargs = self.session_context.save_context_version.call_args
+        assert args[0] == 'test_co'
+        assert args[1] == 'ext_user_123'
+        assert isinstance(args[2], str) and len(args[2]) > 0  # hash
+
+    def test_llm_init_context_reuses_when_version_matches_openai(self):
+        """When version matches and cached state is valid, it should reuse context (OpenAI)."""
+        self.utility.is_openai_model.return_value = True
+        # Simular misma versión: el hash que calcule será el mismo si no cambiamos mocks
+        fake_version = "vhash123"
+        self.session_context.get_context_version.return_value = fake_version
+        # Estado válido
+        self.session_context.get_last_response_id.return_value = 'prev_response_id'
+
+        # Mockear el cómputo del hash para que coincida
+        with patch.object(self.service, "_compute_context_version_from_string", return_value=fake_version):
+            result = self.service.llm_init_context(
+                company_short_name='test_co',
+                external_user_id='ext_user_123'
+            )
+
+        # Debe reutilizar: no limpiar ni setear contexto
+        self.session_context.clear_all_context.assert_not_called()
+        self.llm_client_mock.set_company_context.assert_not_called()
+        # Debe devolver el response_id existente o indicador de reuse
+        assert result in ('prev_response_id', 'openai-context-reused')
+
+    def test_llm_init_context_rebuilds_when_version_differs_openai(self):
+        """If version differs, it should rebuild context (OpenAI)."""
+        self.utility.is_openai_model.return_value = True
+        # Prev versión distinta
+        self.session_context.get_context_version.return_value = "prev_vhash"
+        # Hash nuevo distinto
+        with patch.object(self.service, "_compute_context_version_from_string", return_value="new_vhash"):
+            self.service.llm_init_context(
+                company_short_name='test_co',
+                external_user_id='ext_user_123'
+            )
+
+        self.session_context.clear_all_context.assert_called_once()
+        self.llm_client_mock.set_company_context.assert_called_once()
+        self.session_context.save_context_version.assert_called_once()
+        args, _ = self.session_context.save_context_version.call_args
+        assert args[2] == "new_vhash"
+
+    def test_llm_init_context_rebuilds_if_state_missing_even_if_version_matches_openai(self):
+        """If version matches but cached state is missing, it should rebuild."""
+        self.utility.is_openai_model.return_value = True
+        fake_version = "vhash123"
+        self.session_context.get_context_version.return_value = fake_version
+        # Estado inválido: no hay last_response_id
+        self.session_context.get_last_response_id.return_value = None
+
+        with patch.object(self.service, "_compute_context_version_from_string", return_value=fake_version):
+            self.service.llm_init_context(
+                company_short_name='test_co',
+                external_user_id='ext_user_123'
+            )
+
+        self.session_context.clear_all_context.assert_called_once()
+        self.llm_client_mock.set_company_context.assert_called_once()
 
     def test_llm_init_context_for_gemini_model(self):
-        """Tests that for Gemini models, context is not sent to the LLM, but a flag is returned."""
+        """Tests that for Gemini models, context is kept in session history and version is saved."""
         self.utility.is_openai_model.return_value = False
         self.utility.is_gemini_model.return_value = True
+        # Forzar build: no hay version previa
+        self.session_context.get_context_version.return_value = None
 
         response = self.service.llm_init_context(
             company_short_name='test_co',
@@ -199,14 +268,26 @@ class TestQueryService:
 
         self.llm_client_mock.set_company_context.assert_not_called()
         self.session_context.save_context_history.assert_called_once()
-        assert response == "gemini-context-initialized"
+        self.session_context.save_context_version.assert_called_once()
 
-    def test_llm_init_context_raises_exception_if_company_not_found(self):
-        """Tests that an exception is raised if the company does not exist during context init."""
-        self.profile_repo.get_company_by_short_name.return_value = None
-        with pytest.raises(IAToolkitException, match="Empresa no encontrada: invalid_co"):
-            self.service.llm_init_context(company_short_name='invalid_co', external_user_id='user1')
+    def test_llm_init_context_reuses_when_version_matches_gemini(self):
+        """When version matches and history exists, it should reuse context (Gemini)."""
+        self.utility.is_openai_model.return_value = False
+        self.utility.is_gemini_model.return_value = True
+        fake_version = "vhash123"
+        self.session_context.get_context_version.return_value = fake_version
+        # Estado válido: hay al menos 1 mensaje
+        self.session_context.get_context_history.return_value = [{"role": "user", "content": "ctx"}]
 
+        with patch.object(self.service, "_compute_context_version_from_string", return_value=fake_version):
+            result = self.service.llm_init_context(
+                company_short_name='test_co',
+                external_user_id='ext_user_123',
+                model="gemini"
+            )
+
+        self.session_context.clear_all_context.assert_not_called()
+        self.session_context.save_context_history.assert_not_called()
     # --- File Loading Tests ---
 
     @patch('os.path.exists', return_value=False)

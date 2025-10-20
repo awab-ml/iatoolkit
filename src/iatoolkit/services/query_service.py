@@ -21,6 +21,7 @@ import logging
 from typing import Optional
 import json
 import time
+import hashlib
 import os
 
 
@@ -76,66 +77,82 @@ class QueryService:
             raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
                                f"Empresa no encontrada: {company_short_name}")
 
+
+        # get user specific context information.from
+        # use dispatcher for reading user info from company db, include used logged in idenfier
+        user_profile = self.dispatcher.get_user_info(
+            company_name=company_short_name,
+            user_identifier=user_identifier,
+            is_local_user=is_local_user
+        )
+        user_profile['user_id'] = user_identifier
+
+        # save the user information in the session context
+        # it's needed for the jinja predefined prompts (filtering)
+        self.session_context.save_user_session_data(company_short_name, user_identifier, user_profile)
+
+        # render the iatoolkit main system prompt with the company/user information
+        system_prompt_template = self.prompt_service.get_system_prompt()
+        rendered_system_prompt = self.util.render_prompt_from_string(
+            template_string=system_prompt_template,
+            question=None,
+            client_data=user_profile,
+            company=company,
+            service_list=self.dispatcher.get_company_services(company)
+        )
+
+        # get the company context: schemas, database models, .md files
+        company_specific_context = self.dispatcher.get_company_context(company_name=company_short_name)
+
+        # merge context: company + user
+        final_system_context = f"{company_specific_context}\n{rendered_system_prompt}"
+
+        # calculate the context version
+        current_version = self._compute_context_version_from_string(final_system_context)
+        try:
+            prev_version = self.session_context.get_context_version(company_short_name, user_identifier)
+        except Exception:
+            prev_version = None
+
+        # if versions are the same, try to reutilize the context
+        if (prev_version and prev_version == current_version and
+                self._has_valid_cached_context(company_short_name,user_identifier)):
+
+            logging.info(
+                f"Reutilizando contexto para {company_short_name}/{user_identifier} (version={current_version})")
+
+            if self.util.is_openai_model(model):
+                existing_id = self.session_context.get_last_response_id(company_short_name, user_identifier)
+                return existing_id or "openai-context-reused"
+            elif self.util.is_gemini_model(model):
+                return "gemini-context-reused"
+
         logging.info(f"Inicializando contexto para {company_short_name}/{user_identifier} con modelo {model}  ...")
         try:
-            # 1. clean any previous context for company/user
+            # clean any previous context for company/user
             self.session_context.clear_all_context(
                 company_short_name=company_short_name,
                 user_identifier=user_identifier
             )
 
-            # 2. get dictionary with user information from company DB
-            # user roles are read at this point from company db
-            user_profile = self.dispatcher.get_user_info(
-                company_name=company_short_name,
-                user_identifier=user_identifier,
-                is_local_user=is_local_user
-            )
-
-            # add the user logged in to the user_info dictionary
-            user_profile['user_id'] = user_identifier
-
-            # save the user information in the session context
-            # it's needed for the jinja predefined prompts (filtering)
-            self.session_context.save_user_session_data(company_short_name, user_identifier, user_profile)
-
-            # 3. render the iatoolkit main system prompt with the company/user information
-            system_prompt_template = self.prompt_service.get_system_prompt()
-            rendered_system_prompt = self.util.render_prompt_from_string(
-                template_string=system_prompt_template,
-                question=None,
-                client_data=user_profile,
-                company=company,
-                service_list=self.dispatcher.get_company_services(company)
-            )
-
-            # 4. add more company context: schemas, database models, .md files
-            company_specific_context = self.dispatcher.get_company_context(company_name=company_short_name)
-
-            # 5. merge contexts
-            final_system_context = f"{company_specific_context}\n{rendered_system_prompt}"
-
             if self.util.is_gemini_model(model):
                 # save the initial context as `context_history` (list of messages)
                 context_history = [{"role": "user", "content": final_system_context}]
                 self.session_context.save_context_history(company_short_name, user_identifier, context_history)
-                logging.info(f"Contexto inicial para Gemini guardado en sesión")
-                return "gemini-context-initialized"
-
             elif self.util.is_openai_model(model):
-
-                # 6. set the company/user context as the initial context for the LLM
+                # set the company/user context as the initial context for the LLM
                 response_id = self.llm_client.set_company_context(
                     company=company,
                     company_base_context=final_system_context,
                     model=model
                 )
 
-                # 7. save response_id in the session context
+                # save response_id in the session context
                 self.session_context.save_last_response_id(company_short_name, user_identifier, response_id)
 
-                logging.info(f"Contexto inicial de company '{company_short_name}/{user_identifier}' ha sido establecido en {int(time.time() - start_time)} seg.")
-                return response_id
+            # save the context version in the session cache
+            self.session_context.save_context_version(company_short_name, user_identifier, current_version)
+            logging.info(f"Contexto inicial de company '{company_short_name}/{user_identifier}' ha sido establecido en {int(time.time() - start_time)} seg.")
 
         except Exception as e:
             logging.exception(f"Error al inicializar el contexto del LLM para {company_short_name}: {e}")
@@ -253,6 +270,31 @@ class QueryService:
         except Exception as e:
             logging.exception(e)
             return {'error': True, "error_message": f"{str(e)}"}
+
+    def _compute_context_version_from_string(self, final_system_context: str) -> str:
+        # returns a hash of the context string
+        try:
+            return hashlib.sha256(final_system_context.encode("utf-8")).hexdigest()
+        except Exception:
+            return "unknown"
+
+    def _has_valid_cached_context(self, company_short_name: str, user_identifier: str) -> bool:
+        """
+        Verifica si existe un estado de contexto reutilizable en sesión.
+        - OpenAI: last_response_id presente.
+        - Gemini: context_history con al menos 1 mensaje.
+        """
+        try:
+            if self.util.is_openai_model(self.model):
+                prev_id = self.session_context.get_last_response_id(company_short_name, user_identifier)
+                return bool(prev_id)
+            if self.util.is_gemini_model(self.model):
+                history = self.session_context.get_context_history(company_short_name, user_identifier) or []
+                return len(history) >= 1
+            return False
+        except Exception as e:
+            logging.warning(f"Error verificando caché de contexto: {e}")
+            return False
 
     def load_files_for_context(self, files: list) -> str:
         """

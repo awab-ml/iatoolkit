@@ -5,6 +5,7 @@ from flask import Flask
 from unittest.mock import MagicMock, patch
 from iatoolkit.views.init_context_view import InitContextView
 from iatoolkit.services.query_service import QueryService
+from iatoolkit.services.user_session_context_service import UserSessionContextService
 from iatoolkit.common.auth import IAuthentication
 
 # --- Constantes para los Tests ---
@@ -25,12 +26,14 @@ class TestInitContextView:
         # Mocks para los servicios inyectados
         self.mock_iauthentication = MagicMock(spec=IAuthentication)
         self.mock_query_service = MagicMock(spec=QueryService)
+        self.mock_user_session_context_service = MagicMock(spec=UserSessionContextService)
 
         # Registrar la vista con los servicios mockeados
         view_func = InitContextView.as_view(
             'init_context',
             iauthentication=self.mock_iauthentication,
-            query_service=self.mock_query_service
+            query_service=self.mock_query_service,
+            user_session_context_service=self.mock_user_session_context_service
         )
         self.app.add_url_rule('/<company_short_name>/context/init/<external_user_id>', view_func=view_func, methods=['GET'])
 
