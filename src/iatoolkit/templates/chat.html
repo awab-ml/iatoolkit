@@ -237,16 +237,7 @@
 
             // 2. Construir la URL dinámicamente
             const company = window.companyShortName;
-            const params = new URLSearchParams();
-
-            // Solo añadir el external_user_id si existe y no es una cadena vacía
-            if (window.externalUserId && window.externalUserId.trim() !== '') {
-                params.append('external_user_id', window.externalUserId);
-            }
-
-            const queryString = params.toString();
-            // Construir la URL final. Si no hay params, no añade '?'
-            const reloadUrl = `/${company}/init-context${queryString ? '?' + queryString : ''}`;
+            const reloadUrl = `/${company}/api/init_context_api`;
 
             // 3. Hacer la llamada AJAX
             fetch(reloadUrl, { method: 'GET' })

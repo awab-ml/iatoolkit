@@ -1,235 +1,117 @@
-# Copyright (c) 2024 Fernando Libedinsky
-# Product: IAToolkit
-#
-# IAToolkit is open source software.
-
+# test_history_view.py
 import pytest
-from unittest.mock import MagicMock, patch
 from flask import Flask
+from unittest.mock import MagicMock
 from iatoolkit.views.history_view import HistoryView
 from iatoolkit.services.history_service import HistoryService
-from iatoolkit.services.auth_service import AuthService
+from iatoolkit.services.profile_service import ProfileService
 
+# --- Constantes para los Tests ---
+MOCK_COMPANY_SHORT_NAME = "test-company"
+MOCK_USER_IDENTIFIER = "user-123"
 
 class TestHistoryView:
-    @staticmethod
-    def create_app():
-        app = Flask(__name__)
-        app.testing = True
-        return app
+    """Tests for the refactored, web-only HistoryView."""
 
     @pytest.fixture(autouse=True)
-    def setup(self):
-        self.app = self.create_app()
+    def setup_method(self):
+        """Set up a clean test environment before each test."""
+        self.app = Flask(__name__)
+        self.app.testing = True
         self.client = self.app.test_client()
-        self.history_service = MagicMock(spec=HistoryService)
-        self.iauthentication = MagicMock(spec=AuthService)
 
-        self.iauthentication.verify.return_value = {
-            'success': True,
-            'company_id': 101,
-            'local_user_id': 123,
-            'external_user_id': 'test_user_id'
+        # Mocks para los servicios inyectados
+        self.mock_profile_service = MagicMock(spec=ProfileService)
+        self.mock_history_service = MagicMock(spec=HistoryService)
+
+        # Registrar la vista con las dependencias correctas
+        view_func = HistoryView.as_view(
+            'history',
+            profile_service=self.mock_profile_service,
+            history_service=self.mock_history_service
+        )
+        self.app.add_url_rule('/<company_short_name>/history', view_func=view_func, methods=['POST'])
+
+    def test_get_history_success(self):
+        """
+        Tests the happy path: user is authenticated, and history is fetched successfully.
+        """
+        # Arrange
+        # 1. Simulate a valid, authenticated web session.
+        self.mock_profile_service.get_current_session_info.return_value = {
+            "user_identifier": MOCK_USER_IDENTIFIER
         }
-
-        # register the view
-        self.history_view = HistoryView.as_view("history",
-                                          history_service=self.history_service,
-                                          iauthentication=self.iauthentication)
-        self.app.add_url_rule('/<company_short_name>/history',
-                              view_func=self.history_view,
-                              methods=["POST"])
-
-    def test_post_when_missing_data(self):
-        """Test when no JSON data is provided"""
-        response = self.client.post('/my_company/history',
-                                    json={})
-
-        assert response.status_code == 400
-        assert response.json["error_message"] == "Cuerpo de la solicitud JSON inválido o faltante"
-        self.history_service.get_history.assert_not_called()
-
-    def test_post_when_invalid_json(self):
-        """Test when invalid JSON is provided"""
-        response = self.client.post('/my_company/history',
-                                    data='invalid json',
-                                    content_type='application/json')
-
-        assert response.status_code == 400
-        assert response.json["error_message"] == "Cuerpo de la solicitud JSON inválido o faltante"
-        self.history_service.get_history.assert_not_called()
-
-    def test_post_when_auth_error(self):
-        """Test when authentication fails"""
-        self.iauthentication.verify.return_value = {
-            'success': False,
-            'error_message': 'Usuario no autenticado'
+        # 2. Simulate a successful response from the history service.
+        mock_history_response = {
+            'message': 'Historial obtenido correctamente',
+            'history': [{'id': 1, 'question': 'What is AI?'}]
         }
+        self.mock_history_service.get_history.return_value = mock_history_response
 
-        response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'flibe'})
+        # Act
+        response = self.client.post(f'/{MOCK_COMPANY_SHORT_NAME}/history')
 
+        # Assert
+        assert response.status_code == 200
+        assert response.json == mock_history_response
+
+        # Verify that the session was checked and the history service was called with the correct user ID.
+        self.mock_profile_service.get_current_session_info.assert_called_once()
+        self.mock_history_service.get_history.assert_called_once_with(
+            company_short_name=MOCK_COMPANY_SHORT_NAME,
+            user_identifier=MOCK_USER_IDENTIFIER
+        )
+
+    def test_get_history_fails_if_not_authenticated(self):
+        """
+        Tests that the view returns a 401 error if no valid web session is found.
+        """
+        # Arrange
+        # Simulate an empty session (user not logged in).
+        self.mock_profile_service.get_current_session_info.return_value = {}
+
+        # Act
+        response = self.client.post(f'/{MOCK_COMPANY_SHORT_NAME}/history')
+
+        # Assert
         assert response.status_code == 401
-        assert response.json["error_message"] == 'Usuario no autenticado'
-        self.history_service.get_history.assert_not_called()
+        assert "Usuario no autenticado" in response.json['error_message']
+        self.mock_history_service.get_history.assert_not_called()
 
-    def test_post_when_missing_external_user_id(self):
-        """Test when external_user_id is missing"""
-        response = self.client.post('/my_company/history',
-                                    json={})
+    def test_get_history_handles_service_error(self):
+        """
+        Tests that the view returns a 400 error if the history service itself reports an error.
+        """
+        # Arrange
+        self.mock_profile_service.get_current_session_info.return_value = {
+            "user_identifier": MOCK_USER_IDENTIFIER
+        }
+        self.mock_history_service.get_history.return_value = {
+            'error': 'Database query failed'
+        }
 
+        # Act
+        response = self.client.post(f'/{MOCK_COMPANY_SHORT_NAME}/history')
+
+        # Assert
         assert response.status_code == 400
-        assert response.json["error_message"] == "Cuerpo de la solicitud JSON inválido o faltante"
-        self.history_service.get_history.assert_not_called()
+        assert response.json['error_message'] == 'Database query failed'
+        self.mock_history_service.get_history.assert_called_once()
 
-    def test_post_when_service_error(self):
-        """Test when service returns an error"""
-        self.history_service.get_history.return_value = {
-            'error': 'Error al obtener historial'
+    def test_get_history_handles_unexpected_exception(self):
+        """
+        Tests that the view returns a 500 error if an unexpected exception occurs.
+        """
+        # Arrange
+        self.mock_profile_service.get_current_session_info.return_value = {
+            "user_identifier": MOCK_USER_IDENTIFIER
         }
+        self.mock_history_service.get_history.side_effect = Exception("A critical error occurred")
 
-        response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'test_user_id'})
+        # Act
+        response = self.client.post(f'/{MOCK_COMPANY_SHORT_NAME}/history')
 
-        assert response.status_code == 402
-        assert response.json == {'error_message': 'Error al obtener historial'}
-
-
-
-    def test_post_when_ok_with_external_user_id(self):
-        """Test successful request with external_user_id"""
-        mock_history = {
-            'success': True,
-            'history': [
-                {
-                    'id': 1,
-                    'question': 'Test question',
-                    'answer': 'Test answer',
-                    'created_at': '2024-01-15T10:30:00Z'
-                }
-            ],
-            'count': 1
-        }
-        self.history_service.get_history.return_value = mock_history
-
-        response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'test_user_id'})
-
-        assert response.status_code == 200
-        assert response.json == mock_history
-
-
-
-    def test_post_when_ok_with_local_user_id(self):
-        """Test successful request with local_user_id"""
-        mock_history = {
-            'success': True,
-            'history': [
-                {
-                    'id': 1,
-                    'question': 'Test question',
-                    'answer': 'Test answer',
-                    'created_at': '2024-01-15T10:30:00Z'
-                }
-            ],
-            'count': 1
-        }
-
-        self.history_service.get_history.return_value = mock_history
-
-        response = self.client.post('/my_company/history',
-                                    json={
-                                        'local_user_id': 123
-                                    })
-
-        assert response.status_code == 200
-        assert response.json == mock_history
-
-        # Verify service was called correctly
-        self.history_service.get_history.assert_called_once_with(
-            company_short_name='my_company',
-            external_user_id=None,
-            local_user_id=123
-        )
-
-
-    def test_post_with_empty_history(self):
-        """Test when service returns empty history"""
-        mock_history = {
-            'success': True,
-            'history': [],
-            'count': 0
-        }
-
-        self.history_service.get_history.return_value = mock_history
-
-        response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'test_user_id'})
-
-        assert response.status_code == 200
-        assert response.json == mock_history
-        assert response.json['count'] == 0
-
-    def test_post_with_large_history(self):
-        """Test with large history response"""
-        mock_history = {
-            'success': True,
-            'history': [
-                {
-                    'id': i,
-                    'question': f'Question {i}',
-                    'answer': f'Answer {i}',
-                    'created_at': '2024-01-15T10:30:00Z'
-                } for i in range(1, 11)
-            ],
-            'count': 10
-        }
-
-        self.history_service.get_history.return_value = mock_history
-
-        response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'test_user_id'})
-
-        assert response.status_code == 200
-        assert response.json == mock_history
-        assert response.json['count'] == 10
-        assert len(response.json['history']) == 10
-
-    @patch("iatoolkit.views.history_view.render_template")
-    def test_post_exception_with_local_user_id(self, mock_render_template):
-        """Test exception handling when local_user_id is present"""
-        mock_render_template.return_value = "<html><body>Error</body></html>"
-        self.history_service.get_history.side_effect = Exception('Service error')
-
-        response = self.client.post('/my_company/history',
-                                    json={
-                                        'external_user_id': 'flibe',
-                                        'local_user_id': 123
-                                    })
-
+        # Assert
         assert response.status_code == 500
-        mock_render_template.assert_called_once_with(
-            "error.html",
-            message="Ha ocurrido un error inesperado."
-        )
-
-
-    def test_post_authentication_verification_called(self):
-        """Test that authentication verification is called correctly"""
-        mock_history = {
-            'success': True,
-            'history': [],
-            'count': 0
-        }
-
-        self.history_service.get_history.return_value = mock_history
-
-        response = self.client.post('/my_company/history',
-                                    json={'external_user_id': 'test_user'})
-
-        assert response.status_code == 200
-
-        # Verify authentication was called correctly
-        self.iauthentication.verify.assert_called_once()
-
-
+        assert "error_message" in response.json
+        assert "Ha ocurrido un error inesperado" in response.json['error_message']
