@@ -119,32 +119,31 @@
 
     <!-- 3.5 Sobre el Autor -->
     <section class="author-section py-5">
-        <div class="container">
-            <div class="row align-items-center g-4">
-                <div class="col-md-1 d-none d-md-block text-center">
-                    <!-- Opcional: avatar (si no tienes imagen, deja el ícono) -->
-                    <div class="author-avatar mx-auto">
-                        <i class="bi bi-person-circle"></i>
-                    </div>
-                </div>
-                <div class="col-md-11">
-                    <div class="author-card p-4">
-                        <div class="d-flex flex-wrap align-items-center">
-                            <h5 class="mb-0 me-3" style="color: var(--brand-primary-color);">Sobre el autor</h5>
-                            <a href="https://www.linkedin.com/in/fernandolibedinsky" target="_blank" rel="noopener" class="author-linkedin ms-auto">
-                                <i class="bi bi-linkedin me-1"></i> LinkedIn
-                            </a>
+            <div class="container">
+                <div class="author-card p-4">
+                    <div class="row align-items-center g-4">
+                        <!-- Columna para la Imagen -->
+                        <div class="col-md-2 text-center">
+                            <img src="{{ url_for('static', filename='images/fernando.jpeg') }}" alt="Foto de Fernando Libedinsky" class="img-fluid rounded-circle" style="max-width: 120px;">
                         </div>
-                        <p class="author-bio mt-2 mb-0">
-Soy <strong>Fernando Libedinsky</strong>, ingeniero de software y creador de <strong>IAToolkit</strong>.
-<br>Tras una extensa trayectoria en el desarrollo de tecnología, sigo movido por la misma curiosidad que me llevó a programar por primera vez: aprender, explorar y construir cosas nuevas.
-<br>IAToolkit es la continuación de ese impulso, una plataforma creada para conectar rapidamente una empresas  con la IA.
-</p>
+                        <!-- Columna para el Texto -->
+                        <div class="col-md-10">
+                            <div class="d-flex flex-wrap align-items-center mb-2">
+                                <h5 class="mb-0 me-3" style="color: var(--brand-primary-color);">Sobre el autor</h5>
+                                <a href="https://www.linkedin.com/in/fernandolibedinsky" target="_blank" rel="noopener" class="author-linkedin ms-auto">
+                                    <i class="bi bi-linkedin me-1"></i> LinkedIn
+                                </a>
+                            </div>
+                            <p class="author-bio mb-0">
+                                Soy <strong>Fernando Libedinsky</strong>, ingeniero de software y creador de <strong>IAToolkit</strong>.
+                                <br>Tras una extensa trayectoria en el desarrollo de tecnología, sigo movido por la misma curiosidad que me llevó a programar por primera vez: aprender, explorar y construir cosas nuevas.
+                                <br>IAToolkit es la continuación de ese impulso, una plataforma creada para conectar rapidamente una empresas con la IA.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
 
     <!-- 4. Footer (sin cambios) -->
