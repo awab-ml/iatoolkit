@@ -88,7 +88,7 @@ class BaseCompany(ABC):
 
     @abstractmethod
     # get context specific for this company
-    def get_user_info(self, user_identifier: str) -> str:
+    def get_user_info(self, user_identifier: str) -> dict:
         raise NotImplementedError("La subclase debe implementar el método get_user_info()")
 
     @abstractmethod

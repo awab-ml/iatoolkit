@@ -75,7 +75,7 @@ class TestDispatcher:
         self.mock_sample_company_instance.handle_request = MagicMock(return_value={"result": "sample_company_response"})
         self.mock_sample_company_instance.get_company_context = MagicMock(return_value="Company Context for Sample")
         self.mock_sample_company_instance.start_execution = MagicMock(return_value=True)
-        self.mock_sample_company_instance.get_user_info = MagicMock(return_value={"email": "test@user.com"})
+        self.mock_sample_company_instance.get_user_info = MagicMock(return_value={"user_email": "test@user.com"})
         self.mock_sample_company_instance.get_metadata_from_filename = MagicMock(return_value={"meta": "data"})
 
         # Register the mock company class
@@ -186,7 +186,7 @@ class TestDispatcher:
     def test_get_user_info_external_user(self):
         """Tests get_user_info for an external user."""
         user_identifier = "ext_user_123"
-        expected_user_data = {"email": "external@example.com"}
+        expected_user_data = {"user_email": "external@example.com"}
         self.mock_sample_company_instance.get_user_info.return_value = expected_user_data
 
         result = self.dispatcher.get_user_info("sample", user_identifier)

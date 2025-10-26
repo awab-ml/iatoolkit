@@ -12,6 +12,7 @@ from iatoolkit.services.prompt_manager_service import PromptService
 from iatoolkit.services.branding_service import BrandingService
 from iatoolkit.services.onboarding_service import OnboardingService
 from iatoolkit.views.base_login_view import BaseLoginView
+import logging
 
 
 class LoginView(BaseLoginView):
@@ -77,13 +78,17 @@ class FinalizeContextView(MethodView):
         self.branding_service = branding_service
         self.onboarding_service = onboarding_service
 
-    def get(self, company_short_name: str):
+    def get(self, company_short_name: str, user_identifier: str = None):
         # 1. Use the centralized method to get session info.
         session_info = self.profile_service.get_current_session_info()
-        user_identifier = session_info.get('user_identifier')
+        final_user_identifier = session_info.get('user_identifier')
 
-        if not user_identifier:
-            # This can happen if the session expires or is invalid.
+        # 2. only if there is no user_identifier in the session, use the user_identifier from the URL as fallback.
+        if not final_user_identifier:
+            final_user_identifier = user_identifier
+
+        if not final_user_identifier:
+            logging.warning("Fallo crítico: No se pudo determinar el user_identifier ni por sesión ni por URL.")
             return redirect(url_for('index', company_short_name=company_short_name))
 
         company = self.profile_service.get_company_by_short_name(company_short_name)
@@ -94,7 +99,7 @@ class FinalizeContextView(MethodView):
             # 2. Finalize the context rebuild (the heavy task).
             self.query_service.finalize_context_rebuild(
                 company_short_name=company_short_name,
-                user_identifier=user_identifier
+                user_identifier=final_user_identifier
             )
 
             # 3. render the chat page.

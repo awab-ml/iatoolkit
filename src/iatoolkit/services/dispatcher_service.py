@@ -178,35 +178,13 @@ class Dispatcher:
         # source 2: external company user
         company_instance = self.company_instances[company_name]
         try:
-            raw_user_data = company_instance.get_user_info(user_identifier)
+            external_user_profile = company_instance.get_user_info(user_identifier)
         except Exception as e:
             logging.exception(e)
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
                                      f"Error en get_user_info de {company_name}: {str(e)}") from e
 
-        # always normalize the data for consistent structure
-        return self._normalize_user_data(raw_user_data)
-
-    def _normalize_user_data(self, raw_data: dict) -> dict:
-        """
-        Asegura que los datos del usuario siempre tengan una estructura consistente.
-        """
-        # default values
-        normalized_user = {
-            "id": raw_data.get("id", 0),
-            "username": raw_data.get("id", 0),
-            "user_email": raw_data.get("email", ""),
-            "user_fullname": raw_data.get("user_fullname", ""),
-            "is_local": False,
-            "extras": raw_data.get("extras", {})
-        }
-
-        # get the extras from the raw data, if any
-        extras = raw_data.get("extras", {})
-        if isinstance(extras, dict):
-            normalized_user.update(extras)
-
-        return normalized_user
+        return external_user_profile
 
     def get_metadata_from_filename(self, company_name: str, filename: str) -> dict:
         if company_name not in self.company_instances:

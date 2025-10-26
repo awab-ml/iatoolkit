@@ -48,7 +48,12 @@ class BaseLoginView(MethodView):
             onboarding_cards = self.onboarding_service.get_onboarding_cards(company)
 
             # callback url to call when the context finish loading
-            target_url = url_for('finalize_context_load', company_short_name=company_short_name, _external=True)
+            target_url = url_for(
+                'finalize_context_load',
+                company_short_name=company_short_name,
+                user_identifier=user_identifier,
+                _external=True
+            )
 
             return render_template(
                 "onboarding_shell.html",

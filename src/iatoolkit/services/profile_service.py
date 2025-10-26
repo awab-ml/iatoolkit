@@ -60,7 +60,6 @@ class ProfileService:
             # the user_profile variables are used on the LLM templates also (see in query_main.prompt)
             user_identifier = user.email             # no longer de ID
             user_profile = {
-                "id": user_identifier,
                 "user_email": user.email,
                 "user_fullname": f'{user.first_name} {user.last_name}',
                 "user_is_local": True,
@@ -78,8 +77,8 @@ class ProfileService:
         """
         Public method for views to create a web session for an external user.
         """
-        # 1. Fetch the profile from the external system via Dispatcher.
-        user_profile = self.dispatcher.get_user_info(
+        # 1. Fetch the external user profile via Dispatcher.
+        external_user_profile = self.dispatcher.get_user_info(
             company_name=company.short_name,
             user_identifier=user_identifier
         )
@@ -88,7 +87,7 @@ class ProfileService:
         self.create_web_session(
             company=company,
             user_identifier=user_identifier,
-            user_profile=user_profile)
+            user_profile=external_user_profile)
 
     def create_web_session(self, company: Company, user_identifier: str, user_profile: dict):
         """
@@ -96,7 +95,7 @@ class ProfileService:
         """
         user_profile['company_short_name'] = company.short_name
         user_profile['user_identifier'] = user_identifier
-        user_profile['user_id'] = user_identifier
+        user_profile['id'] = user_identifier
         user_profile['company_id'] = company.id
         user_profile['company'] = company.name
 
