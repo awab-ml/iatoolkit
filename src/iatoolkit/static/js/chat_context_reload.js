@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Configuración de Toastr para que aparezca abajo a la derecha
     toastr.options = { "positionClass": "toast-bottom-right", "preventDuplicates": true };
 
-    reloadButton.addEventListener('click', function(event) {
+    reloadButton.addEventListener('click', async function(event) {
         event.preventDefault();
 
         if (reloadButton.disabled) return; // Prevenir doble clic
@@ -19,43 +19,36 @@ document.addEventListener('DOMContentLoaded', function() {
         icon.className = spinnerIconClass;
         toastr.info('Iniciando recarga de contexto en segundo plano...');
 
-        // 2. Construir la URL dinámicamente
-        const company = window.companyShortName;
-        const reloadUrl = `${window.iatoolkit_base_url}/${company}/api/init-context`;
-        console.log('URL de recarga:', reloadUrl);
+        try {
+            // 2. Definir los parámetros para callToolkit
+            const apiPath = '/api/init-context';
+            const payload = { 'user_identifier': window.user_identifier };
 
-        // 3. Hacer la llamada AJAX con POST
-        fetch(reloadUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            // Envía un cuerpo vacío o los datos necesarios
-            body: JSON.stringify({'user_identifier': window.user_identifier})
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error_message || `Error del servidor: ${response.status}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.status === 'OK') {
-                toastr.success(data.message || 'Contexto recargado exitosamente.');
+            // 3. Hacer la llamada usando callToolkit
+            const data = await callToolkit(apiPath, payload, 'POST');
+
+            // 4. Procesar la respuesta
+            // callToolkit devuelve null si hubo un error que ya mostró en el chat.
+            if (data) {
+                if (data.status === 'OK') {
+                    toastr.success(data.message || 'Contexto recargado exitosamente.');
+                } else {
+                    // El servidor respondió 200 OK pero con un mensaje de error en el cuerpo
+                    toastr.error(data.error_message || 'Ocurrió un error desconocido durante la recarga.');
+                }
             } else {
-                toastr.error(data.error_message || 'Ocurrió un error desconocido.');
+                // Si data es null, callToolkit ya manejó el error (mostrando un mensaje en el chat).
+                // Añadimos un toast para notificar al usuario que algo falló.
+                toastr.error('Falló la recarga del contexto. Revisa el chat para más detalles.');
             }
-        })
-        .catch(error => {
+        } catch (error) {
+            // Este bloque se ejecutará para errores no controlados por callToolkit (como AbortError)
             console.error('Error durante la recarga del contexto:', error);
             toastr.error(error.message || 'Error de red al intentar recargar.');
-        })
-        .finally(() => {
-            // 4. Restaurar el botón
+        } finally {
+            // 5. Restaurar el botón en cualquier caso
             reloadButton.disabled = false;
             icon.className = originalIconClass;
-        });
+        }
     });
 });

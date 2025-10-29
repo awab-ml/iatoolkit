@@ -140,7 +140,7 @@ class AuthService:
             }
 
         # --- Failure: No valid credentials found ---
-        logging.info(f"Authentication required. No session cookie or API Key provided.")
+        logging.info(f"Authentication required. No session cookie or API Key provided. session: {str(session_info)}")
         return {"success": False, "error_message": "Authentication required. No session cookie or API Key provided.",
                 "status_code": 402}
 

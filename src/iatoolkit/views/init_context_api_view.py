@@ -53,8 +53,6 @@ class InitContextApiView(MethodView):
                 user_identifier=user_identifier
             )
 
-            # logging.info(f"Context for {company_short_name}/{user_identifier} rebuilt successfully.")
-
             # 3. Respond with JSON, as this is an API endpoint.
             return jsonify({'status': 'OK', 'message': 'El context se ha recargado con éxito.'}), 200
 
