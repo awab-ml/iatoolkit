@@ -19,7 +19,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from injector import Binder, singleton, Injector
 from importlib.metadata import version as _pkg_version, PackageNotFoundError
 
-IATOOLKIT_VERSION = "0.58.10"
+IATOOLKIT_VERSION = "0.59.0"
 
 # global variable for the unique instance of IAToolkit
 _iatoolkit_instance: Optional['IAToolkit'] = None
@@ -117,7 +117,7 @@ class IAToolkit:
         log_level = getattr(logging, log_level_name, logging.INFO)
 
         logging.basicConfig(
-            level=log_level,
+            level=logging.INFO,  # log_level,
             format="%(asctime)s - IATOOLKIT - %(name)s - %(levelname)s - %(message)s",
             handlers=[logging.StreamHandler()],
             force=True
