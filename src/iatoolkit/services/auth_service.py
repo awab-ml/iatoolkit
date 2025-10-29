@@ -122,7 +122,7 @@ class AuthService:
             api_key_entry = self.profile_service.get_active_api_key_entry(api_key)
             if not api_key_entry:
                 logging.info(f"Invalid or inactive API Key {api_key}")
-                return {"success": False, "error": "Invalid or inactive API Key", "status_code": 401}
+                return {"success": False, "error_message": "Invalid or inactive API Key", "status_code": 401}
 
             # obtain the company from the api_key_entry
             company = api_key_entry.company
@@ -141,7 +141,7 @@ class AuthService:
 
         # --- Failure: No valid credentials found ---
         logging.info(f"Authentication required. No session cookie or API Key provided.")
-        return {"success": False, "error": "Authentication required. No session cookie or API Key provided.",
+        return {"success": False, "error_message": "Authentication required. No session cookie or API Key provided.",
                 "status_code": 402}
 
     def log_access(self,
