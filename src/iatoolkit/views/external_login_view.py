@@ -6,12 +6,8 @@
 import os
 import logging
 from flask import request, jsonify, url_for
-from injector import inject
 from iatoolkit.views.base_login_view import BaseLoginView
 
-# Importar los servicios que necesita la clase base
-from iatoolkit.services.profile_service import ProfileService
-from iatoolkit.services.jwt_service import JWTService
 
 class ExternalLoginView(BaseLoginView):
     """
@@ -81,12 +77,3 @@ class RedeemTokenApiView(BaseLoginView):
             return {"error": redeem_result['error']}, 401
 
         return {"status": "ok"}, 200
-
-    def options(self, company_short_name: str):
-        """
-        Handles CORS preflight requests.
-        The browser sends an OPTIONS request to this endpoint before the actual POST
-        to check permissions. This method simply returns a 200 OK, assuming
-        a CORS middleware will add the necessary 'Access-Control-Allow-*' headers.
-        """
-        return {}, 200

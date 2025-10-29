@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 2. Construir la URL dinámicamente
         const company = window.companyShortName;
         const reloadUrl = `/${company}/api/init-context`;
+        console.log('URL de recarga:', reloadUrl);
 
         // 3. Hacer la llamada AJAX con POST
         fetch(reloadUrl, {
@@ -30,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Content-Type': 'application/json'
             },
             // Envía un cuerpo vacío o los datos necesarios
-            body: JSON.stringify({})
+            body: JSON.stringify({'user_identifier': window.user_identifier})
         })
         .then(response => {
             if (!response.ok) {
