@@ -455,3 +455,47 @@
 #send-button i {
     color: var(--brand-send-button-color);
 }
+
+/* Estilos personalizados para Toastr usando las variables de Branding */
+
+/* --- Toast de Información (Usa el color primario de la marca) --- */
+.toast-info {
+  /* ¡Importante! Usamos las variables CSS de tu BrandingService */
+  background-color: var(--brand-primary-color) !important;
+  color: var(--brand-text-on-primary) !important;
+  opacity: 0.95 !important;
+}
+.toast-info .toast-progress {
+  /* Usamos un color ligeramente más oscuro o una variante,
+     pero para simplificar, podemos empezar con el mismo */
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* --- Toast de Éxito (Usa el verde por defecto o uno de marca si lo defines) --- */
+.toast-success {
+  background-color: #198754 !important; /* Puedes crear una variable --brand-success-color si quieres */
+  color: #ffffff !important;
+  opacity: 0.95 !important;
+}
+.toast-success .toast-progress {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* --- Toast de Error (Usa el color de peligro de la marca) --- */
+.toast-error {
+  background-color: var(--brand-danger-color) !important;
+  color: var(--brand-text-on-primary) !important; /* Asumimos texto blanco sobre el color de peligro */
+  opacity: 0.95 !important;
+}
+.toast-error .toast-progress {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Opcional: Estilo para el botón de cierre para que contraste bien */
+.toast-close-button {
+    color: var(--brand-text-on-primary) !important;
+    text-shadow: none !important;
+}
+.toast-close-button:hover {
+    opacity: 0.8;
+}

@@ -30,12 +30,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // 4. Procesar la respuesta
             // callToolkit devuelve null si hubo un error que ya mostró en el chat.
             if (data) {
-                if (data.status === 'OK') {
+                if (data.status === 'OK')
                     toastr.success(data.message || 'Contexto recargado exitosamente.');
-                } else {
-                    // El servidor respondió 200 OK pero con un mensaje de error en el cuerpo
+                else
                     toastr.error(data.error_message || 'Ocurrió un error desconocido durante la recarga.');
-                }
             } else {
                 // Si data es null, callToolkit ya manejó el error (mostrando un mensaje en el chat).
                 // Añadimos un toast para notificar al usuario que algo falló.

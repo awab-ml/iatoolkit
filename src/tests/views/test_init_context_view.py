@@ -9,8 +9,7 @@ from iatoolkit.services.user_session_context_service import UserSessionContextSe
 
 # --- Constantes para los Tests ---
 MOCK_COMPANY_SHORT_NAME = "test-comp"
-MOCK_EXTERNAL_USER_ID = "api-user-123"
-MOCK_LOCAL_USER_ID = "456"
+MOCK_USER_IDENTIFIER = "api-user-123"
 
 
 class TestInitContextApiView:
@@ -43,89 +42,52 @@ class TestInitContextApiView:
         )
         self.app.add_url_rule('/api/<company_short_name>/init-context', view_func=view_func, methods=['POST'])
 
-    def test_rebuild_for_web_user_with_session(self):
-        """
-        Tests the flow for a logged-in web user (local or external) clicking the button.
-        """
-        # Arrange
-        # AuthService finds a user in the Flask session.
-        self.mock_auth_service.verify.return_value = {
-            "success": True,
-            "user_identifier": MOCK_LOCAL_USER_ID,
-            "company_short_name": MOCK_COMPANY_SHORT_NAME
-        }
-
-        # Act
-        response = self.client.post(f'/api/{MOCK_COMPANY_SHORT_NAME}/init-context')
-
-        # Assert
-        assert response.status_code == 200
-        assert response.json['status'] == 'OK'
-
-        # Verify the sequence was called with the user ID from the session.
-        self.mock_query_service.session_context.clear_all_context.assert_called_once_with(MOCK_COMPANY_SHORT_NAME,
-                                                                                          MOCK_LOCAL_USER_ID)
-        self.mock_query_service.prepare_context.assert_called_once_with(company_short_name=MOCK_COMPANY_SHORT_NAME,
-                                                                        user_identifier=MOCK_LOCAL_USER_ID)
-        self.mock_query_service.finalize_context_rebuild.assert_called_once_with(
-            company_short_name=MOCK_COMPANY_SHORT_NAME, user_identifier=MOCK_LOCAL_USER_ID)
-
-    def test_rebuild_for_api_user_with_api_key(self):
-        """
-        Tests the flow for a pure API call using an API Key.
-        """
-        # Arrange
-        # AuthService finds no session, but authenticates the API Key successfully.
         self.mock_auth_service.verify.return_value = \
             {"success": True,
              "company_short_name": MOCK_COMPANY_SHORT_NAME,
-             "user_identifier": MOCK_EXTERNAL_USER_ID}
+             "user_identifier": MOCK_USER_IDENTIFIER}
 
-        # Act
+    def test_rebuild_when_ok(self):
+        """
+        Tests the flow for a pure API call using an API Key.
+        """
         response = self.client.post(
             f'/api/{MOCK_COMPANY_SHORT_NAME}/init-context',
-            json={'external_user_id': MOCK_EXTERNAL_USER_ID}
+            json={'external_user_id': MOCK_USER_IDENTIFIER}
         )
 
-        # Assert
         assert response.status_code == 200
         assert response.json['status'] == 'OK'
 
         # Verify the sequence was called with the user ID from the JSON payload.
         self.mock_query_service.session_context.clear_all_context.assert_called_once_with(MOCK_COMPANY_SHORT_NAME,
-                                                                                          MOCK_EXTERNAL_USER_ID)
+                                                                                          MOCK_USER_IDENTIFIER)
         self.mock_query_service.prepare_context.assert_called_once_with(company_short_name=MOCK_COMPANY_SHORT_NAME,
-                                                                        user_identifier=MOCK_EXTERNAL_USER_ID)
+                                                                        user_identifier=MOCK_USER_IDENTIFIER)
         self.mock_query_service.finalize_context_rebuild.assert_called_once_with(
-            company_short_name=MOCK_COMPANY_SHORT_NAME, user_identifier=MOCK_EXTERNAL_USER_ID)
+            company_short_name=MOCK_COMPANY_SHORT_NAME, user_identifier=MOCK_USER_IDENTIFIER)
 
     def test_rebuild_fails_if_auth_fails(self):
         """
         Tests that the view returns a 401 if authentication fails.
         """
-        # Arrange
         self.mock_auth_service.verify.return_value = {"success": False, "error_message": "Invalid API Key",
                                                       "status_code": 401}
 
-        # Act
         response = self.client.post(f'/api/{MOCK_COMPANY_SHORT_NAME}/init-context', json={'external_user_id': 'any'})
 
-        # Assert
         assert response.status_code == 401
-        assert "Invalid API Key" in response.json['error']
+        assert "Invalid API Key" in response.json['error_message']
         self.mock_query_service.prepare_context.assert_not_called()
 
-    def test_rebuild_fails_if_no_user_is_identified(self):
-        """
-        Tests that the view returns a 400 if no user can be identified.
-        """
-        # Arrange
-        # Auth succeeds (e.g., valid API key), but no user ID in session or payload.
-        self.mock_auth_service.verify.return_value = {"success": True}
+    def test_rebuild_when_exception(self):
+        self.mock_query_service.prepare_context.side_effect = Exception('Database connection failed')
 
-        # Act
-        response = self.client.post(f'/api/{MOCK_COMPANY_SHORT_NAME}/init-context', json={})  # Empty payload
+        response = self.client.post(
+            f'/api/{MOCK_COMPANY_SHORT_NAME}/init-context',
+            json={'external_user_id': MOCK_USER_IDENTIFIER}
+        )
 
         # Assert
-        assert response.status_code == 400
-        assert "Could not identify user" in response.json['error']
+        assert response.status_code == 500
+        assert response.json['error_message'] == 'Database connection failed'

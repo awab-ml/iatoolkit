@@ -14,20 +14,18 @@ import logging
 class UserFeedbackApiView(MethodView):
     @inject
     def __init__(self,
-                 iauthentication: AuthService,
+                 auth_service: AuthService,
                  user_feedback_service: UserFeedbackService ):
-        self.iauthentication = iauthentication
+        self.auth_service = auth_service
         self.user_feedback_service = user_feedback_service
 
     def post(self, company_short_name):
         # get access credentials
-        iaut = self.iauthentication.verify()
-        if not iaut.get("success"):
-            return jsonify(iaut), 401
+        auth_result = self.auth_service.verify()
+        if not auth_result.get("success"):
+            return jsonify(auth_result), auth_result.get("status_code")
 
-        user_identifier = iaut.get('user_identifier')
-        if not user_identifier:
-            return jsonify({"error": "Could not identify user from session or payload"}), 400
+        user_identifier = auth_result.get('user_identifier')
 
         data = request.get_json()
         if not data:

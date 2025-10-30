@@ -15,24 +15,27 @@ import base64
 class FileStoreApiView(MethodView):
     @inject
     def __init__(self,
-                 iauthentication: AuthService,
+                 auth_service: AuthService,
                  doc_service: LoadDocumentsService,
                  profile_repo: ProfileRepo,):
-        self.iauthentication = iauthentication
+        self.auth_service = auth_service
         self.doc_service = doc_service
         self.profile_repo = profile_repo
 
     def post(self):
         try:
-            req_data = request.get_json()
+            # 1. Authenticate the API request.
+            auth_result = self.auth_service.verify()
+            if not auth_result.get("success"):
+                return jsonify(auth_result), auth_result.get("status_code")
 
+            req_data = request.get_json()
             required_fields = ['company', 'filename', 'content']
             for field in required_fields:
                 if field not in req_data:
                     return jsonify({"error": f"El campo {field} es requerido"}), 400
 
             company_short_name = req_data.get('company', '')
-            requested_name = req_data.get('username', 'external_user')
             filename = req_data.get('filename', False)
             base64_content = req_data.get('content', '')
             metadata = req_data.get('metadata', {})
@@ -41,11 +44,6 @@ class FileStoreApiView(MethodView):
             company = self.profile_repo.get_company_by_short_name(company_short_name)
             if not company:
                 return jsonify({"error": f"La empresa {company_short_name} no existe"}), 400
-
-            # get access credentials
-            iaut = self.iauthentication.verify()
-            if not iaut.get("success"):
-                return jsonify(iaut), 401
 
             # get the file content from base64
             content = base64.b64decode(base64_content)

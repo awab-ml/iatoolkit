@@ -71,7 +71,7 @@
 {% block scripts %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
-<script src="{{ url_for('static', filename='js/chat_onboarding.js', _external=True) }}"></script>
+<script src="{{ url_for('static', filename='js/chat_onboarding_button.js', _external=True) }}"></script>
 <script>
   (function() {
     const cardsData = {{ onboarding_cards | tojson }};

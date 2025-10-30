@@ -31,11 +31,9 @@ class InitContextApiView(MethodView):
         # 1. Authenticate the request. This handles both session and API Key.
         auth_result = self.auth_service.verify()
         if not auth_result.get("success"):
-            return jsonify({"error": auth_result.get("error_message")}), auth_result.get("status_code", 401)
+            return jsonify(auth_result), auth_result.get("status_code")
 
         user_identifier = auth_result.get('user_identifier')
-        if not user_identifier:
-            return jsonify({"error": "Could not identify user from session or payload"}), 400
 
         try:
             # 2. Execute the forced rebuild sequence using the unified identifier.
@@ -54,7 +52,7 @@ class InitContextApiView(MethodView):
             )
 
             # 3. Respond with JSON, as this is an API endpoint.
-            return jsonify({'status': 'OK', 'message': 'El context se ha recargado con éxito.'}), 200
+            return jsonify({'status': 'OK', 'message': 'El contexto se ha recargado con éxito.'}), 200
 
         except Exception as e:
             logging.exception(f"Error durante la recarga de contexto {user_identifier}: {e}")

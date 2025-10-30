@@ -40,7 +40,8 @@
         <div class="vr mx-3"></div>
 
         <!-- 3. Iconos de Acción -->
-        <a href="javascript:void(0);" id="history-button"
+        <a href="javascript:void(0);"
+           id="history-button"
            class="action-icon-style" title="Historial con mis consultas" style="color: {{ branding.header_text_color }};">
             <i class="bi bi-clock-history"></i>
         </a>
@@ -51,19 +52,23 @@
            style="color: {{ branding.header_text_color }};">
             <i class="bi bi-arrow-clockwise"></i>
         </a>
-        <a href="javascript:void(0);" id="send-feedback-button"
+        <a href="javascript:void(0);"
+           id="send-feedback-button"
            class="ms-3 action-icon-style" title="Tu feedback es muy importante" style="color: {{ branding.header_text_color }};">
             <i class="bi bi-emoji-smile"></i>
         </a>
-        <a href="javascript:void(0);" id="onboarding-button"
+        <a href="javascript:void(0);"
+           id="onboarding-button"
            class="ms-3 action-icon-style" title="Ver onboarding"
            style="color: {{ branding.header_text_color }};">
             <i class="bi bi-lightbulb"></i>
         </a>
 
         <!-- Icono de cerrar sesión (al final) -->
-        <a href="{{ url_for('logout', company_short_name=company_short_name, _external=True) }}"
-           class="ms-3 action-icon-style" title="Cerrar sesión" style="color: {{ branding.header_text_color }} !important;">
+        <a href="javascript:void(0);"
+           id="logout-button"
+           class="ms-3 action-icon-style" title="Cerrar sesión"
+           style="color: {{ branding.header_text_color }}; !important;">
             <i class="bi bi-box-arrow-right"></i>
         </a>
     </div>
@@ -192,13 +197,16 @@
 </script>
 
 <!-- Carga de los scripts JS externos después de definir las variables globales -->
-<script src="{{ url_for('static', filename='js/chat_onboarding.js', _external=True) }}"></script>
+<script src="{{ url_for('static', filename='js/chat_onboarding_button.js', _external=True) }}"></script>
 <script src="{{ url_for('static', filename='js/chat_filepond.js', _external=True) }}"></script>
-<script src="{{ url_for('static', filename='js/chat_history.js', _external=True) }}"></script>
-<script src="{{ url_for('static', filename='js/chat_feedback.js', _external=True) }}"></script>
-    <script src="{{ url_for('static', filename='js/chat_context_reload.js', _external=True) }}"></script><script src="{{ url_for('static', filename='js/chat_main.js', _external=True) }}"></script>
+<script src="{{ url_for('static', filename='js/chat_history_button.js', _external=True) }}"></script>
+<script src="{{ url_for('static', filename='js/chat_feedback_button.js', _external=True) }}"></script>
+<script src="{{ url_for('static', filename='js/chat_reload_button.js', _external=True) }}"></script>
+<script src="{{ url_for('static', filename='js/chat_main.js', _external=True) }}"></script>
+<script src="{{ url_for('static', filename='js/chat_logout_button.js', _external=True) }}"></script>
+<script src="{{ url_for('static', filename='js/chat_main.js', _external=True) }}"></script>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 

@@ -1,7 +1,6 @@
 // Global variables for request management
 let isRequestInProgress = false;
 let abortController = null;
-
 let selectedPrompt = null; // Will hold a lightweight prompt object
 
 $(document).ready(function () {
@@ -325,13 +324,6 @@ const callToolkit = async function(apiPath, data, method, timeoutMs = 500000) {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-            if (response.status === 401) {
-                const errorMessage = `Tu sesión ha expirado. `;
-                const errorIcon = '<i class="bi bi-exclamation-triangle"></i>';
-                const infrastructureError = $('<div>').addClass('error-section').html(errorIcon + `<p>${errorMessage}</p>`);
-                displayBotMessage(infrastructureError);
-                return null;
-                }
             try {
                 // Intentamos leer el error como JSON, que es el formato esperado de nuestra API.
                 const errorData = await response.json();

@@ -18,6 +18,7 @@ class TestFileStoreView:
     def setup_method(self):
         self.app = Flask(__name__)
         self.client = self.app.test_client()
+        self.url = '/api/load'
 
         # Mock the services
         self.mock_doc_service = MagicMock(spec=LoadDocumentsService)
@@ -28,8 +29,8 @@ class TestFileStoreView:
         self.file_store_view = FileStoreApiView.as_view("load",
                                                     doc_service=self.mock_doc_service,
                                                     profile_repo=self.mock_profile_repo,
-                                                     iauthentication=self.mock_auth)
-        self.app.add_url_rule('/load', view_func=self.file_store_view, methods=["POST"])
+                                                     auth_service=self.mock_auth)
+        self.app.add_url_rule(self.url, view_func=self.file_store_view, methods=["POST"])
         self.mock_auth.verify.return_value = {"success": True}
 
     @pytest.mark.parametrize("missing_field", ["company", "filename", "content"])
@@ -42,7 +43,7 @@ class TestFileStoreView:
         }
         payload.pop(missing_field)
 
-        response = self.client.post('/load', json=payload)
+        response = self.client.post(self.url, json=payload)
 
         assert response.status_code == 400
         assert response.get_json() == {
@@ -62,7 +63,7 @@ class TestFileStoreView:
             "metadata": {"key": "value"}
         }
 
-        response = self.client.post('/load', json=payload)
+        response = self.client.post(self.url, json=payload)
 
         assert response.status_code == 400
         assert response.get_json() == {
@@ -75,7 +76,7 @@ class TestFileStoreView:
 
     def test_post_when_company_not_auth(self):
         # Mock the profile repo to return None for the company
-        self.mock_auth.verify.return_value = {"success": False}
+        self.mock_auth.verify.return_value = {"success": False, "status_code": 401}
 
         payload = {
             "company": "nonexistent_company",
@@ -84,7 +85,7 @@ class TestFileStoreView:
             "metadata": {"key": "value"}
         }
 
-        response = self.client.post('/load', json=payload)
+        response = self.client.post(self.url, json=payload)
         assert response.status_code == 401
 
 
@@ -105,7 +106,7 @@ class TestFileStoreView:
             "metadata": {"key": "value"}
         }
 
-        response = self.client.post('/load', json=payload)
+        response = self.client.post(self.url, json=payload)
 
         assert response.status_code == 500
         response_json = response.get_json()
@@ -134,7 +135,7 @@ class TestFileStoreView:
             "metadata": {"key": "value"}
         }
 
-        response = self.client.post('/load', json=payload)
+        response = self.client.post(self.url, json=payload)
 
         assert response.status_code == 200
         assert response.get_json() == {

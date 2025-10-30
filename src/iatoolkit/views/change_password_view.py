@@ -37,8 +37,8 @@ class ChangePasswordView(MethodView):
             email = self.serializer.loads(token, salt='password-reset', max_age=3600)
         except SignatureExpired as e:
             return render_template('forgot_password.html',
-                                   branding=branding_data,
-                        alert_message="El enlace de cambio de contraseña ha expirado. Por favor, solicita uno nuevo.")
+                                branding=branding_data,
+                                alert_message="El enlace de cambio de contraseña ha expirado. Por favor, solicita uno nuevo.")
 
         return render_template('change_password.html',
                                company_short_name=company_short_name,

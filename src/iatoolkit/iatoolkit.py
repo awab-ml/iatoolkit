@@ -16,10 +16,10 @@ import os
 from typing import Optional, Dict, Any
 from iatoolkit.repositories.database_manager import DatabaseManager
 from werkzeug.middleware.proxy_fix import ProxyFix
-from injector import Binder, singleton, Injector
+from injector import Binder, Injector, singleton
 from importlib.metadata import version as _pkg_version, PackageNotFoundError
 
-IATOOLKIT_VERSION = "0.59.2"
+IATOOLKIT_VERSION = "0.60.0"
 
 # global variable for the unique instance of IAToolkit
 _iatoolkit_instance: Optional['IAToolkit'] = None
@@ -52,7 +52,7 @@ class IAToolkit:
         self.app = None
         self.db_manager = None
         self._injector = None
-        self.version = IATOOLKIT_VERSION
+        self.version = IATOOLKIT_VERSION    # default version
 
     @classmethod
     def get_instance(cls) -> 'IAToolkit':
@@ -324,8 +324,8 @@ class IAToolkit:
         from iatoolkit.services.auth_service import AuthService
         from iatoolkit.common.util import Utility
 
-        binder.bind(LLMProxy, to=LLMProxy, scope=singleton)
-        binder.bind(llmClient, to=llmClient, scope=singleton)
+        binder.bind(LLMProxy, to=LLMProxy)
+        binder.bind(llmClient, to=llmClient)
         binder.bind(GoogleChatApp, to=GoogleChatApp)
         binder.bind(MailApp, to=MailApp)
         binder.bind(AuthService, to=AuthService)

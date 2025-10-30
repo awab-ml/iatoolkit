@@ -3,17 +3,9 @@
 #
 # IAToolkit is open source software.
 
-from flask import render_template, redirect, flash, url_for,send_from_directory, current_app, abort
-from iatoolkit.common.session_manager import SessionManager
+from flask import render_template, redirect, url_for,send_from_directory, current_app, abort
 from flask import jsonify
 from iatoolkit.views.history_api_view import HistoryApiView
-import os
-
-
-def logout(company_short_name: str):
-    SessionManager.clear()
-    flash("Has cerrado sesión correctamente", "info")
-    return redirect(url_for('index', company_short_name=company_short_name))
 
 
 # this function register all the views
@@ -22,8 +14,8 @@ def register_views(injector, app):
     from iatoolkit.views.index_view import IndexView
     from iatoolkit.views.init_context_api_view import InitContextApiView
     from iatoolkit.views.llmquery_api_view import LLMQueryApiView
-    from iatoolkit.views.tasks_view import TaskView
-    from iatoolkit.views.tasks_review_view import TaskReviewView
+    from iatoolkit.views.tasks_api_view import TaskApiView
+    from iatoolkit.views.tasks_review_api_view import TaskReviewApiView
     from iatoolkit.views.login_simulation_view import LoginSimulationView
     from iatoolkit.views.signup_view import SignupView
     from iatoolkit.views.verify_user_view import VerifyAccountView
@@ -32,9 +24,10 @@ def register_views(injector, app):
     from iatoolkit.views.file_store_api_view import FileStoreApiView
     from iatoolkit.views.user_feedback_api_view import UserFeedbackApiView
     from iatoolkit.views.prompt_api_view import PromptApiView
-    from iatoolkit.views.chat_token_request_view import ChatTokenRequestView
     from iatoolkit.views.login_view import LoginView, FinalizeContextView
     from iatoolkit.views.external_login_view import ExternalLoginView, RedeemTokenApiView
+    from iatoolkit.views.logout_api_view import LogoutApiView
+
 
     # iatoolkit home page
     app.add_url_rule('/<company_short_name>', view_func=IndexView.as_view('index'))
@@ -57,23 +50,21 @@ def register_views(injector, app):
         view_func=FinalizeContextView.as_view('finalize_with_token')
     )
 
+    # logout
+    app.add_url_rule('/<company_short_name>/api/logout',
+                     view_func=LogoutApiView.as_view('logout'))
+
     # this endpoint is called by the JS for changing the token for a session
     app.add_url_rule('/<string:company_short_name>/api/redeem_token',
                      view_func = RedeemTokenApiView.as_view('redeem_token'))
 
-    # this endpoint is for requesting a chat token for external users
-    app.add_url_rule('/auth/chat_token',
-                     view_func=ChatTokenRequestView.as_view('chat-token'))
-
-    # init (reset) the company context (with api-key)
+    # init (reset) the company context
     app.add_url_rule('/<company_short_name>/api/init-context',
                      view_func=InitContextApiView.as_view('init-context'),
                      methods=['POST', 'OPTIONS'])
 
     # register new user, account verification and forgot password
     app.add_url_rule('/<company_short_name>/signup',view_func=SignupView.as_view('signup'))
-    app.add_url_rule('/<company_short_name>/logout', 'logout', logout)
-    app.add_url_rule('/logout', 'logout', logout)
     app.add_url_rule('/<company_short_name>/verify/<token>', view_func=VerifyAccountView.as_view('verify_account'))
     app.add_url_rule('/<company_short_name>/forgot-password', view_func=ForgotPasswordView.as_view('forgot_password'))
     app.add_url_rule('/<company_short_name>/change-password/<token>', view_func=ChangePasswordView.as_view('change_password'))
@@ -90,8 +81,8 @@ def register_views(injector, app):
     app.add_url_rule('/<company_short_name>/api/history', view_func=HistoryApiView.as_view('history'))
 
     # tasks management endpoints: create task, and review answer
-    app.add_url_rule('/tasks', view_func=TaskView.as_view('tasks'))
-    app.add_url_rule('/tasks/review/<int:task_id>', view_func=TaskReviewView.as_view('tasks-review'))
+    app.add_url_rule('/tasks', view_func=TaskApiView.as_view('tasks'))
+    app.add_url_rule('/tasks/review/<int:task_id>', view_func=TaskReviewApiView.as_view('tasks-review'))
 
     # this endpoint is for upload documents into the vector store (api-key)
     app.add_url_rule('/api/load', view_func=FileStoreApiView.as_view('load_api'))

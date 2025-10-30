@@ -1,4 +1,3 @@
-// static/js/chat_onboarding.js
 (function (global) {
   function qs(root, sel) { return (typeof sel === 'string') ? root.querySelector(sel) : sel; }
 

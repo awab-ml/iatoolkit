@@ -91,9 +91,10 @@ class AuthService:
             )
             return {'success': False, 'error': 'No se pudo crear la sesión del usuario'}
 
-    def verify(self) -> dict:
+    def verify(self, anonymous: bool = False) -> dict:
         """
         Verifies the current request and identifies the user.
+        If anonymous is True the non-presence of use_identifier is ignored
 
         Returns a dictionary with:
         - success: bool
@@ -118,31 +119,37 @@ class AuthService:
         if isinstance(auth, str) and auth.lower().startswith('bearer '):
             api_key =  auth.split(' ', 1)[1].strip()
 
-        if api_key:
-            api_key_entry = self.profile_service.get_active_api_key_entry(api_key)
-            if not api_key_entry:
-                logging.info(f"Invalid or inactive API Key {api_key}")
-                return {"success": False, "error_message": "Invalid or inactive API Key", "status_code": 401}
+        if not api_key:
+            # --- Failure: No valid credentials found ---
+            logging.info(f"Authentication required. No session cookie or API Key provided.")
+            return {"success": False,
+                    "error_message": "Authentication required. No session cookie or API Key provided.",
+                    "status_code": 401}
 
-            # obtain the company from the api_key_entry
-            company = api_key_entry.company
+        # check if the api-key is valid and active
+        api_key_entry = self.profile_service.get_active_api_key_entry(api_key)
+        if not api_key_entry:
+            logging.info(f"Invalid or inactive API Key {api_key}")
+            return {"success": False, "error_message": "Invalid or inactive API Key",
+                    "status_code": 402}
 
-            # For API calls, the external_user_id must be provided in the request.
-            user_identifier = ''
-            if request.is_json:
-                data = request.get_json() or {}
-                user_identifier = data.get('user_identifier', '')
+        # get the company from the api_key_entry
+        company = api_key_entry.company
 
-            return {
-                "success": True,
-                "company_short_name": company.short_name,
-                "user_identifier": user_identifier
-            }
+        # For API calls, the external_user_id must be provided in the request.
+        data = request.get_json(silent=True) or {}
+        user_identifier = data.get('user_identifier', '')
+        if not anonymous and not user_identifier:
+            logging.info(f"No user_identifier provided for API call.")
+            return {"success": False, "error_message": "No user_identifier provided for API call.",
+                    "status_code": 403}
 
-        # --- Failure: No valid credentials found ---
-        logging.info(f"Authentication required. No session cookie or API Key provided. session: {str(session_info)}")
-        return {"success": False, "error_message": "Authentication required. No session cookie or API Key provided.",
-                "status_code": 402}
+        return {
+            "success": True,
+            "company_short_name": company.short_name,
+            "user_identifier": user_identifier
+        }
+
 
     def log_access(self,
                    company_short_name: str,

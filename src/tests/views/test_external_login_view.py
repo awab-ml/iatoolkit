@@ -49,18 +49,8 @@ class TestExternalLoginView:
 
         # Default success cases for mocks
         self.profile_service.get_company_by_short_name.return_value = MagicMock(short_name=self.company_short_name)
-        self.auth_service.verify.return_value = {"success": True}
+        self.auth_service.verify.return_value = {"success": True, "status_code": 401}
         self.jwt_service.generate_chat_jwt.return_value = "fake-redeem-token"
-
-    def test_missing_body_or_key_returns_400(self):
-        """A request with an empty or malformed JSON body should return 400."""
-        # Flask's test client sends 415 without a proper json content-type
-        # Sending json={} ensures the header is set and our view logic is tested
-        resp_empty = self.client.post(f"/{self.company_short_name}/external_login", json={})
-        assert resp_empty.status_code == 400
-
-        resp_missing_key = self.client.post(f"/{self.company_short_name}/external_login", json={"other": "data"})
-        assert resp_missing_key.status_code == 400
 
     def test_company_not_found_returns_404(self):
         self.profile_service.get_company_by_short_name.return_value = None
@@ -68,17 +58,18 @@ class TestExternalLoginView:
         assert resp.status_code == 404
 
     def test_empty_external_user_id_returns_404(self):
+        self.auth_service.verify.return_value = {"success": False, "status_code": 403, "error": "denied"}
+
         resp = self.client.post(f"/{self.company_short_name}/external_login", json={"user_identifier": ""})
-        assert resp.status_code == 404
+        assert resp.status_code == 403
 
     def test_auth_failure_returns_401(self):
-        self.auth_service.verify.return_value = {"success": False, "error": "denied"}
+        self.auth_service.verify.return_value = {"success": False, "status_code": 401, "error": "denied"}
         resp = self.client.post(
             f"/{self.company_short_name}/external_login",
             json={"user_identifier": self.user_identifier},
         )
         assert resp.status_code == 401
-        assert resp.get_json() == {"success": False, "error": "denied"}
 
     def test_success_delegates_to_base_handler(self):
         """On success, the view should call the base handler with correct args."""

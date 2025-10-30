@@ -42,14 +42,11 @@ $(document).ready(function () {
         submitButton.html('<i class="bi bi-send me-1 icon-spaced"></i>Enviando...');
 
         const response = await sendFeedback(feedbackText);
-
         $('#feedbackModal').modal('hide');
-
-        if (response) {
-            Swal.fire({ icon: 'success', title: 'Feedback enviado', text: 'Gracias por tu comentario.' });
-        } else {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo enviar el feedback, intente nuevamente.' });
-        }
+        if (response)
+            toastr.success('¡Gracias por tu comentario!', 'Feedback Enviado');
+        else
+            toastr.error('No se pudo enviar el feedback, por favor intente nuevamente.', 'Error');
     });
 
     // Evento para abrir el modal de feedback

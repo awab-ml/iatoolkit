@@ -15,22 +15,16 @@ class ExternalLoginView(BaseLoginView):
     Authenticates and then delegates the path decision (fast/slow) to the base class.
     """
     def post(self, company_short_name: str):
-        data = request.get_json()
-        if not data or 'user_identifier' not in data:
-            return jsonify({"error": "Falta user_identifier"}), 400
+        # Authenticate the API call.
+        auth_result = self.auth_service.verify()
+        if not auth_result.get("success"):
+            return jsonify(auth_result), auth_result.get("status_code")
 
         company = self.profile_service.get_company_by_short_name(company_short_name)
         if not company:
             return jsonify({"error": "Empresa no encontrada"}), 404
 
-        user_identifier = data.get('user_identifier')
-        if not user_identifier:
-            return jsonify({"error": "missing user_identifier"}), 404
-
-        # 1. Authenticate the API call.
-        auth_response = self.auth_service.verify()
-        if not auth_response.get("success"):
-            return jsonify(auth_response), 401
+        user_identifier = auth_result.get('user_identifier')
 
         # 2. Create the external user session.
         self.profile_service.create_external_user_profile_context(company, user_identifier)

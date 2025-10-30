@@ -6,7 +6,7 @@
 from flask import request, jsonify
 from flask.views import MethodView
 from iatoolkit.services.history_service import HistoryService
-from iatoolkit.services.profile_service import ProfileService
+from iatoolkit.services.auth_service import AuthService
 from injector import inject
 import logging
 
@@ -19,18 +19,18 @@ class HistoryApiView(MethodView):
 
     @inject
     def __init__(self,
-                 profile_service: ProfileService,
+                 auth_service: AuthService,
                  history_service: HistoryService):
-        self.profile_service = profile_service
+        self.auth_service = auth_service
         self.history_service = history_service
 
     def post(self, company_short_name: str):
-        # 1. Get the authenticated user's info from the unified session.
-        session_info = self.profile_service.get_current_session_info()
-        user_identifier = session_info.get("user_identifier")
+        # 1. Get the authenticated user's
+        auth_result = self.auth_service.verify()
+        if not auth_result.get("success"):
+            return jsonify(auth_result), auth_result.get("status_code")
 
-        if not user_identifier:
-            return jsonify({'error_message': 'Usuario no autenticado o sesión inválida'}), 401
+        user_identifier = auth_result.get('user_identifier')
 
         try:
             # 2. Call the history service with the unified identifier.

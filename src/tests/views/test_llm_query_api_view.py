@@ -79,17 +79,8 @@ class TestLLMQueryApiView:
         response = self.client.post(self.url, json={"user_identifier": "any"})
 
         assert response.status_code == 401
-        assert "Invalid API Key" in response.json['error']
+        assert "Invalid API Key" in response.json['error_message']
         self.mock_query.llm_query.assert_not_called()
-
-    def test_api_query_fails_if_no_user_identifier(self):
-        """Tests that the view returns a 400 if user_identifier is missing."""
-        self.mock_auth.verify.return_value = {"success": True}
-
-        response = self.client.post(self.url, json={"question": "some question"})
-
-        assert response.status_code == 400
-        assert "Payload must include 'user_identifier'" in response.json['error']
 
     def test_api_query_for_when_no_data(self):
         self.mock_query.llm_query.return_value = {"answer": "Welcome back!"}

@@ -14,16 +14,16 @@ import logging
 class PromptApiView(MethodView):
     @inject
     def __init__(self,
-                 iauthentication: AuthService,
+                 auth_service: AuthService,
                  prompt_service: PromptService ):
-        self.iauthentication = iauthentication
+        self.auth_service = auth_service
         self.prompt_service = prompt_service
 
     def get(self, company_short_name):
         # get access credentials
-        iaut = self.iauthentication.verify()
-        if not iaut.get("success"):
-            return jsonify(iaut), 401
+        auth_result = self.auth_service.verify(anonymous=True)
+        if not auth_result.get("success"):
+            return jsonify(auth_result), auth_result.get('status_code')
 
         try:
             response = self.prompt_service.get_user_prompts(company_short_name)

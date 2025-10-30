@@ -6,8 +6,9 @@
 import pytest
 from unittest.mock import MagicMock
 from flask import Flask
-from iatoolkit.views.tasks_view import TaskView
+from iatoolkit.views.tasks_api_view import TaskApiView
 from iatoolkit.services.tasks_service import TaskService
+from iatoolkit.services.auth_service import AuthService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.repositories.models import Company, ApiKey
 from datetime import datetime
@@ -18,23 +19,28 @@ class TestTaskView:
     def setup_method(self):
         self.app = Flask(__name__)
         self.client = self.app.test_client()
+        self.url = '/api/tasks'
 
         # Mock del TaskService
+        self.mock_auth = MagicMock(spec=AuthService)
         self.mock_task_service = MagicMock(spec=TaskService)
         self.mock_profile_repo = MagicMock(spec=ProfileRepo)
 
 
         # Instanciamos la vista con el mock del servicio
-        self.task_view = TaskView.as_view("tasks",
+        self.task_view = TaskApiView.as_view("tasks",
+                                          auth_service=self.mock_auth,
                                           task_service=self.mock_task_service,
                                           profile_repo=self.mock_profile_repo)
-        self.app.add_url_rule('/tasks', view_func=self.task_view, methods=["POST"])
+        self.app.add_url_rule(self.url, view_func=self.task_view, methods=["POST"])
 
-        # API Key exitosa
-        self.api_key = ApiKey(key="test_key", company_id=100)
-        self.api_key.company = Company(id=100, name="Test Company", short_name="test_company")
-        self.mock_profile_repo.get_active_api_key_entry.return_value = self.api_key
-        self.valid_header = {"Authorization": f"Bearer {self.api_key.key}"}
+        self.mock_auth.verify.return_value = {"success": True, 'user_identifier': 'an_user'}
+        self.payload = {
+            "company": "test_company",
+            "task_type": "test_type",
+            "client_data": {"key": "value"}
+        }
+
 
     @pytest.mark.parametrize("missing_field", ["company", "task_type", "client_data"])
     def test_post_when_missing_required_fields(self, missing_field):
@@ -45,9 +51,7 @@ class TestTaskView:
         }
         payload.pop(missing_field)
 
-        response = self.client.post('/tasks',
-                                    headers=self.valid_header,
-                                    json=payload)
+        response = self.client.post(self.url,json=payload)
 
         assert response.status_code == 400
         assert response.get_json() == {
@@ -57,16 +61,10 @@ class TestTaskView:
         self.mock_task_service.create_task.assert_not_called()
 
     def test_post_when_invalid_execute_at_format(self):
-        payload = {
-            "company": "test_company",
-            "task_type": "test_type",
-            "client_data": {"key": "value"},
-            "execute_at": "fecha-invalida"
-        }
 
-        response = self.client.post('/tasks',
-                                    headers=self.valid_header,
-                                    json=payload)
+        self.payload['execute_at'] = "fecha-invalida"
+
+        response = self.client.post(self.url,json=self.payload)
 
         assert response.status_code == 400
         assert response.get_json() == {
@@ -78,15 +76,7 @@ class TestTaskView:
     def test_post_when_internal_exception_error(self):
         self.mock_task_service.create_task.side_effect = Exception("Internal Error")
 
-        payload = {
-            "company": "test_company",
-            "task_type": "test_type",
-            "client_data": {"key": "value"}
-        }
-
-        response = self.client.post('/tasks',
-                                    headers=self.valid_header,
-                                    json=payload)
+        response = self.client.post(self.url, json=self.payload)
 
         assert response.status_code == 500
         assert response.get_json() == {
@@ -109,8 +99,7 @@ class TestTaskView:
             "execute_at": "2024-04-17 10:00:00"
         }
 
-        response = self.client.post('/tasks', headers=self.valid_header,
-                                    json=payload)
+        response = self.client.post(self.url, json=payload)
 
         assert response.status_code == 201
         assert response.get_json() == {
@@ -128,3 +117,10 @@ class TestTaskView:
             execute_at=execute_datetime,
             files=[]
         )
+
+
+    def test_post_when_no_auth(self):
+        self.mock_auth.verify.return_value = {"success": False, 'status_code': 401}
+
+        response = self.client.post(self.url, json=self.payload)
+        assert response.status_code == 401

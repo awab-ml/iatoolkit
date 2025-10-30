@@ -23,19 +23,16 @@ class TestUserFeedbackView:
         self.app = self.create_app()
         self.client = self.app.test_client()
         self.feedback_service = MagicMock(spec=UserFeedbackService)
-        self.iauthentication = MagicMock(spec=AuthService)
+        self.mock_auth = MagicMock(spec=AuthService)
 
         # Mock a successful authentication by default for most tests
-        self.iauthentication.verify.return_value = {
-            'success': True,
-            'company_short_name': 'my_company',
-            'user_identifier': 'test_user_123'
-        }
+        self.mock_auth.verify.return_value = {"success": True,
+                                              'user_identifier': 'an_user'}
 
         # Register the view with mocked dependencies
         feedback_view = UserFeedbackApiView.as_view("feedback",
                                                      user_feedback_service=self.feedback_service,
-                                                     iauthentication=self.iauthentication)
+                                                     auth_service=self.mock_auth)
         self.app.add_url_rule('/<company_short_name>/api/feedback',
                               view_func=feedback_view,
                               methods=["POST"])
@@ -43,7 +40,9 @@ class TestUserFeedbackView:
 
     def test_post_when_auth_error(self):
         """Test that an auth error returns a 401 status."""
-        self.iauthentication.verify.return_value = {'error_message': 'error in authentication'}
+        self.mock_auth.verify.return_value = {"success": False,
+                                              'error_message': 'error in authentication',
+                                              'status_code': 401}
         response = self.client.post(self.url, json={'message': 'any', 'rating': 1})
 
         assert response.status_code == 401
@@ -91,7 +90,6 @@ class TestUserFeedbackView:
         test_data = {
             'message': 'test feedback message',
             'rating': 4,
-            'space': 'this_is_obsolete', # This should be ignored by the view
             'type': 'this_is_also_obsolete'  # This should also be ignored
         }
 
@@ -102,6 +100,6 @@ class TestUserFeedbackView:
         self.feedback_service.new_feedback.assert_called_once_with(
             company_short_name='my_company',
             message='test feedback message',
-            user_identifier='test_user_123',
-            rating=4  # Note: 'space' and 'type' are NOT passed
+            user_identifier='an_user',
+            rating=4
         )

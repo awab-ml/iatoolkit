@@ -21,12 +21,10 @@ class LLMQueryApiView(MethodView):
         # 1. Authenticate the API request.
         auth_result = self.auth_service.verify()
         if not auth_result.get("success"):
-            return jsonify({"error": auth_result.get("error_message")}), auth_result.get("status_code", 401)
+            return jsonify(auth_result), auth_result.get("status_code")
 
         # 2. Get the user identifier from the payload.
         user_identifier = auth_result.get('user_identifier')
-        if not user_identifier:
-            return jsonify({"error": "Payload must include 'user_identifier'"}), 400
 
         data = request.get_json()
         if not data:

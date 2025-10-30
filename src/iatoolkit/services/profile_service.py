@@ -131,6 +131,7 @@ class ProfileService:
             "profile": profile
         }
 
+
     def get_profile_by_identifier(self, company_short_name: str, user_identifier: str) -> dict:
         """
         Fetches a user profile directly by their identifier, bypassing the Flask session.
