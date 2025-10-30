@@ -55,11 +55,8 @@ class SampleCompany(BaseCompany):
                     },
                 'external_urls':
                     {
-                        # this login_url is added by the toolkit to Flask CORS
-                        'login_url': 'https://portal-interno.empresa_de_ejemplo.cl',
-
-                        # this logout_url is used when closing Toolkit session
-                        'logout_url': 'https://portal-interno.empresa_de_ejemplo.cl'
+                         # this logout_url is used when closing Toolkit session
+                        'logout_url': ''
                     }
                 }
         )
