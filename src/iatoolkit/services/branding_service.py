@@ -80,10 +80,6 @@ class BrandingService:
         secondary_rgb = hex_to_rgb(final_branding_values['brand_secondary_color'])
 
         # --- CONSTRUCCIÓN DE ESTILOS Y VARIABLES CSS ---
-        header_style = (
-            f"background-color: {final_branding_values['header_background_color']}; "
-            f"color: {final_branding_values['header_text_color']};"
-        )
         primary_text_style = (
             f"font-weight: {final_branding_values['primary_font_weight']}; "
             f"font-size: {final_branding_values['primary_font_size']};"
@@ -103,6 +99,9 @@ class BrandingService:
             :root {{
                 --brand-primary-color: {final_branding_values['brand_primary_color']};
                 --brand-secondary-color: {final_branding_values['brand_secondary_color']};
+                --brand-header-bg: {final_branding_values['header_background_color']};
+                --brand-header-text: {final_branding_values['header_text_color']};
+
                 --brand-primary-color-rgb: {', '.join(map(str, primary_rgb))};
                 --brand-secondary-color-rgb: {', '.join(map(str, secondary_rgb))};
                 --brand-text-on-primary: {final_branding_values['brand_text_on_primary']};
@@ -133,7 +132,6 @@ class BrandingService:
 
         return {
             "name": company.name if company else "IAToolkit",
-            "header_style": header_style,
             "primary_text_style": primary_text_style,
             "secondary_text_style": secondary_text_style,
             "tertiary_text_style": tertiary_text_style,

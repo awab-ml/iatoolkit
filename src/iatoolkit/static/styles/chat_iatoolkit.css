@@ -28,18 +28,15 @@
 
     /* --- Encabezado de Empresa Personalizado (Actualizado) --- */
     .custom-company-header {
-        /* Estructura y Posicionamiento */
-        display: flex;
-        align-items: center;
-        justify-content: space-between; /* Para separar el nombre y el "Powered by" */
         height: 78px;
-        padding: 0 1.5rem;
-        width: 100%;
         margin-bottom: 20px;
+        padding: 0 1.5rem; /* Padding interno para que el texto no toque los bordes */
+        border-radius: 0.375rem; /* Bordes redondeados para que coincida con los formularios */
 
-        background-color: var(--brand-primary-color);
-        color: var(--brand-text-on-primary);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        /* Los estilos de color y sombra se mantienen */
+        background-color: var(--brand-header-bg);
+        color: var(--brand-header-text);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Sombra ligeramente más suave */
     }
 
     /* Estilo específico para el nombre de la marca (Letra más grande) */
@@ -62,6 +59,14 @@
         font-weight: 400;
         opacity: 0.75; /* Menos prominente que el nombre de la marca */
         color: inherit;
+    }
+
+    /* --- Estilo para el enlace de IAToolkit --- */
+    .custom-company-header .iatoolkit-link {
+        color: inherit; /* Hereda el color del texto padre */
+        text-decoration: none; /* ¡Elimina el subrayado! */
+        font-weight: 600; /* Un poco más de peso para diferenciarlo */
+        transition: opacity 0.2s ease-in-out;
     }
 
     .branded-form-container {
@@ -114,6 +119,8 @@
 /* Estilo para la sección del encabezado */
 .company-section {
     border-radius: 0.375rem; /* Mismo radio que .chat-block para consistencia */
+    background-color: var(--brand-header-bg);
+    color: var(--brand-header-text);
 }
 
 /* Spinner */

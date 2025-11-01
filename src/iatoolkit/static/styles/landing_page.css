@@ -19,13 +19,15 @@ body {
 
 /* --- Encabezado Propio (sin usar .navbar) --- */
 .website-header {
-    background-color: var(--website-primary-color); /* Color primario del website */
-    border-bottom: 1px solid transparent; /* Borde ya no necesario con fondo sólido */
-    position: sticky;
-    top: 0;
-    z-index: 1020;
-    padding: 0.75rem 0;
-    width: 100%;
+    margin-top: 1rem;
+    padding: 1rem 1.5rem; /* Padding vertical y horizontal */
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+
+    /* Estilos de color (se mantienen) */
+    background-color: var(--website-primary-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .website-brand {
