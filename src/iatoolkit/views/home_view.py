@@ -65,5 +65,5 @@ class HomeView(MethodView):
                 company=company,
                 company_short_name=company_short_name,
                 branding=branding_data,
-                message="Ocurrió un error al procesar la plantilla personalizada de la página de inicio."
+                message=f"Ocurrió un error al procesar la plantilla personalizada de la página de inicio: {str(e)}"
             ), 500
