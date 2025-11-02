@@ -100,10 +100,9 @@ $(document).ready(function () {
                 .append(icon);
 
             const row = $('<tr>').append(
-                $('<td>').text(index + 1),
                 $('<td>').addClass('date-cell').text(formatDate(item.created_at)),
                 $('<td>').text(item.query),
-                $('<td>').addClass('text-center').append(link)
+                $('<td>').addClass('text-center').append(link),
             );
 
             historyTableBody.append(row);
@@ -122,6 +121,6 @@ $(document).ready(function () {
         const hours = padTo2Digits(date.getHours());
         const minutes = padTo2Digits(date.getMinutes());
 
-        return `${day}-${month}-${year} ${hours}:${minutes}`;
+        return `${day}-${month} ${hours}:${minutes}`;
     }
 });

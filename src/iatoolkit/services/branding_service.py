@@ -19,13 +19,16 @@ class BrandingService:
             # --- Estilos del Encabezado Principal ---
             "header_background_color": "#FFFFFF",
             "header_text_color": "#6C757D",
-            "primary_font_weight": "bold",
-            "primary_font_size": "1rem",
-            "secondary_font_weight": "600",
-            "secondary_font_size": "0.875rem",
-            "tertiary_font_weight": "normal",
-            "tertiary_font_size": "0.75rem",
-            "tertiary_opacity": "0.8",
+            "primary_font_weight": "600",
+            "primary_font_size": "1.2rem",
+            "secondary_font_weight": "400",
+            "secondary_font_size": "0.9rem",
+            "tertiary_font_weight": "300",
+            "tertiary_font_size": "0.8rem",
+            "tertiary_opacity": "0.7",
+
+            # headings
+            "brand_text_heading_color": "#334155",  # Gris pizarra por defecto
 
             # Estilos Globales de la Marca ---
             "brand_primary_color": "#0d6efd",  # Azul de Bootstrap por defecto
@@ -40,25 +43,27 @@ class BrandingService:
             "brand_danger_border": "#f5c2c7",  # Borde rojo intermedio
 
             # Estilos para Alertas Informativas ---
-            "brand_info_bg": "#cff4fc",  # Fondo celeste pálido
-            "brand_info_text": "#055160",  # Texto azul oscuro
-            "brand_info_border": "#b6effb",
+            "brand_info_bg": "#F0F4F8",         # Un fondo de gris azulado muy pálido
+            "brand_info_text": "#0d6efd",       # Texto en el color primario
+            "brand_info_border": "#D9E2EC",     # Borde de gris azulado pálido
 
             # Estilos para el Asistente de Prompts ---
             "prompt_assistant_bg": "#f8f9fa",
             "prompt_assistant_border": "#dee2e6",
-            "prompt_assistant_icon_color": "#6c757d",
             "prompt_assistant_button_bg": "#FFFFFF",
             "prompt_assistant_button_text": "#495057",
             "prompt_assistant_button_border": "#ced4da",
             "prompt_assistant_dropdown_bg": "#f8f9fa",
             "prompt_assistant_header_bg": "#e9ecef",
             "prompt_assistant_header_text": "#495057",
-            "prompt_assistant_item_hover_bg": None,  # Usará el primario por defecto
-            "prompt_assistant_item_hover_text": None,  # Usará el texto sobre primario
+
+            # this use the primary by default
+            "prompt_assistant_icon_color": None,
+            "prompt_assistant_item_hover_bg": None,
+            "prompt_assistant_item_hover_text": None,
 
             # Color para el botón de Enviar ---
-            "send_button_color": "#212529"  # Gris oscuro/casi negro por defecto
+            "send_button_color": "#212529"          # Gris oscuro/casi negro por defecto
         }
 
     def get_company_branding(self, company: Company | None) -> dict:
@@ -101,6 +106,7 @@ class BrandingService:
                 --brand-secondary-color: {final_branding_values['brand_secondary_color']};
                 --brand-header-bg: {final_branding_values['header_background_color']};
                 --brand-header-text: {final_branding_values['header_text_color']};
+                --brand-text-heading-color: {final_branding_values['brand_text_heading_color']};
 
                 --brand-primary-color-rgb: {', '.join(map(str, primary_rgb))};
                 --brand-secondary-color-rgb: {', '.join(map(str, secondary_rgb))};
@@ -113,11 +119,11 @@ class BrandingService:
                 --brand-danger-text: {final_branding_values['brand_danger_text']};
                 --brand-danger-border: {final_branding_values['brand_danger_border']};
                 --brand-info-bg: {final_branding_values['brand_info_bg']};
-                --brand-info-text: {final_branding_values['brand_info_text']};
+                --brand-info-text: {final_branding_values['brand_info_text'] or final_branding_values['brand_primary_color']};
                 --brand-info-border: {final_branding_values['brand_info_border']};
                 --brand-prompt-assistant-bg: {final_branding_values['prompt_assistant_bg']};
                 --brand-prompt-assistant-border: {final_branding_values['prompt_assistant_border']};
-                --brand-prompt-assistant-icon-color: {final_branding_values['prompt_assistant_icon_color']};
+                --brand-prompt-assistant-icon-color: {final_branding_values['prompt_assistant_icon_color'] or final_branding_values['brand_primary_color']};
                 --brand-prompt-assistant-button-bg: {final_branding_values['prompt_assistant_button_bg']};
                 --brand-prompt-assistant-button-text: {final_branding_values['prompt_assistant_button_text']};
                 --brand-prompt-assistant-button-border: {final_branding_values['prompt_assistant_button_border']};

@@ -4,29 +4,41 @@
     --bs-tooltip-opacity: 0.95; /* Ligeramente más opaco para mejor legibilidad */
 }
 
-.alert-branded-danger {
-    background-color: var(--brand-danger-bg);
-    color: var(--brand-danger-text);
-    border-color: var(--brand-danger-border);
-}
-/* Asegura que el texto fuerte y los enlaces dentro de la alerta también tomen el color correcto */
-.alert-branded-danger strong,
-.alert-branded-danger .alert-link {
-    color: inherit;
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-sans);
+  font-weight: var(--weight-semibold);
+  line-height: var(--lh-title);
+  margin: 0 0 0.6em;
+  /* Se define un color base usando la nueva variable de branding */
+  color: var(--brand-text-heading-color);
 }
 
+    ul {
+      /* Se resetea el padding por defecto del navegador y se aplica uno controlado */
+      padding-left: 1.5rem; /* ~24px de indentación para la lista */
+      margin-bottom: 1rem;  /* Espacio después de que termina la lista */
+    }
 
-/* esta clase defines los atributos de cada bloque */
-.chat-block {
-    padding: 1rem; /* Equivalente a p-3 de Bootstrap */
-    border: 1px solid #dee2e6; /* Borde estándar y sutil */
-    border-radius: 0.375rem; /* Borde redondeado estándar de Bootstrap */
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06); /* Sombra suave y unificada */
+    li {
+      /* Espacio vertical entre cada elemento de la lista para mejor legibilidad */
+      margin-bottom: 0.5rem; /* ~8px */
+      padding-left: 0.25rem; /* Pequeño espacio extra entre la viñeta y el texto */
+        color: #495057;
+    }
+
+    /* Estilo para la viñeta (el punto) de cada elemento de la lista */
+    li::marker {
+      color: var(--brand-primary-color); /* La viñeta usa el color principal de la marca */
+      font-size: 1.1em; /* Ligeramente más grande para que sea más visible */
+    }
+
+.text-muted {
+  color: #64748b;
 }
 
-/* estos estilo aplican a la home page/signup/etc */
+/* Estos estilos son para las paginas publicas: home, signup,  olvide la clave, etc */
 
-    /* --- Encabezado de Empresa Personalizado (Actualizado) --- */
+    /* --- Encabezado (top) de company --- */
     .custom-company-header {
         height: 78px;
         margin-bottom: 20px;
@@ -39,7 +51,7 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Sombra ligeramente más suave */
     }
 
-    /* Estilo específico para el nombre de la marca (Letra más grande) */
+    /* Estilo específico para el nombre de la marca en el encabezado (Letra más grande) */
     .custom-company-header .brand-name {
         font-size: 1.8rem; /* Tamaño de fuente aumentado */
         font-weight: 600;
@@ -69,6 +81,13 @@
         transition: opacity 0.2s ease-in-out;
     }
 
+        .custom-company-header .form-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+/* contenedor de formularios: login, signup, forgot password, etc. */
     .branded-form-container {
         background-color: #ffffff;
         border: 1px solid #dee2e6;
@@ -76,17 +95,6 @@
         border-radius: 0.375rem;
         padding: 2rem;
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-
-    .branded-headline {
-        color: var(--brand-primary-color);
-        font-size: 2.5rem;
-        font-weight: 700;
-        line-height: 1.2;
-    }
-
-    .text-branded-primary {
-        color: var(--brand-primary-color) !important;
     }
 
 
@@ -116,23 +124,22 @@
     }
 
 
-/* Estilo para la sección del encabezado */
+
+/* CSS para el chat principal    */
+/* esta clase defines los atributos de cada bloque */
+.chat-block {
+    padding: 1rem; /* Equivalente a p-3 de Bootstrap */
+    border: 1px solid #dee2e6; /* Borde estándar y sutil */
+    border-radius: 0.375rem; /* Borde redondeado estándar de Bootstrap */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); /* Sombra suave y unificada */
+}
+
+
+/* sección del encabezado en el chat principal */
 .company-section {
     border-radius: 0.375rem; /* Mismo radio que .chat-block para consistencia */
     background-color: var(--brand-header-bg);
     color: var(--brand-header-text);
-}
-
-/* Spinner */
-.spinning {
-    animation: spin 1s linear infinite;
-    font-size: 15px; /* Tamaño del ícono */
-    display: inline-block;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
 }
 
 /* Estilos para el contenedor del chat y mensajes para que exista scroll */
@@ -149,6 +156,24 @@
     margin-bottom: 10px;
 }
 
+
+/* Spinner */
+.spinning {
+    animation: spin 1s linear infinite;
+    font-size: 15px; /* Tamaño del ícono */
+    display: inline-block;
+}
+#spinner .spinner-border {
+    color: var(--brand-primary-color);
+}
+
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+
 /* Estilos para el modal de archivos y ordenar icono */
 .list-group-item {
     display: flex;
@@ -161,30 +186,6 @@
 }
 .remove-file-btn {
     flex-shrink: 0;
-}
-/* Estilos del header del modal*/
-.modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-}
-
-.modal-header .modal-title {
-    margin: 0;
-    padding: 0;
-    flex: 1;
-}
-
-.modal-header .close {
-    margin: 0;
-    padding: 0;
-    margin-left: auto;
-}
-
-/* Para el icono de eliminar del modal */
-.remove-file-btn i {
-    color: #c82333
 }
 
 /* Estilo del mensaje ingresado por el usuario */
@@ -435,14 +436,6 @@
     border-bottom: none;
 }
 
-/* Estilo para el botón principal del asistente de prompts */
-#prompt-select-button {
-    background-color: var(--brand-prompt-assistant-button-bg, #FFFFFF);
-    color: var(--brand-prompt-assistant-button-text, #495057);
-    border-color: var(--brand-prompt-assistant-button-border, #ced4da);
-}
-
-
 #clear-selection-button {
     position: absolute;
     top: 50%;
@@ -456,94 +449,6 @@
 
 #clear-selection-button:hover {
     color: #212529;
-}
-
-
-/* Estilos para el modal de feedback */
-.icon-spaced {
-    margin-right: 10px;
-}
-
-.modal-title{
-    font-size: 20px;
-    font-weight: bold;
-}
-
-.text-muted{
-    font-size:16px;
-    text-align: justify;
-}
-
-.feedback-text{
-    font-size: 16px;
-}
-
-/* Estilos para el modal de historial */
-
-.thead-dark th{
-    font-size: 16px;
-    font-weight: bold;
-}
-
-#history-content .table td:nth-child(1) { width: 5%; }
-#history-content .table td:nth-child(2) { width: 20%; }
-#history-content .table td:nth-child(3) { width: auto; }
-
-/* Contenedor de calificación con estrellas */
-.rating-container {
-    text-align: center;
-    margin: 10px 0 0 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 5px;
-    width: 100%;
-}
-
-.rating-stars-container{
-    text-align: center;
-    margin: 2px 0 0 0;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-}
-
-/* --- ESTILOS PARA EL WIDGET DE ESTRELLAS DE FEEDBACK --- */
-.rating-stars {
-    display: flex;
-    justify-content: center;
-    gap: 5px;
-    margin-bottom: 15px;
-    padding-top: 5px;
-}
-.star {
-    font-size: 2rem;
-    color: #adb5bd;
-    cursor: pointer;
-    transition: color 0.2s, transform 0.2s;
-}
-.star:hover {
-    transform: scale(1.15);
-}
-.star::before {
-    font-family: 'bootstrap-icons';
-    content: "\F586";
-    font-style: normal;
-    font-weight: normal;
-    line-height: 1;
-    -webkit-font-smoothing: antialiased;
-}
-.star.active::before,
-.star.hover-active::before {
-    content: "\F587";
-}
-.star.active,
-.star.hover-active {
-    color: #ffc107;
 }
 
 #send-button i {
@@ -593,3 +498,17 @@
 .toast-close-button:hover {
     opacity: 0.8;
 }
+
+.alert-branded-danger {
+    background-color: var(--brand-danger-bg);
+    color: var(--brand-danger-text);
+    border-color: var(--brand-danger-border);
+}
+/* Asegura que el texto fuerte y los enlaces dentro de la alerta también tomen el color correcto */
+.alert-branded-danger strong,
+.alert-branded-danger .alert-link {
+    color: inherit;
+}
+
+
+

@@ -68,46 +68,12 @@ BRANDING = {
     # --- Estilos del Encabezado Principal ---
     "header_background_color": "#4C6A8D",       # Fondo en Azul Acero
     "header_text_color": "#FFFFFF",             # Texto en blanco para un contraste nítido
-    "primary_font_weight": "600",
-    "primary_font_size": "1.2rem",
-    "secondary_font_weight": "400",
-    "secondary_font_size": "0.9rem",
-    "tertiary_font_weight": "400",
-    "tertiary_font_size": "0.8rem",
-    "tertiary_opacity": "0.7",
 
     # --- Estilos Globales de la Marca (Botones y acciones) ---
     "brand_primary_color": "#4C6A8D",           # Azul Acero como color de acción principal
     "brand_secondary_color": "#9EADC0",         # Un gris azulado más claro para acciones secundarias
     "brand_text_on_primary": "#FFFFFF",         # Texto blanco sobre el azul
     "brand_text_on_secondary": "#FFFFFF",       # Texto blanco sobre el gris
-
-    # --- Estilos para Alertas de Error ---
-    "brand_danger_color": "#dc3545",
-    "brand_danger_bg": "#f8d7da",
-    "brand_danger_text": "#842029",
-    "brand_danger_border": "#f5c2c7",
-
-    # --- Estilos para Alertas Informativas ---
-    "brand_info_bg": "#F0F4F8",                 # Un fondo de gris azulado muy pálido
-    "brand_info_text": "#4C6A8D",               # Texto en el color primario
-    "brand_info_border": "#D9E2EC",             # Borde de gris azulado pálido
-
-    # --- Estilos para el Asistente de Prompts ---
-    "prompt_assistant_bg": "#f8f9fa",
-    "prompt_assistant_border": "#e2e8f0",
-    "prompt_assistant_icon_color": "#4C6A8D",    # Icono de la varita en color primario
-    "prompt_assistant_button_bg": "#FFFFFF",
-    "prompt_assistant_button_text": "#334155",
-    "prompt_assistant_button_border": "#cbd5e1",
-    "prompt_assistant_dropdown_bg": "#FFFFFF",
-    "prompt_assistant_header_bg": "#f1f3f5",
-    "prompt_assistant_header_text": "#334155",
-    "prompt_assistant_item_hover_bg": None,      # Usará el primario (Azul Acero)
-    "prompt_assistant_item_hover_text": None,  # Usará el texto sobre primario (blanco)
-
-    # --- Color para el botón de Enviar ---
-    "send_button_color": "#4C6A8D"               # El botón de enviar usa el color primario
 }
 
 

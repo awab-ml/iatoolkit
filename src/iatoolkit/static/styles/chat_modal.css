@@ -1,6 +1,34 @@
-/* ######################################################### */
 /* Estilos generales para modales */
-/* ######################################################### */
+
+
+/* Título del modal */
+.modal-title{
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* Estilos del header del modal*/
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+/* Estilos del título del modal*/
+.modal-header .modal-title {
+    margin: 0;
+    padding: 0;
+    flex: 1;
+    color: inherit;
+}
+
+/* Estilos del botón de cerrar del modal*/
+.modal-header .close {
+    margin: 0;
+    padding: 0;
+    margin-left: auto;
+}
 
 /* Estilos del header del modal con branding */
 .modal-header.branded {
@@ -35,55 +63,7 @@
     border-color: var(--brand-secondary-color);
 }
 
-/* Estilos para alertas informativas personalizadas */
-.alert-branded-info {
-    background-color: var(--brand-info-bg);
-    color: var(--brand-info-text);
-    border-color: var(--brand-info-border);
-}
-.alert-branded-info strong,
-.alert-branded-info .alert-link {
-    color: inherit;
-}
-.alert-branded-info .bi { /* Asegura que los iconos también tomen el color */
-    color: inherit;
-}
-
-
-/* Título del modal */
-.modal-title{
-    font-size: 20px;
-    font-weight: bold;
-}
-
-
-/* Estilos del header del modal*/
-.modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-}
-
-/* Estilos del título del modal*/
-.modal-header .modal-title {
-    margin: 0;
-    padding: 0;
-    flex: 1;
-}
-
-/* Estilos del botón de cerrar del modal*/
-.modal-header .close {
-    margin: 0;
-    padding: 0;
-    margin-left: auto;
-}
-
-/* ######################################################### */
 /* Modal de historial */
-/* ######################################################### */
-
-/* Encabezado de tabla con branding */
 .thead-branded th {
     background-color: var(--brand-primary-color);
     color: var(--brand-text-on-primary);
@@ -91,17 +71,15 @@
     font-weight: bold;
 }
 
-
-#history-content .table td:nth-child(1) { width: 5%; }
-#history-content .table td:nth-child(2) { width: 23%; }
-
-#history-content .table td:nth-child(3) {
-    width: auto; /* Columna de la consulta - ocupa el resto */
-}
-
 /* Evita el salto de línea en la celda de la fecha */
 #historyModal .date-cell {
     white-space: nowrap;
+}
+
+.col-min,
+.col-icon {
+  width: 1%;
+  white-space: nowrap;
 }
 
 /* Estilo para el icono de copiar/editar en cada fila */
@@ -117,11 +95,14 @@
     cursor: pointer; /* Asegura que el cursor cambie a una mano */
 }
 
-/* ######################################################### */
 /* Modal de feedback */
-/* ######################################################### */
-
-/* Contenedor de calificación del modal de feedback */
+.rating-stars {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 15px;
+    padding-top: 5px;
+}
 
 /* Estilos de las estrellas del modal de feedback */
 .star {
@@ -132,16 +113,35 @@
     margin: 0 2px;
 }
 
-/* Estilos de las estrellas del modal de feedback al pasar el mouse */
+.star::before {
+    content: '★';
+}
+
 .star:hover,
 .star.active,
 .star.hover-active {
     color: #ffc107;
 }
 
-/* ######################################################### */
+.icon-spaced {
+    margin-right: 10px;
+}
+
+.text-muted{
+    font-size:16px;
+    text-align: justify;
+}
+
+.feedback-text{
+    font-size: 16px;
+}
+
 /* Modal de listado de archivos */
-/* ######################################################### */
+/* Estilos del nombre del archivo del modal de archivos y ordenar icono */
+.file-name-modal {
+    flex: 1;
+    margin-right: 10px;
+}
 
 /* Para el icono de eliminar del modal */
 .remove-file-btn i {
@@ -155,13 +155,21 @@
     align-items: center;
 }
 
-/* Estilos del nombre del archivo del modal de archivos y ordenar icono */
-.file-name-modal {
-    flex: 1;
-    margin-right: 10px;
-}
-
 /* Estilos del botón de eliminar del modal de archivos y ordenar icono */
 .remove-file-btn {
     flex-shrink: 0;
+}
+
+/* Estilos para alertas informativas personalizadas */
+.alert-branded-info {
+    background-color: var(--brand-info-bg);
+    color: var(--brand-info-text);
+    border-color: var(--brand-info-border);
+}
+.alert-branded-info strong,
+.alert-branded-info .alert-link {
+    color: inherit;
+}
+.alert-branded-info .bi { /* Asegura que los iconos también tomen el color */
+    color: inherit;
 }

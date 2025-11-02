@@ -312,7 +312,7 @@ const showSpinner = function () {
     const accessibilityClass = (typeof bootstrap !== 'undefined') ? 'visually-hidden' : 'sr-only';
     const spinner = $(`
         <div id="spinner" style="display: flex; align-items: center; justify-content: start; margin: 10px 0; padding: 10px;">
-            <div class="spinner-border text-primary" role="status" style="width: 1.5rem; height: 1.5rem; margin-right: 15px;">
+            <div class="spinner-border" role="status" style="width: 1.5rem; height: 1.5rem; margin-right: 15px;">
                 <span class="${accessibilityClass}">Loading...</span>
             </div>
             <span style="font-weight: bold; font-size: 15px;">Cargando...</span>
