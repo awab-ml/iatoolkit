@@ -2,80 +2,30 @@ $(document).ready(function () {
     // Evento para abrir el modal de historial
     $('#history-button').on('click', function() {
         loadHistory();
-        $('#historyModal').modal('show');
     });
 
-    // Evento delegado para el icono de copiar.
-    // Se adjunta UNA SOLA VEZ al cuerpo de la tabla y funciona para todas las filas
-    // que se añadan dinámicamente.
-    $('#history-table-body').on('click', '.edit-pencil', function() {
-        const queryText = $(this).data('query');
-
-        // Copiar el texto al textarea del chat
-        if (queryText) {
-            $('#question').val(queryText);
-            autoResizeTextarea($('#question')[0]);
-            $('#send-button').removeClass('disabled');
-
-            // Cerrar el modal
-            $('#historyModal').modal('hide');
-
-            // Hacer focus en el textarea
-            $('#question').focus();
-        }
-    });
-
-    // Variables globales para el historial
-    let historyData = [];
 
     // Función para cargar el historial
     async function loadHistory() {
         const historyLoading = $('#history-loading');
-        const historyError = $('#history-error');
-        const historyContent = $('#history-content');
 
-        // Mostrar loading
         historyLoading.show();
-        historyError.hide();
-        historyContent.hide();
 
-        try {
-            const responseData = await callToolkit("/api/history", {}, "POST");
+        // cal the toolkit, handle the response and errors
+        const data = await callToolkit("/api/history", {}, "POST");
 
-            if (responseData && responseData.history) {
-                // Guardar datos globalmente
-                historyData = responseData.history;
-
-                // Mostrar todos los datos
-                displayAllHistory();
-
-                // Mostrar contenido
-                historyContent.show();
-            } else {
-                throw new Error('La respuesta del servidor no contenía el formato esperado.');
-            }
-        } catch (error) {
-            console.error("Error al cargar historial:", error);
-
-            const friendlyErrorMessage = "No hemos podido cargar tu historial en este momento. Por favor, cierra esta ventana y vuelve a intentarlo en unos instantes.";
-            const errorHtml = `
-                <div class="text-center p-4">
-                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem; opacity: 0.8;"></i>
-                    <h5 class="mt-3 mb-2">Ocurrió un Problema</h5>
-                    <p class="text-muted">${friendlyErrorMessage}</p>
-                </div>
-            `;
-            historyError.html(errorHtml).show();
-        } finally {
-            historyLoading.hide();
+        if (data && data.history) {
+            $('#historyModal').modal('show');
+            displayAllHistory(data.history);
+            $('#history-content').show();
         }
+        historyLoading.hide();
     }
 
     // Función para mostrar todo el historial
-    function displayAllHistory() {
+    function displayAllHistory(historyData) {
         const historyTableBody = $('#history-table-body');
 
-        // Limpiar tabla
         historyTableBody.empty();
 
         // Filtrar solo consultas que son strings simples
@@ -109,7 +59,6 @@ $(document).ready(function () {
         });
     }
 
-    // Función para formatear fecha
     function formatDate(dateString) {
         const date = new Date(dateString);
 
@@ -123,4 +72,22 @@ $(document).ready(function () {
 
         return `${day}-${month} ${hours}:${minutes}`;
     }
+
+    // event handler for the edit pencil icon
+    $('#history-table-body').on('click', '.edit-pencil', function() {
+        const queryText = $(this).data('query');
+
+        // copy the text to the chat input box
+        if (queryText) {
+            $('#question').val(queryText);
+            autoResizeTextarea($('#question')[0]);
+            $('#send-button').removeClass('disabled');
+
+            // Cerrar el modal
+            $('#historyModal').modal('hide');
+
+            // Hacer focus en el textarea
+            $('#question').focus();
+        }
+    });
 });

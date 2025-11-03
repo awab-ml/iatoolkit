@@ -80,7 +80,7 @@ ONBOARDING_CARDS = [
     {
         'icon': 'fas fa-database',
         'title': 'Sample Company',
-        'text': 'Es una empresa ficticia para mostrarte como interactuar utilizar la IA a través de IAToolkit. Los datos dispobibles son un ejemplo de una empresa '
+        'text': 'Esta una empresa ficticia para mostrarte como interactuar utilizar la IA a través de IAToolkit. Los datos dispobibles son un ejemplo de una empresa '
         'tipica que vende productos, gestiona ordenes de compra, proveedores, empleados y territorios. Se dispone de datos de los años 204 y 2025.'
     },
     {

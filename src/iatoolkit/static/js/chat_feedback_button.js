@@ -1,110 +1,82 @@
 $(document).ready(function () {
+    $('#submit-feedback').on('click', function () {
+        sendFeedback(this);
+    });
 
     // Evento para enviar el feedback
-    $('#submit-feedback').on('click', async function() {
+    async function sendFeedback(submitButton) {
+        toastr.options = {"positionClass": "toast-bottom-right", "preventDuplicates": true};
         const feedbackText = $('#feedback-text').val().trim();
-        const submitButton = $(this);
-
-        // --- LÓGICA DE COMPATIBILIDAD BS3 / BS5 ---
-        // Detecta si Bootstrap 5 está presente.
-        const isBootstrap5 = (typeof bootstrap !== 'undefined');
-
-        // Define el HTML del botón de cierre según la versión.
-        const closeButtonHtml = isBootstrap5 ?
-            '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' : // Versión BS5
-            '<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>';     // Versión BS3/BS4
-        // --- FIN DE LA LÓGICA DE COMPATIBILIDAD ---
+        const activeStars = $('.star.active').length;
 
         if (!feedbackText) {
-            const alertHtml = `
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <strong>¡Atención!</strong> Por favor, escribe tu comentario antes de enviar.
-                ${closeButtonHtml}
-            </div>`;
-            $('.modal-body .alert').remove();
-            $('.modal-body').prepend(alertHtml);
+            toastr.error('Por favor, escribe tu comentario antes de enviar.');
             return;
         }
 
-        const activeStars = $('.star.active').length;
         if (activeStars === 0) {
-            const alertHtml = `
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <strong>¡Atención!</strong> Por favor, califica al asistente con las estrellas.
-                ${closeButtonHtml}
-            </div>`;
-            $('.modal-body .alert').remove();
-            $('.modal-body').prepend(alertHtml);
+            toastr.error('Por favor, califica al asistente con las estrellas.');
             return;
         }
 
-        submitButton.prop('disabled', true);
-        submitButton.html('<i class="bi bi-send me-1 icon-spaced"></i>Enviando...');
+        submitButton.disabled = true;
 
-        const response = await sendFeedback(feedbackText);
-        $('#feedbackModal').modal('hide');
-        if (response)
+        // call the IAToolkit API to send feedback
+        const data = {
+            "user_identifier": window.user_identifier,
+            "message": feedbackText,
+            "rating": activeStars,
+        };
+
+        const responseData = await callToolkit('/api/feedback', data, "POST");
+        if (responseData)
             toastr.success('¡Gracias por tu comentario!', 'Feedback Enviado');
         else
-            toastr.error('No se pudo enviar el feedback, por favor intente nuevamente.', 'Error');
-    });
+            toastr.error('No se pudo enviar el feedback, por favor intente nuevamente.');
 
-    // Evento para abrir el modal de feedback
-    $('#send-feedback-button').on('click', function() {
-        $('#submit-feedback').prop('disabled', false);
-        $('#submit-feedback').html('<i class="bi bi-send me-1 icon-spaced"></i>Enviar');
-        $('.star').removeClass('active hover-active'); // Resetea estrellas
-        $('#feedback-text').val(''); // Limpia texto
-        $('.modal-body .alert').remove(); // Quita alertas previas
-        $('#feedbackModal').modal('show');
-    });
+        submitButton.disabled = false;
+        $('#feedbackModal').modal('hide');
+    }
 
-    // Evento que se dispara DESPUÉS de que el modal se ha ocultado
-    $('#feedbackModal').on('hidden.bs.modal', function () {
-        $('#feedback-text').val('');
-        $('.modal-body .alert').remove();
-        $('.star').removeClass('active');
-    });
-
-    // Función para el sistema de estrellas
-    window.gfg = function(rating) {
-        $('.star').removeClass('active');
-        $('.star').each(function(index) {
-            if (index < rating) {
-                $(this).addClass('active');
-            }
-        });
-    };
-
-    $('.star').hover(
-        function() {
-            const rating = $(this).data('rating');
-            $('.star').removeClass('hover-active');
-            $('.star').each(function(index) {
-                if ($(this).data('rating') <= rating) {
-                    $(this).addClass('hover-active');
-                }
-            });
-        },
-        function() {
-            $('.star').removeClass('hover-active');
-        }
-    );
+// Evento para abrir el modal de feedback
+$('#send-feedback-button').on('click', function () {
+    $('#submit-feedback').prop('disabled', false);
+    $('#submit-feedback').html('<i class="bi bi-send me-1 icon-spaced"></i>Enviar');
+    $('.star').removeClass('active hover-active'); // Resetea estrellas
+    $('#feedback-text').val(''); // Limpia texto
+    $('.modal-body .alert').remove(); // Quita alertas previas
+    $('#feedbackModal').modal('show');
 });
 
-const sendFeedback = async function(message) {
-    const activeStars = $('.star.active').length;
-    const data = {
-        "user_identifier": window.user_identifier,
-        "message": message,
-        "rating": activeStars,
-    };
-    try {
-        // Asumiendo que callLLMAPI está definido globalmente en otro archivo (ej. chat_main.js)
-        const responseData = await callToolkit('/api/feedback', data, "POST");
-        return responseData;
-    } catch (error) {
-        console.error("Error al enviar feedback:", error);
-        return null;
-    }
-}
+// Evento que se dispara DESPUÉS de que el modal se ha ocultado
+$('#feedbackModal').on('hidden.bs.modal', function () {
+    $('#feedback-text').val('');
+    $('.modal-body .alert').remove();
+    $('.star').removeClass('active');
+});
+
+// Función para el sistema de estrellas
+window.gfg = function (rating) {
+    $('.star').removeClass('active');
+    $('.star').each(function (index) {
+        if (index < rating) {
+            $(this).addClass('active');
+        }
+    });
+};
+
+$('.star').hover(
+    function () {
+        const rating = $(this).data('rating');
+        $('.star').removeClass('hover-active');
+        $('.star').each(function (index) {
+            if ($(this).data('rating') <= rating) {
+                $(this).addClass('hover-active');
+            }
+        });
+    },
+    function () {
+        $('.star').removeClass('hover-active');
+    });
+
+});

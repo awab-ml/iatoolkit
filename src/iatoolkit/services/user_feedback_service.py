@@ -96,7 +96,7 @@ class UserFeedbackService:
                 logging.error(f"No se pudo guardar el feedback para el usuario {user_identifier} en la empresa {company_short_name}")
                 return {'error': 'No se pudo guardar el feedback'}
 
-            return {'message': 'Feedback guardado correctamente'}
+            return {'success': True, 'message': 'Feedback guardado correctamente'}
 
         except Exception as e:
             logging.exception(f"Error crítico en el servicio de feedback: {e}")

@@ -31,7 +31,6 @@ class HistoryApiView(MethodView):
             return jsonify(auth_result), auth_result.get("status_code")
 
         user_identifier = auth_result.get('user_identifier')
-
         try:
             # 2. Call the history service with the unified identifier.
             # The service's signature should now only expect user_identifier.
