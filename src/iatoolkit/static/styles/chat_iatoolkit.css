@@ -14,16 +14,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ul {
-  /* Se resetea el padding por defecto del navegador y se aplica uno controlado */
   padding-left: 1.5rem; /* ~24px de indentación para la lista */
   margin-bottom: 1rem;  /* Espacio después de que termina la lista */
 }
 
 li {
-  /* Espacio vertical entre cada elemento de la lista para mejor legibilidad */
-  margin-bottom: 0.5rem; /* ~8px */
+  margin-bottom: 0.5rem;
   padding-left: 0.25rem; /* Pequeño espacio extra entre la viñeta y el texto */
-    color: #495057;
 }
 
 /* Estilo para la viñeta (el punto) de cada elemento de la lista */
@@ -50,6 +47,195 @@ main.chat-layout-container.prompt-assistant-open {
     height: auto;
     overflow: visible;
 }
+
+
+/* CSS para el chat principal    */
+/* esta clase defines los atributos de cada bloque */
+.chat-block {
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem; /* Borde redondeado estándar de Bootstrap */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); /* Sombra suave y unificada */
+}
+
+/* sección del encabezado en el chat principal */
+.company-section {
+    border-radius: 0.375rem;    /* Mismo radio que .chat-block para consistencia */
+    background-color: var(--brand-header-bg);
+    color: var(--brand-header-text);
+}
+
+/* Estilos para el contenedor del chat y mensajes para que exista scroll */
+#chat-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff; /* Fondo blanco para el contenedor del chat */
+}
+
+/* La caja principal que envuelve toda el área de entrada */
+.input-area {
+    background-color: var(--brand-prompt-assistant-bg, #f8f9fa);
+}
+
+/* La barra "cápsula" que envuelve el texto y los iconos */
+.chat-input-bar {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 1rem;
+    padding: 0.1rem 0.5rem;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Efecto de foco para toda la barra */
+.chat-input-bar:focus-within {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+#question {
+    width: 100%;
+    font-size: 15px;
+    background: #f8f9fa;
+    color: #202123;
+    border: 1px solid #d1d5db;
+    transition: all 0.3s ease-in-out;
+}
+
+#question:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.answer-section, .error-section {
+    max-width: 100%;
+    word-wrap: break-word;
+    margin-bottom: 10px;
+}
+
+/* Estilo del mensaje ingresado por el usuario */
+#chat-container .message {
+  max-width: 75%;
+  min-width: fit-content;
+  width: fit-content;
+  border-radius: 12px 12px 0px 12px;
+  word-wrap: break-word;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+  text-align: left;
+  padding-left: 0.5em;
+    color: #202123;
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  background-color: #f7f7f8;
+  border: none;
+}
+
+.answer-section {
+    align-self: flex-start;
+    max-width: 75%;
+    padding: 10px 15px;
+    font-family: "Inter", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+.error-section {
+    align-self: flex-start;
+    max-width: 75%;
+    min-width: 250px;
+
+    color: var(--brand-danger-text, #842029); /* Color de texto de error de la marca */
+    background-color: var(--brand-danger-bg, #f8d7da); /* Fondo de error de la marca */
+    border: 1px solid var(--brand-danger-border, #f5c2c7); /* Borde de error de la marca */
+    font-style: italic;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    margin: 10px 0;
+    padding: 10px 15px; /* Un poco más de padding lateral */
+    opacity: 0.9;
+    border-radius: 8px; /* Bordes redondeados */
+    word-wrap: break-word; /* Asegura que el texto no se desborde */
+}
+
+.error-section i {
+    color: var(--brand-danger-color, #dc3545); /* Color del icono, el rojo principal */
+    font-size: 1.2rem; /* Tamaño del icono */
+    margin-right: 10px; /* Espacio entre el icono y el texto */
+    flex-shrink: 0; /* Evita que el icono se encoja */
+}
+
+/* Estilo para mensajes sutiles del sistema (ej. abortado) */
+.system-message {
+    color: var(--brand-secondary-color, #6c757d); /* Usa el color secundario o un gris por defecto */
+    font-style: italic;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    margin: 10px 0;
+    padding: 10px;
+    opacity: 0.8;
+}
+
+
+/* Spinner */
+.spinning {
+    animation: spin 1s linear infinite;
+    font-size: 15px; /* Tamaño del ícono */
+    display: inline-block;
+}
+#spinner .spinner-border {
+    color: var(--brand-primary-color);
+}
+
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+
+/* Estilos para el modal de archivos y ordenar icono */
+.list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    border: none;
+    /* separador sutil solo en la parte inferior */
+    border-bottom: 1px solid #e9ecef; /* Un gris muy claro estándar */
+    padding: 0.5rem 0.75rem;
+
+    /* animación suave para el cambio de fondo */
+    transition: background-color 0.2s ease-in-out;
+}
+
+/* Al pasar el ratón, cambiamos el fondo para dar feedback */
+.list-group-item:hover {
+    background-color: #f8f9fa; /* Un gris de fondo muy sutil */
+}
+
+/* Eliminamos el borde del último elemento para un acabado limpio */
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+.file-name-modal {
+    flex: 1;
+    margin-right: 10px;
+}
+.remove-file-btn {
+    flex-shrink: 0;
+}
+
 
 
 /* Estos estilos son para las paginas publicas: home, signup,  olvide la clave, etc */
@@ -159,177 +345,11 @@ main.chat-layout-container.prompt-assistant-open {
     }
 
 
-/* CSS para el chat principal    */
-/* esta clase defines los atributos de cada bloque */
-.chat-block {
-    padding: 1rem;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem; /* Borde redondeado estándar de Bootstrap */
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06); /* Sombra suave y unificada */
-}
-
-/* sección del encabezado en el chat principal */
-.company-section {
-    border-radius: 0.375rem;    /* Mismo radio que .chat-block para consistencia */
-    background-color: var(--brand-header-bg);
-    color: var(--brand-header-text);
-}
-
-/* Estilos para el contenedor del chat y mensajes para que exista scroll */
-#chat-container {
-    flex-grow: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    background-color: #fff; /* Fondo blanco para el contenedor del chat */
-}
-.answer-section, .error-section, .document-section {
-    max-width: 100%;
-    word-wrap: break-word;
-    margin-bottom: 10px;
-}
-
-/* Spinner */
-.spinning {
-    animation: spin 1s linear infinite;
-    font-size: 15px; /* Tamaño del ícono */
-    display: inline-block;
-}
-#spinner .spinner-border {
-    color: var(--brand-primary-color);
-}
-
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-
-/* Estilos para el modal de archivos y ordenar icono */
-.list-group-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.file-name-modal {
-    flex: 1;
-    margin-right: 10px;
-}
-.remove-file-btn {
-    flex-shrink: 0;
-}
-
-/* Estilo del mensaje ingresado por el usuario */
-#chat-container .message {
-  max-width: 75%;
-  min-width: fit-content;
-  width: fit-content;
-  border-radius: 12px 12px 0px 12px;
-  word-wrap: break-word;
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-end;
-  text-align: left;
-  padding-left: 0.5em;
-    color: #202123;
-  font-family: Arial, sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
-  background-color: #f7f7f8;
-  border: none;
-}
-
-.answer-section {
-    align-self: flex-start;
-    max-width: 75%;
-    padding: 10px 15px;
-    font-family: "Inter", Arial, sans-serif;
-    font-size: 15px;
-    line-height: 1.6;
-    word-wrap: break-word;
-}
-
-.error-section {
-    align-self: flex-start;
-    max-width: 75%;
-    min-width: 250px;
-
-    color: var(--brand-danger-text, #842029); /* Color de texto de error de la marca */
-    background-color: var(--brand-danger-bg, #f8d7da); /* Fondo de error de la marca */
-    border: 1px solid var(--brand-danger-border, #f5c2c7); /* Borde de error de la marca */
-    font-style: italic;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    justify-content: start;
-    margin: 10px 0;
-    padding: 10px 15px; /* Un poco más de padding lateral */
-    opacity: 0.9;
-    border-radius: 8px; /* Bordes redondeados */
-    word-wrap: break-word; /* Asegura que el texto no se desborde */
-}
-
-.error-section i {
-    color: var(--brand-danger-color, #dc3545); /* Color del icono, el rojo principal */
-    font-size: 1.2rem; /* Tamaño del icono */
-    margin-right: 10px; /* Espacio entre el icono y el texto */
-    flex-shrink: 0; /* Evita que el icono se encoja */
-}
-
-#question {
-    width: 100%;
-    font-size: 15px;
-    background: #f8f9fa;
-    color: #202123;
-    border: 1px solid #d1d5db;
-    transition: all 0.3s ease-in-out;
-}
-
-#question:focus {
-    outline: none;
-    border-color: #80bdff;
-    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
-}
-
-/* 1. La caja principal que envuelve toda el área de entrada */
-.input-area {
-    background-color: var(--brand-prompt-assistant-bg, #f8f9fa);
-}
-
-/* 2. La barra "cápsula" que envuelve el texto y los iconos */
-.chat-input-bar {
-    background-color: #ffffff;
-    border: 1px solid #dee2e6;
-    border-radius: 1rem;
-    padding: 0.1rem 0.5rem;
-    transition: all 0.2s ease-in-out;
-}
-
-/* 3. Efecto de foco para toda la barra */
-.chat-input-bar:focus-within {
-    border-color: #86b7fe;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
 
 /* Aplica el color secundario de la marca al icono de ver archivos */
 #view-files-button i {
     color: var(--brand-secondary-color, #6c757d);
 }
-
-/* Estilo para mensajes sutiles del sistema (ej. abortado) */
-.system-message {
-    color: var(--brand-secondary-color, #6c757d); /* Usa el color secundario o un gris por defecto */
-    font-style: italic;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    justify-content: start;
-    margin: 10px 0;
-    padding: 10px;
-    opacity: 0.8;
-}
-
 
 #prompt-assistant-collapse .card {
     border-radius: 1rem;      /* Mismo radio que el chat-input-bar */
@@ -352,7 +372,7 @@ main.chat-layout-container.prompt-assistant-open {
     min-height: 38px;
 }
 
-/* 5. NUEVO Estilo UNIFICADO para los enlaces de iconos de acción */
+/* Estilo UNIFICADO para los enlaces de iconos de acción */
 .action-icon-style {
     color: #6c757d; /* Color gris estándar por defecto */
     transition: opacity 0.2s ease-in-out;
@@ -462,28 +482,28 @@ main.chat-layout-container.prompt-assistant-open {
     border-bottom: none;
 }
 
-    .prompt-select-button {
-        /* Estado por defecto: Estilo "outline" sutil */
-        background-color: transparent;
-        color: var(--brand-primary-color);
-        border: 1px solid var(--brand-primary-color); /* Borde fino con el color primario */
+.prompt-select-button {
+    /* Estado por defecto: Estilo "outline" sutil */
+    background-color: transparent;
+    color: var(--brand-primary-color);
+    border: 1px solid var(--brand-primary-color); /* Borde fino con el color primario */
 
-        /* Estilos de botón estándar */
-        border-radius: 0.25rem;
-        padding: 0.5rem 1rem;
-        cursor: pointer;
-        text-align: center;
-        font-weight: 500; /* Un poco más de peso para el texto */
+    /* Estilos de botón estándar */
+    border-radius: 0.25rem;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    text-align: center;
+    font-weight: 500; /* Un poco más de peso para el texto */
 
-        /* Transición suave para el cambio en hover */
-        transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
-    }
+    /* Transición suave para el cambio en hover */
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
 
-    .prompt-select-button:hover {
-        /* Estado hover: Se rellena para dar feedback claro */
-        background-color: var(--brand-primary-color);
-        color: var(--brand-text-on-primary);
-    }
+.prompt-select-button:hover {
+    /* Estado hover: Se rellena para dar feedback claro */
+    background-color: var(--brand-primary-color);
+    color: var(--brand-text-on-primary);
+}
 
 
 #clear-selection-button {
