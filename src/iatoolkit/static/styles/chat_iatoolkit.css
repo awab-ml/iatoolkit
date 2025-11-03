@@ -134,7 +134,6 @@ main.chat-layout-container.prompt-assistant-open {
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
-
     .branded-form-label {
         font-size: 0.85rem;
         font-weight: 600;
@@ -144,7 +143,6 @@ main.chat-layout-container.prompt-assistant-open {
         margin-bottom: 0.3rem;
         display: block;
     }
-
 
     /* Efecto de foco brandeado para todos los form-control */
     .form-control:focus {
@@ -161,20 +159,18 @@ main.chat-layout-container.prompt-assistant-open {
     }
 
 
-
 /* CSS para el chat principal    */
 /* esta clase defines los atributos de cada bloque */
 .chat-block {
-    padding: 1rem; /* Equivalente a p-3 de Bootstrap */
-    border: 1px solid #dee2e6; /* Borde estándar y sutil */
+    padding: 1rem;
+    border: 1px solid #dee2e6;
     border-radius: 0.375rem; /* Borde redondeado estándar de Bootstrap */
     box-shadow: 0 2px 8px rgba(0,0,0,0.06); /* Sombra suave y unificada */
 }
 
-
 /* sección del encabezado en el chat principal */
 .company-section {
-    border-radius: 0.375rem; /* Mismo radio que .chat-block para consistencia */
+    border-radius: 0.375rem;    /* Mismo radio que .chat-block para consistencia */
     background-color: var(--brand-header-bg);
     color: var(--brand-header-text);
 }
@@ -192,7 +188,6 @@ main.chat-layout-container.prompt-assistant-open {
     word-wrap: break-word;
     margin-bottom: 10px;
 }
-
 
 /* Spinner */
 .spinning {
@@ -245,15 +240,15 @@ main.chat-layout-container.prompt-assistant-open {
   border: none;
 }
 
-    .answer-section {
-        align-self: flex-start;
-        max-width: 75%;
-        padding: 10px 15px;
-        font-family: "Inter", Arial, sans-serif;
-        font-size: 15px;
-        line-height: 1.6;
-        word-wrap: break-word;
-    }
+.answer-section {
+    align-self: flex-start;
+    max-width: 75%;
+    padding: 10px 15px;
+    font-family: "Inter", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    word-wrap: break-word;
+}
 
 .error-section {
     align-self: flex-start;
@@ -306,7 +301,7 @@ main.chat-layout-container.prompt-assistant-open {
 .chat-input-bar {
     background-color: #ffffff;
     border: 1px solid #dee2e6;
-    border-radius: 1.5rem;
+    border-radius: 1rem;
     padding: 0.1rem 0.5rem;
     transition: all 0.2s ease-in-out;
 }
@@ -337,7 +332,7 @@ main.chat-layout-container.prompt-assistant-open {
 
 
 #prompt-assistant-collapse .card {
-    border-radius: 1.5rem;      /* Mismo radio que el chat-input-bar */
+    border-radius: 1rem;      /* Mismo radio que el chat-input-bar */
     border: 1px solid var(--brand-prompt-assistant-border, #dee2e6); /* Mismo borde que el chat-input-bar */
     box-shadow: none;           /* Eliminamos la sombra por defecto del card */
 }
