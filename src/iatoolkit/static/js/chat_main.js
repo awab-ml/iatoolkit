@@ -11,7 +11,7 @@ $(document).ready(function () {
             callToolkit(url, {'token': window.redeemToken}, "POST").catch(() => {});
         }
 
-        const layoutContainer = document.querySelector('body.chat-page-layout'); // Apunta al body con la clase
+    const layoutContainer = document.querySelector('.chat-layout-container');
     const promptAssistantCollapse = document.getElementById('prompt-assistant-collapse');
 
     if (layoutContainer && promptAssistantCollapse) {

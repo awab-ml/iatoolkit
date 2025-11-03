@@ -36,13 +36,11 @@ li::marker {
   color: #64748b;
 }
 
-/* --- Layout Principal de la pagina del Chat --- */
-main.chat-layout-container {
+.chat-layout-container {
     display: flex;
     flex-direction: column;
     height: 100dvh;
-    overflow: hidden; /* Evita el scroll en el contenedor principal */
-
+    overflow: hidden;
     padding-top: 1rem;
     padding-bottom: 0.2rem;
 }
