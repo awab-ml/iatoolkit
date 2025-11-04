@@ -88,7 +88,8 @@ class TestLoginView:
         )
 
         # Minimal endpoint used by FinalizeContextView redirect
-        @self.app.route("/<company_short_name>/index", endpoint="index")
+        @self.app.route("/<company_short_name>/home",
+                        endpoint="home")
         def index(company_short_name):
             return "Index Page", 200
 
@@ -175,7 +176,7 @@ class TestLoginView:
         resp = self.client.get(f"/{self.company_short_name}/login")
 
         assert resp.status_code == 302
-        assert resp.headers["Location"].endswith(f"/{self.company_short_name}/index")
+        assert resp.headers["Location"].endswith(f"/{self.company_short_name}/home")
 
     def test_finalize_exception_renders_error_with_500(self):
         """If finalize fails, it should render error.html with 500."""
@@ -236,7 +237,6 @@ class TestLoginView:
         resp = self.client.get(f"/{self.company_short_name}/finalize/bad")
 
         assert resp.status_code == 302
-        assert resp.headers["Location"].endswith(f"/{self.company_short_name}/index")
+        assert resp.headers["Location"].endswith(f"/{self.company_short_name}/home")
         self.jwt_service.validate_chat_jwt.assert_called_once_with("bad")
-        # No debe intentar finalizar el contexto
         self.query_service.finalize_context_rebuild.assert_not_called()

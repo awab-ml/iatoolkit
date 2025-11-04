@@ -1,5 +1,5 @@
 # iatoolkit/views/home_view.py
-from flask import render_template, session, render_template_string
+from flask import render_template,  render_template_string
 from flask.views import MethodView
 from injector import inject
 from iatoolkit.services.profile_service import ProfileService
@@ -28,9 +28,6 @@ class HomeView(MethodView):
             return render_template('error.html', message="Empresa no encontrada"), 404
 
         branding_data = self.branding_service.get_company_branding(company)
-        alert_message = session.pop('alert_message', None)
-        alert_icon = session.pop('alert_icon', 'error')
-
         home_template = self.util.get_company_template(company_short_name, "home.html")
 
         # 2. Verificamos si el archivo de plantilla personalizado no existe.
@@ -49,8 +46,6 @@ class HomeView(MethodView):
                 company=company,
                 company_short_name=company_short_name,
                 branding=branding_data,
-                alert_message=alert_message,
-                alert_icon=alert_icon
             )
         except Exception as e:
             return render_template(

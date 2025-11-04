@@ -3,7 +3,7 @@
 #
 # IAToolkit is open source software.
 
-from flask import Flask, url_for
+from flask import Flask, url_for, get_flashed_messages
 from flask_session import Session
 from flask_injector import FlaskInjector
 from flask_bcrypt import Bcrypt
@@ -19,7 +19,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from injector import Binder, Injector, singleton
 from importlib.metadata import version as _pkg_version, PackageNotFoundError
 
-IATOOLKIT_VERSION = "0.64.8"
+IATOOLKIT_VERSION = "0.65.0"
 
 # global variable for the unique instance of IAToolkit
 _iatoolkit_instance: Optional['IAToolkit'] = None
@@ -379,6 +379,7 @@ class IAToolkit:
                 'user_is_local': user_profile.get('user_is_local'),
                 'user_email': user_profile.get('user_email'),
                 'iatoolkit_base_url': os.environ.get('IATOOLKIT_BASE_URL', ''),
+                'flashed_messages': get_flashed_messages(with_categories=True)
             }
 
 

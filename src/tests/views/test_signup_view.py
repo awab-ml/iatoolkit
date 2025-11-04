@@ -4,7 +4,7 @@
 # IAToolkit is open source software.
 
 import pytest
-from flask import Flask, url_for
+from flask import Flask, url_for, get_flashed_messages
 from unittest.mock import MagicMock, patch
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.branding_service import BrandingService
@@ -14,7 +14,6 @@ import os
 
 
 class TestSignupView:
-    # --- MEJORA: Añadimos el patcher para la variable de entorno a nivel de clase ---
     @classmethod
     def setup_class(cls):
         cls.patcher = patch.dict(os.environ, {"USER_VERIF_KEY": "mocked_verif_key"})
@@ -105,7 +104,6 @@ class TestSignupView:
             company_short_name='test_company',
             branding=self.branding_service.get_company_branding.return_value,
             form_data=form_data,
-            alert_message='El usuario ya existe'
         )
 
     @patch("iatoolkit.views.signup_view.URLSafeTimedSerializer")
@@ -122,13 +120,15 @@ class TestSignupView:
                     "first_name": "Juan", "last_name": "Perez", "email": "juan@email.com",
                     "password": "password123", "confirm_password": "password123"
                 })
+                flashed_messages = get_flashed_messages(with_categories=True)
+
+                assert len(flashed_messages) == 1
+                assert flashed_messages[0][0] == 'success'
 
                 assert response.status_code == 302
                 assert response.location == expected_redirect_url
 
-                with self.client.session_transaction() as sess:
-                    assert sess['alert_message'] == success_message
-                    assert sess['alert_icon'] == 'success'
+
 
     @patch("iatoolkit.views.signup_view.render_template")
     def test_post_unexpected_error(self, mock_render_template):

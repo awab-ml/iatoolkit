@@ -4,7 +4,7 @@
 # IAToolkit is open source software.
 
 import pytest
-from flask import Flask, url_for
+from flask import Flask, url_for, get_flashed_messages
 from unittest.mock import MagicMock, patch
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.repositories.models import Company
@@ -86,7 +86,6 @@ class TestForgotPasswordView:
 
         response = self.client.get("/test_company/forgot_password")
 
-        # --- MEJORA: Verificar que se llama a render_template con los argumentos correctos ---
         assert response.status_code == 200
         mock_render_template.assert_called_once_with(
             'forgot_password.html',
@@ -102,17 +101,18 @@ class TestForgotPasswordView:
         self.profile_service.forgot_password.return_value = {'error': 'Usuario no encontrado'}
         test_email = "nonexistent@email.com"
 
-        response = self.client.post("/test_company/forgot_password", data={"email": test_email})
+        with self.client:
+            response = self.client.post("/test_company/forgot_password", data={"email": test_email})
+            flashed_messages = get_flashed_messages(with_categories=True)
 
-        # --- MEJORA: Verificación completa de la llamada a render_template en caso de error ---
+        assert len(flashed_messages) == 1
         assert response.status_code == 400
         mock_render_template.assert_called_once_with(
             'forgot_password.html',
             company=self.test_company,
             company_short_name='test_company',
             branding=self.branding_service.get_company_branding.return_value,
-            form_data={"email": test_email},
-            alert_message='Usuario no encontrado'
+            form_data={"email": test_email}
         )
 
     @patch("iatoolkit.views.forgot_password_view.URLSafeTimedSerializer")
@@ -126,14 +126,13 @@ class TestForgotPasswordView:
 
             with self.client:
                 response = self.client.post("/test_company/forgot_password", data={"email": "user@example.com"})
+                flashed_messages = get_flashed_messages(with_categories=True)
 
-                # --- MEJORA: Usar url_for para verificar la redirección, haciéndola más robusta ---
+                assert flashed_messages[0][0] == 'success'
+
                 assert response.status_code == 302
                 assert response.location == expected_redirect_url
 
-                with self.client.session_transaction() as sess:
-                    assert sess['alert_icon'] == "success"
-                    assert sess['alert_message'] == "Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña."
 
     @patch("iatoolkit.views.forgot_password_view.render_template")
     def test_post_unexpected_error(self, mock_render_template):

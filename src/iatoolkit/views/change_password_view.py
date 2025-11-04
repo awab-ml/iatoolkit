@@ -4,7 +4,7 @@
 # IAToolkit is open source software.
 
 from flask.views import MethodView
-from flask import render_template, request, url_for, session, redirect
+from flask import render_template, request, url_for, session, redirect, flash
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.branding_service import BrandingService
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
@@ -36,9 +36,9 @@ class ChangePasswordView(MethodView):
             # Decodificar el token
             email = self.serializer.loads(token, salt='password-reset', max_age=3600)
         except SignatureExpired as e:
+            flash("El enlace de cambio de contraseña ha expirado. Por favor, solicita uno nuevo.", 'error')
             return render_template('forgot_password.html',
-                                branding=branding_data,
-                                alert_message="El enlace de cambio de contraseña ha expirado. Por favor, solicita uno nuevo.")
+                                branding=branding_data)
 
         return render_template('change_password.html',
                                company_short_name=company_short_name,
@@ -59,11 +59,12 @@ class ChangePasswordView(MethodView):
             # Decodificar el token
             email = self.serializer.loads(token, salt='password-reset', max_age=3600)
         except SignatureExpired:
+            flash("El enlace de cambio de contraseña ha expirado. Por favor, solicita uno nuevo.", 'error')
+
             return render_template('forgot_password.html',
                                    company_short_name=company_short_name,
                                    company=company,
-                                   branding=branding_data,
-                                    alert_message="El enlace de cambio de contraseña ha expirado. Por favor, solicita uno nuevo.")
+                                   branding=branding_data)
 
         try:
             # Obtener datos del formulario
@@ -79,6 +80,8 @@ class ChangePasswordView(MethodView):
             )
 
             if "error" in response:
+                flash(response["error"], 'error')
+
                 return render_template(
                     'change_password.html',
                     token=token,
@@ -87,12 +90,10 @@ class ChangePasswordView(MethodView):
                     branding=branding_data,
                     form_data={"temp_code": temp_code,
                                "new_password": new_password,
-                               "confirm_password": confirm_password},
-                    alert_message=response["error"]), 400
+                               "confirm_password": confirm_password}), 400
 
             # Éxito: Guardar mensaje en sesión y redirigir
-            session['alert_message'] = "Tu contraseña ha sido restablecida exitosamente. Ahora puedes iniciar sesión."
-            session['alert_icon'] = 'success'
+            flash("Tu contraseña ha sido restablecida exitosamente. Ahora puedes iniciar sesión.", 'success')
             return redirect(url_for('home', company_short_name=company_short_name))
 
         except Exception as e:

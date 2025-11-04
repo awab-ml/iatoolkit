@@ -4,7 +4,7 @@
 # IAToolkit is open source software.
 
 from flask.views import MethodView
-from flask import render_template, url_for, redirect, session
+from flask import render_template, url_for, redirect, session, flash
 from iatoolkit.services.profile_service import ProfileService
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 from iatoolkit.services.branding_service import BrandingService  # ¡Importante!
@@ -30,27 +30,25 @@ class VerifyAccountView(MethodView):
             # decode the token from the URL
             email = self.serializer.loads(token, salt='email-confirm', max_age=3600*5)
         except SignatureExpired:
+            flash("El enlace de verificación ha expirado. Por favor, solicita uno nuevo.", 'error')
             return render_template('signup.html',
                                    company=company,
                                    company_short_name=company_short_name,
                                    branding=branding_data,
-                                   token=token,
-                                   alert_message="El enlace de verificación ha expirado. Por favor, solicita uno nuevo."), 400
+                                   token=token), 400
 
         try:
             response = self.profile_service.verify_account(email)
             if "error" in response:
+                flash(response["error"], 'error')
                 return render_template(
                     'signup.html',
                     company=company,
                     company_short_name=company_short_name,
                     branding=branding_data,
-                    token=token,
-                    alert_message=response["error"]), 400
+                    token=token), 400
 
-            # Guardamos el mensaje y el icono en la sesión manualmente
-            session['alert_message'] = response['message']
-            session['alert_icon'] = "success"
+            flash(response['message'], 'success')
             return redirect(url_for('home', company_short_name=company_short_name))
 
         except Exception as e:

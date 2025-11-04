@@ -95,7 +95,7 @@ class TestProfileService:
         response = self.service.signup(
             self.mock_company.short_name, 'test@email.com', 'Test', 'User', 'password', 'password', 'url'
         )
-        assert "Usuario ya registrado" in response['error']
+        assert "usuario con email 'test@email.com' ya existe" in response['error']
 
     def test_signup_when_user_exist_and_invalid_password(self, mock_session_manager):
         self.mock_user.password = generate_password_hash("password").decode("utf-8")
@@ -109,7 +109,7 @@ class TestProfileService:
             verification_url='http://verification'
         )
 
-        assert "contraseña es incorrecta" in response['error']
+        assert "contraseña de test@email.com es incorrecta" in response['error']
 
     def test_signup_when_user_exist_and_not_in_company(self, mock_session_manager):
         self.mock_repo.get_user_by_email.return_value = self.mock_user
@@ -300,7 +300,7 @@ class TestProfileService:
             email='test@email.com',
             reset_url='http://a_reset_utl'
         )
-        assert "El usuario no existe" in response['error']
+        assert "usuario test@email.com no esta registrado" in response['error']
 
     def test_forgot_password_when_ok(self,mock_session_manager):
         self.mock_repo.get_user_by_email.return_value = self.mock_user

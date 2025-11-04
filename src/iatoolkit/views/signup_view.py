@@ -4,9 +4,9 @@
 # IAToolkit is open source software.
 
 from flask.views import MethodView
-from flask import render_template, request, url_for, session, redirect
+from flask import render_template, request, url_for, redirect, flash
 from iatoolkit.services.profile_service import ProfileService
-from iatoolkit.services.branding_service import BrandingService # 1. Importar BrandingService
+from iatoolkit.services.branding_service import BrandingService
 from injector import inject
 from itsdangerous import URLSafeTimedSerializer
 import os
@@ -67,6 +67,7 @@ class SignupView(MethodView):
                 verification_url=verification_url)
 
             if "error" in response:
+                flash(response["error"], 'error')
                 return render_template(
                     'signup.html',
                     company=company,
@@ -78,14 +79,9 @@ class SignupView(MethodView):
                         "email": email,
                         "password": password,
                         "confirm_password": confirm_password
-                    },
-                    alert_message=response["error"]), 400
+                    }), 400
 
-            # Guardamos el mensaje de éxito en la sesión
-            session['alert_message'] = response["message"]
-            session['alert_icon'] = 'success'
-
-            # Redirigimos al usuario a la página de login
+            flash(response["message"], 'success')
             return redirect(url_for('home', company_short_name=company_short_name))
 
         except Exception as e:

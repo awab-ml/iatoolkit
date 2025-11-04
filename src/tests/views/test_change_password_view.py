@@ -4,7 +4,7 @@
 # IAToolkit is open source software.
 
 import pytest
-from flask import Flask
+from flask import Flask, get_flashed_messages
 from unittest.mock import MagicMock, patch
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.branding_service import BrandingService
@@ -90,7 +90,6 @@ class TestChangePasswordView:
             mock_render_template.assert_called_once_with(
                 "forgot_password.html",
                 branding={},
-                alert_message="El enlace de cambio de contraseña ha expirado. Por favor, solicita uno nuevo."
             )
             assert response.status_code == 200
 
@@ -134,7 +133,6 @@ class TestChangePasswordView:
             company=self.test_company,
             branding={},
             company_short_name='test_company',
-            alert_message="El enlace de cambio de contraseña ha expirado. Por favor, solicita uno nuevo."
         )
         assert response.status_code == 200
 
@@ -145,13 +143,18 @@ class TestChangePasswordView:
         mock_render_template.return_value = "<html><body></body></html>"
         self.profile_service.change_password.return_value = \
             {'error': 'password missmatch'}
-        response = self.client.post("/test_company/change_password/valid_token",
+        with self.client:
+            response = self.client.post("/test_company/change_password/valid_token",
                                         data={
                                             "temp_code": "123456",
                                             "new_password": "password123",
                                             "confirm_password": "password456"
                                         },
                                         content_type="application/x-www-form-urlencoded")
+            flashed_messages = get_flashed_messages(with_categories=True)
+
+        assert len(flashed_messages) == 1
+        assert flashed_messages[0][0] == 'error'
 
         mock_render_template.assert_called_once_with(
                 "change_password.html",
@@ -159,7 +162,6 @@ class TestChangePasswordView:
             branding={},
             company_short_name='test_company',
                 form_data={"temp_code": "123456", "new_password": "password123", "confirm_password": "password456"},
-                alert_message='password missmatch',
                 token='valid_token'
             )
         assert response.status_code == 400
@@ -180,17 +182,14 @@ class TestChangePasswordView:
                                             "new_password": "password123",
                                             "confirm_password": "password123"
                                         })
+            flashed_messages = get_flashed_messages(with_categories=True)
+
+            assert len(flashed_messages) == 1
+            assert flashed_messages[0][0] == 'success'
 
             # 1. Verificar la redirección
             assert response.status_code == 302
             assert response.location == "/test_company/"
-
-            # 2. Verificar el contenido de la sesión después de la redirección
-            # `session_transaction` abre la sesión resultante de la petición anterior
-            with self.client.session_transaction() as sess:
-                assert sess[
-                           'alert_message'] == "Tu contraseña ha sido restablecida exitosamente. Ahora puedes iniciar sesión."
-                assert sess['alert_icon'] == 'success'
 
     @patch("iatoolkit.views.change_password_view.render_template")
     @patch("iatoolkit.views.change_password_view.URLSafeTimedSerializer")

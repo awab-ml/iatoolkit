@@ -4,7 +4,8 @@
 # IAToolkit is open source software.
 
 from flask.views import MethodView
-from flask import request, redirect, render_template, url_for, render_template_string
+from flask import (request, redirect, render_template, url_for,
+                   render_template_string, flash)
 from injector import inject
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.jwt_service import JWTService
@@ -40,6 +41,7 @@ class LoginView(BaseLoginView):
         )
 
         if not auth_response['success']:
+            flash(auth_response["message"], 'error')
             home_template = self.utility.get_company_template(company_short_name, "home.html")
 
             return render_template_string(
@@ -48,7 +50,6 @@ class LoginView(BaseLoginView):
                 company=company,
                 branding=branding_data,
                 form_data={"email": email},
-                alert_message=auth_response["message"]
             ), 400
 
         user_identifier = auth_response['user_identifier']
@@ -100,12 +101,12 @@ class FinalizeContextView(MethodView):
             payload = self.jwt_service.validate_chat_jwt(token)
             if not payload:
                 logging.warning("Fallo crítico: No se pudo leer el auth token.")
-                return redirect(url_for('index', company_short_name=company_short_name))
+                return redirect(url_for('home', company_short_name=company_short_name))
 
             user_identifier = payload.get('user_identifier')
         else:
             logging.warning("Fallo crítico: missing session information or auth token")
-            return redirect(url_for('index', company_short_name=company_short_name))
+            return redirect(url_for('home', company_short_name=company_short_name))
 
         company = self.profile_service.get_company_by_short_name(company_short_name)
         if not company:

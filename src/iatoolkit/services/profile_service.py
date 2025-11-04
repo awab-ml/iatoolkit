@@ -165,11 +165,11 @@ class ProfileService:
             if existing_user:
                 # validate password
                 if not self.bcrypt.check_password_hash(existing_user.password, password):
-                    return {"error": "La contraseña es incorrecta. No se puede agregar a la nueva empresa."}
+                    return {"error": f"La contraseña de {email} es incorrecta."}
 
                 # check if register
                 if company in existing_user.companies:
-                    return {"error": "Usuario ya registrado en esta empresa"}
+                    return {"error": f"El usuario con email '{email}' ya existe en esta empresa"}
                 else:
                     # add new company to existing user
                     existing_user.companies.append(company)
@@ -253,7 +253,7 @@ class ProfileService:
             # Verificar si el usuario existe
             user = self.profile_repo.get_user_by_email(email)
             if not user:
-                return {"error": "El usuario no existe."}
+                return {"error": f"El usuario {email} no esta registrado."}
 
             # Gen a temporary code and store in the repositories
             temp_code = ''.join(random.choices(string.ascii_letters + string.digits, k=6)).upper()

@@ -4,7 +4,7 @@
 # IAToolkit is open source software.
 
 import pytest
-from flask import Flask, url_for
+from flask import Flask, url_for, get_flashed_messages
 from unittest.mock import MagicMock, patch
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.branding_service import BrandingService
@@ -67,7 +67,12 @@ class TestVerifyAccountView:
         mock_serializer_class.return_value.loads.side_effect = SignatureExpired('error')
         mock_render_template.return_value = "<html></html>"
 
-        response = self.client.get("/test_company/verify/expired_token")
+        with self.client:
+            response = self.client.get("/test_company/verify/expired_token")
+            flashed_messages = get_flashed_messages(with_categories=True)
+
+        assert len(flashed_messages) == 1
+        assert flashed_messages[0][0] == 'error'
 
         assert response.status_code == 400
         mock_render_template.assert_called_once_with(
@@ -76,7 +81,6 @@ class TestVerifyAccountView:
             company_short_name='test_company',
             branding=self.branding_service.get_company_branding.return_value,
             token='expired_token',
-            alert_message="El enlace de verificación ha expirado. Por favor, solicita uno nuevo."
         )
 
     @patch("iatoolkit.views.verify_user_view.render_template")
@@ -86,7 +90,12 @@ class TestVerifyAccountView:
         mock_render_template.return_value = "<html></html>"
         self.profile_service.verify_account.return_value = {'error': 'Enlace inválido'}
 
-        response = self.client.get("/test_company/verify/valid_token")
+        with self.client:
+            response = self.client.get("/test_company/verify/valid_token")
+            flashed_messages = get_flashed_messages(with_categories=True)
+
+        assert len(flashed_messages) == 1
+        assert flashed_messages[0][0] == 'error'
 
         assert response.status_code == 400
         mock_render_template.assert_called_once_with(
@@ -94,8 +103,7 @@ class TestVerifyAccountView:
             company=self.test_company,
             company_short_name='test_company',
             branding=self.branding_service.get_company_branding.return_value,
-            token='valid_token',
-            alert_message='Enlace inválido'
+            token='valid_token'
         )
 
     @patch("iatoolkit.views.verify_user_view.URLSafeTimedSerializer")
@@ -109,13 +117,12 @@ class TestVerifyAccountView:
 
             with self.client:
                 response = self.client.get("/test_company/verify/valid_token")
+                flashed_messages = get_flashed_messages(with_categories=True)
 
                 assert response.status_code == 302
                 assert response.location == expected_redirect_url
-
-                with self.client.session_transaction() as sess:
-                    assert sess['alert_message'] == success_message
-                    assert sess['alert_icon'] == "success"
+                assert len(flashed_messages) == 1
+                assert flashed_messages[0][0] == 'success'
 
     @patch("iatoolkit.views.verify_user_view.render_template")
     @patch("iatoolkit.views.verify_user_view.URLSafeTimedSerializer")

@@ -550,7 +550,7 @@ main.chat-layout-container.prompt-assistant-open {
 }
 
 /* --- Toast de Error (Usa el color de peligro de la marca) --- */
-.toast-error {
+.toast-error{
   background-color: var(--brand-danger-color) !important;
   color: var(--brand-text-on-primary) !important; /* Asumimos texto blanco sobre el color de peligro */
   opacity: 0.95 !important;
