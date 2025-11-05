@@ -31,14 +31,14 @@ class InitContextApiView(MethodView):
         an active web session or by the external_user_id in the JSON payload
         for API calls.
         """
-        # 1. Authenticate the request. This handles both session and API Key.
-        auth_result = self.auth_service.verify()
-        if not auth_result.get("success"):
-            return jsonify(auth_result), auth_result.get("status_code")
-
-        user_identifier = auth_result.get('user_identifier')
-
         try:
+            # 1. Authenticate the request. This handles both session and API Key.
+            auth_result = self.auth_service.verify()
+            if not auth_result.get("success"):
+                return jsonify(auth_result), auth_result.get("status_code")
+
+            user_identifier = auth_result.get('user_identifier')
+
             # 2. Execute the forced rebuild sequence using the unified identifier.
             self.query_service.session_context.clear_all_context(company_short_name, user_identifier)
             logging.info(f"Context for {company_short_name}/{user_identifier} has been cleared.")
@@ -59,7 +59,7 @@ class InitContextApiView(MethodView):
             return jsonify({'status': 'OK', 'message': success_message}), 200
 
         except Exception as e:
-            logging.exception(f"errors while reloading context {user_identifier}: {e}")
+            logging.exception(f"errors while reloading context: {e}")
             error_message = self.i18n_service.t('errors.general.unexpected_error')
             return jsonify({"error_message": error_message}), 500
 

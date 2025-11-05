@@ -25,27 +25,27 @@ class HomeView(MethodView):
         self.util = utility
 
     def get(self, company_short_name: str):
-        company = self.profile_service.get_company_by_short_name(company_short_name)
-
-        if not company:
-            return render_template('error.html',
-                                   message=self.i18n_service.t('errors.templates.company_not_found')), 404
-
-        branding_data = self.branding_service.get_company_branding(company)
-        home_template = self.util.get_company_template(company_short_name, "home.html")
-
-        # 2. Verificamos si el archivo de plantilla personalizado no existe.
-        if not home_template:
-            message = self.i18n_service.t('errors.templates.home_template_not_found', company_name=company_short_name)
-            return render_template(
-                "error.html",
-                company_short_name=company_short_name,
-                branding=branding_data,
-                message=message
-            ), 500
-
-        # 3. Si el archivo existe, intentamos leerlo y renderizarlo.
         try:
+            company = self.profile_service.get_company_by_short_name(company_short_name)
+
+            if not company:
+                return render_template('error.html',
+                                       message=self.i18n_service.t('errors.templates.company_not_found')), 404
+
+            branding_data = self.branding_service.get_company_branding(company)
+            home_template = self.util.get_company_template(company_short_name, "home.html")
+
+            # 2. Verificamos si el archivo de plantilla personalizado no existe.
+            if not home_template:
+                message = self.i18n_service.t('errors.templates.home_template_not_found', company_name=company_short_name)
+                return render_template(
+                    "error.html",
+                    company_short_name=company_short_name,
+                    branding=branding_data,
+                    message=message
+                ), 500
+
+            # 3. Si el archivo existe, intentamos leerlo y renderizarlo.
             return render_template_string(
                 home_template,
                 company=company,

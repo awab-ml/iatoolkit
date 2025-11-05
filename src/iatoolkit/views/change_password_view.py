@@ -28,28 +28,36 @@ class ChangePasswordView(MethodView):
         self.bcrypt = Bcrypt()
 
     def get(self, company_short_name: str, token: str):
-        # get company info
-        company = self.profile_service.get_company_by_short_name(company_short_name)
-        if not company:
-            return render_template('error.html',
-                                   message=self.i18n_service.t('errors.templates.company_not_found')), 404
-
-        branding_data = self.branding_service.get_company_branding(company)
-
         try:
-            # Decodificar el token
-            email = self.serializer.loads(token, salt='password-reset', max_age=3600)
-        except SignatureExpired as e:
-            flash(self.i18n_service.t('errors.change_password.token_expired'), 'error')
-            return render_template('forgot_password.html',
-                                branding=branding_data)
+            company = self.profile_service.get_company_by_short_name(company_short_name)
+            if not company:
+                return render_template('error.html',
+                                       message=self.i18n_service.t('errors.templates.company_not_found')), 404
 
-        return render_template('change_password.html',
-                               company_short_name=company_short_name,
-                               company=company,
-                               branding=branding_data,
-                               token=token,
-                               email=email)
+            branding_data = self.branding_service.get_company_branding(company)
+
+            try:
+                # Decodificar el token
+                email = self.serializer.loads(token, salt='password-reset', max_age=3600)
+            except SignatureExpired as e:
+                flash(self.i18n_service.t('errors.change_password.token_expired'), 'error')
+                return render_template('forgot_password.html',
+                                    branding=branding_data)
+
+            return render_template('change_password.html',
+                                   company_short_name=company_short_name,
+                                   company=company,
+                                   branding=branding_data,
+                                   token=token,
+                                   email=email)
+        except Exception as e:
+            message = self.i18n_service.t('errors.templates.processing_error', error=str(e))
+            return render_template(
+                "error.html",
+                company_short_name=company_short_name,
+                branding=branding_data,
+                message=message
+            ), 500
 
     def post(self, company_short_name: str, token: str):
         # get company info

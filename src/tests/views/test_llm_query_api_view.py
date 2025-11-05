@@ -6,6 +6,7 @@ from iatoolkit.services.query_service import QueryService
 from iatoolkit.services.auth_service import AuthService
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.repositories.models import Company
+from iatoolkit.services.i18n_service import I18nService
 
 MOCK_COMPANY_SHORT_NAME = "test-api-comp"
 MOCK_EXTERNAL_USER_ID = "api-user-789"
@@ -21,6 +22,8 @@ class TestLLMQueryApiView:
         self.mock_auth = MagicMock(spec=AuthService)
         self.mock_query = MagicMock(spec=QueryService)
         self.mock_profile = MagicMock(spec=ProfileService)
+        self.mock_i18n_service = MagicMock(spec=I18nService)
+
 
         # Common successful auth mock
         self.mock_auth.verify.return_value = {"success": True, 'user_identifier': MOCK_EXTERNAL_USER_ID}
@@ -30,8 +33,12 @@ class TestLLMQueryApiView:
             'llm_query_api',
             auth_service=self.mock_auth,
             query_service=self.mock_query,
-            profile_service=self.mock_profile
+            profile_service=self.mock_profile,
+            i18n_service=self.mock_i18n_service
         )
+
+        self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
+
         self.app.add_url_rule('/<company_short_name>/api/query', view_func=view, methods=['POST'])
         self.url = f'/{MOCK_COMPANY_SHORT_NAME}/api/query'
 
