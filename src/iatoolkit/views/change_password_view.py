@@ -100,7 +100,7 @@ class ChangePasswordView(MethodView):
             return redirect(url_for('home', company_short_name=company_short_name))
 
         except Exception as e:
-            message = self.i18n_service.t('errors.templates.home_template_processing_error', error=str(e))
+            message = self.i18n_service.t('errors.templates.processing_error', error=str(e))
             return render_template(
                 "error.html",
                 company_short_name=company_short_name,

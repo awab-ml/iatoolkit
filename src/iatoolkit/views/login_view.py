@@ -63,7 +63,7 @@ class LoginView(BaseLoginView):
         try:
             return self._handle_login_path(company, user_identifier, target_url)
         except Exception as e:
-            message = self.i18n_service.t('errors.templates.home_template_processing_error', error=str(e))
+            message = self.i18n_service.t('errors.templates.processing_error', error=str(e))
             return render_template(
                 "error.html",
                 company_short_name=company_short_name,
