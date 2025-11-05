@@ -96,31 +96,31 @@ class FinalizeContextView(MethodView):
         self.i18n_service = i18n_service
 
     def get(self, company_short_name: str, token: str = None):
-        session_info = self.profile_service.get_current_session_info()
-        if session_info:
-            # session exists, internal user
-            user_identifier = session_info.get('user_identifier')
-            token = ''
-        elif token:
-            # user identified by api-key
-            payload = self.jwt_service.validate_chat_jwt(token)
-            if not payload:
-                logging.warning("Fallo crítico: No se pudo leer el auth token.")
+        try:
+            session_info = self.profile_service.get_current_session_info()
+            if session_info:
+                # session exists, internal user
+                user_identifier = session_info.get('user_identifier')
+                token = ''
+            elif token:
+                # user identified by api-key
+                payload = self.jwt_service.validate_chat_jwt(token)
+                if not payload:
+                    logging.warning("Fallo crítico: No se pudo leer el auth token.")
+                    return redirect(url_for('home', company_short_name=company_short_name))
+
+                user_identifier = payload.get('user_identifier')
+            else:
+                logging.warning("Fallo crítico: missing session information or auth token")
                 return redirect(url_for('home', company_short_name=company_short_name))
 
-            user_identifier = payload.get('user_identifier')
-        else:
-            logging.warning("Fallo crítico: missing session information or auth token")
-            return redirect(url_for('home', company_short_name=company_short_name))
+            company = self.profile_service.get_company_by_short_name(company_short_name)
+            if not company:
+                return render_template('error.html',
+                            company_short_name=company_short_name,
+                            message="Empresa no encontrada"), 404
+            branding_data = self.branding_service.get_company_branding(company)
 
-        company = self.profile_service.get_company_by_short_name(company_short_name)
-        if not company:
-            return render_template('error.html',
-                        company_short_name=company_short_name,
-                        message="Empresa no encontrada"), 404
-        branding_data = self.branding_service.get_company_branding(company)
-
-        try:
             # 2. Finalize the context rebuild (the heavy task).
             self.query_service.finalize_context_rebuild(
                 company_short_name=company_short_name,

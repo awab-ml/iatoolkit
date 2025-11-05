@@ -20,12 +20,12 @@ class PromptApiView(MethodView):
         self.prompt_service = prompt_service
 
     def get(self, company_short_name):
-        # get access credentials
-        auth_result = self.auth_service.verify(anonymous=True)
-        if not auth_result.get("success"):
-            return jsonify(auth_result), auth_result.get('status_code')
-
         try:
+            # get access credentials
+            auth_result = self.auth_service.verify(anonymous=True)
+            if not auth_result.get("success"):
+                return jsonify(auth_result), auth_result.get('status_code')
+
             response = self.prompt_service.get_user_prompts(company_short_name)
             if "error" in response:
                 return {'error_message': response["error"]}, 402
@@ -33,5 +33,5 @@ class PromptApiView(MethodView):
             return response, 200
         except Exception as e:
             logging.exception(
-                f"unexpected error getting company prompts  {company_short_name}: {e}")
+                f"unexpected error getting company prompts: {e}")
             return jsonify({"error_message": str(e)}), 500

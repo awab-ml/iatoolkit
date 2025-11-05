@@ -39,13 +39,14 @@ class SignupView(MethodView):
                                branding=branding_data)
 
     def post(self, company_short_name: str):
-        company = self.profile_service.get_company_by_short_name(company_short_name)
-        if not company:
-            return render_template('error.html',
-                                 message=self.i18n_service.t('errors.templates.company_not_found')), 404
-
-        branding_data = self.branding_service.get_company_branding(company)
         try:
+            company = self.profile_service.get_company_by_short_name(company_short_name)
+            if not company:
+                return render_template('error.html',
+                                     message=self.i18n_service.t('errors.templates.company_not_found')), 404
+
+            branding_data = self.branding_service.get_company_branding(company)
+
             first_name = request.form.get('first_name')
             last_name = request.form.get('last_name')
             email = request.form.get('email')

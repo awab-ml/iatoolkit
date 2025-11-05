@@ -20,28 +20,28 @@ class UserFeedbackApiView(MethodView):
         self.user_feedback_service = user_feedback_service
 
     def post(self, company_short_name):
-        # get access credentials
-        auth_result = self.auth_service.verify()
-        if not auth_result.get("success"):
-            return jsonify(auth_result), auth_result.get("status_code")
-
-        user_identifier = auth_result.get('user_identifier')
-
-        data = request.get_json()
-        if not data:
-            return jsonify({"error_message": "invalid json body"}), 402
-
-        # these validations are performed also in the frontend
-        # the are localized in the front
-        message = data.get("message")
-        if not message:
-            return jsonify({"error_message": "missing feedback message"}), 400
-        
-        rating = data.get("rating")
-        if not rating:
-            return jsonify({"error_message": "missing rating"}), 400
-
         try:
+            # get access credentials
+            auth_result = self.auth_service.verify()
+            if not auth_result.get("success"):
+                return jsonify(auth_result), auth_result.get("status_code")
+
+            user_identifier = auth_result.get('user_identifier')
+
+            data = request.get_json()
+            if not data:
+                return jsonify({"error_message": "invalid json body"}), 402
+
+            # these validations are performed also in the frontend
+            # the are localized in the front
+            message = data.get("message")
+            if not message:
+                return jsonify({"error_message": "missing feedback message"}), 400
+
+            rating = data.get("rating")
+            if not rating:
+                return jsonify({"error_message": "missing rating"}), 400
+
             response = self.user_feedback_service.new_feedback(
                 company_short_name=company_short_name,
                 message=message,
