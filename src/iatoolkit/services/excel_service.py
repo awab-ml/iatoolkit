@@ -8,6 +8,7 @@ import pandas as pd
 from uuid import uuid4
 from pathlib import Path
 from iatoolkit.common.exceptions import IAToolkitException
+from iatoolkit.services.i18n_service import I18nService
 from injector import inject
 import os
 import logging
@@ -18,8 +19,11 @@ EXCEL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 class ExcelService:
     @inject
-    def __init__(self,util: Utility):
+    def __init__(self,
+                 util: Utility,
+                 i18n_service: I18nService):
         self.util = util
+        self.i18n_service = i18n_service
 
     def excel_generator(self, **kwargs) -> str:
         """
@@ -42,11 +46,11 @@ class ExcelService:
             # get the parameters
             fname = kwargs.get('filename')
             if not fname:
-                return 'falta el nombre del archivo de salida'
+                return self.i18n_service.t('errors.services.no_output_file')
 
             data = kwargs.get('data')
             if not data or not isinstance(data, list):
-                return 'faltan los datos  o no es una lista de diccionarios'
+                return self.i18n_service.t('errors.services.no_data_for_excel')
 
             sheet_name = kwargs.get('sheet_name', 'hoja 1')
 
@@ -58,7 +62,7 @@ class ExcelService:
 
             # 4. check that download directory is configured
             if 'IATOOLKIT_DOWNLOAD_DIR' not in current_app.config:
-                return 'no esta configurado el directorio temporal para guardar excels'
+                return self.i18n_service.t('errors.services.no_download_directory')
 
             download_dir = current_app.config['IATOOLKIT_DOWNLOAD_DIR']
             filepath = Path(download_dir) / token
@@ -77,28 +81,28 @@ class ExcelService:
 
         except Exception as e:
             raise IAToolkitException(IAToolkitException.ErrorType.CALL_ERROR,
-                               'error generating excel file') from e
+                               self.i18n_service.t('errors.services.cannot_create_excel')) from e
 
     def validate_file_access(self, filename):
         try:
             if not filename:
-                return jsonify({"error": "Nombre de archivo inválido"})
+                return jsonify({"error": self.i18n_service.t('errors.services.invalid_filename')})
             # Prevent path traversal attacks
             if '..' in filename or filename.startswith('/') or '\\' in filename:
-                return jsonify({"error": "Nombre de archivo inválido"})
+                return jsonify({"error": self.i18n_service.t('errors.services.invalid_filename')})
 
             temp_dir = os.path.join(current_app.root_path, 'static', 'temp')
             file_path = os.path.join(temp_dir, filename)
 
             if not os.path.exists(file_path):
-                return jsonify({"error": "Archivo no encontrado"})
+                return jsonify({"error": self.i18n_service.t('errors.services.file_not_exist')})
 
             if not os.path.isfile(file_path):
-                return jsonify({"error": "La ruta no corresponde a un archivo"})
+                return jsonify({"error": self.i18n_service.t('errors.services.path_is_not_a_file')})
 
             return None
 
         except Exception as e:
-            error_msg = f"Error validando acceso al archivo {filename}: {str(e)}"
+            error_msg = f"File validation error {filename}: {str(e)}"
             logging.error(error_msg)
-            return jsonify({"error": "Error validando archivo"})
+            return jsonify({"error": self.i18n_service.t('errors.services.file_validation_error')})

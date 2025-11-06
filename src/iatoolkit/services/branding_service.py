@@ -9,9 +9,8 @@ from injector import inject
 
 class BrandingService:
     """
-    Servicio centralizado que gestiona la configuración de branding.
+    Branding configuration for IAToolkit
     """
-
     @inject
     def __init__(self):
         """

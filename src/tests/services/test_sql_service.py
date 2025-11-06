@@ -9,6 +9,7 @@ from sqlalchemy import text # Para verificar el argumento de text()
 import json
 from datetime import datetime
 from iatoolkit.services.sql_service import SqlService
+from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.common.util import Utility
 from iatoolkit.common.exceptions import IAToolkitException
@@ -18,17 +19,19 @@ class TestSqlService:
 
         self.db_manager_mock = MagicMock(spec=DatabaseManager)
         self.util_mock = MagicMock(spec=Utility)
+        self.mock_i18n_service = MagicMock(spec=I18nService)
+
+        self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
 
         # Mock para la sesión de base de datos y el objeto de resultado de la consulta
         self.session_mock = MagicMock()
         self.mock_result_proxy = MagicMock() # Simula el objeto ResultProxy de SQLAlchemy
 
-        # Configurar los mocks para que devuelvan otros mocks cuando sea necesario
         self.db_manager_mock.get_session.return_value = self.session_mock
         self.session_mock.execute.return_value = self.mock_result_proxy
 
-        # Instanciar el servicio con las dependencias mockeadas
-        self.service = SqlService(util=self.util_mock)
+        self.service = SqlService(util=self.util_mock, i18n_service=self.mock_i18n_service)
+
 
     def test_exec_sql_success_with_simple_data(self):
         """

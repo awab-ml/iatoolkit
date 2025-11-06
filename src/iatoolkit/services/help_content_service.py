@@ -27,4 +27,4 @@ class HelpContentService:
         except Exception as e:
             logging.exception(e)
             raise IAToolkitException(IAToolkitException.ErrorType.CONFIG_ERROR,
-                            f"Error obteniendo help de {company_short_name}: {str(e)}") from e
+                            f"Error getting help file for {company_short_name}: {str(e)}") from e

@@ -39,28 +39,6 @@
     filter: invert(1) grayscale(100%) brightness(200%); /* Hace el botón de cerrar visible en fondos oscuros */
 }
 
-/* Estilos para botones con branding */
-.btn-branded-primary {
-    background-color: var(--brand-primary-color);
-    border-color: var(--brand-primary-color);
-    color: var(--brand-text-on-primary);
-}
-.btn-branded-primary:hover {
-    background-color: var(--brand-text-on-primary);
-    color: var(--brand-primary-color);
-    border-color: var(--brand-primary-color);
-}
-
-.btn-branded-secondary {
-    background-color: var(--brand-secondary-color);
-    border-color: var(--brand-secondary-color);
-    color: var(--brand-text-on-secondary);
-}
-.btn-branded-secondary:hover {
-    background-color: var(--brand-text-on-secondary);
-    color: var(--brand-secondary-color);
-    border-color: var(--brand-secondary-color);
-}
 
 /* Tabla con el resultado del historial */
 .thead-branded th {
@@ -109,7 +87,7 @@
         box-shadow: none;
     }
 
-    /* 2. Estilo para el anillo de foco, aplicado ÚNICAMENTE cuando el botón está CERRADO y tiene foco. */
+    /* Estilo para el anillo de foco, aplicado ÚNICAMENTE cuando el botón está CERRADO y tiene foco. */
     .modal-body .accordion-button.collapsed:focus {
         background-color: #fff; /* Asegura fondo blanco al hacer foco en un item cerrado */
         border-color: transparent; /* Evita bordes no deseados */
@@ -152,18 +130,4 @@
 /* Estilos del botón de eliminar del modal de archivos y ordenar icono */
 .remove-file-btn {
     flex-shrink: 0;
-}
-
-/* Estilos para alertas generales del chat */
-.alert-branded-info {
-    background-color: var(--brand-info-bg);
-    color: var(--brand-info-text);
-    border-color: var(--brand-info-border);
-}
-.alert-branded-info strong,
-.alert-branded-info .alert-link {
-    color: inherit;
-}
-.alert-branded-info .bi { /* Asegura que los iconos también tomen el color */
-    color: inherit;
 }

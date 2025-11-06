@@ -20,8 +20,8 @@ class JWTService:
             self.secret_key = app.config['JWT_SECRET_KEY']
             self.algorithm = app.config['JWT_ALGORITHM']
         except KeyError as e:
-            logging.error(f"Configuración JWT faltante en app.config: {e}. JWTService no funcionará correctamente.")
-            raise RuntimeError(f"Configuración JWT esencial faltante: {e}")
+            logging.error(f"missing JWT configuration: {e}.")
+            raise RuntimeError(f"missing JWT configuration variables: {e}")
 
     def generate_chat_jwt(self,
                           company_short_name: str,
@@ -58,25 +58,23 @@ class JWTService:
 
             # Validaciones adicionales
             if payload.get('type') != 'chat_session':
-                logging.warning(f"Validación JWT fallida: tipo incorrecto '{payload.get('type')}'")
+                logging.warning(f"Invalid JWT type '{payload.get('type')}'")
                 return None
 
             # user_identifier debe estar presente
             if not payload.get('user_identifier'):
-                logging.warning(f"Validación JWT fallida: user_identifier ausente o vacío.")
+                logging.warning(f"missing user_identifier in JWT payload.")
                 return None
 
             if not payload.get('company_short_name'):
-                logging.warning(f"Validación JWT fallida: company_short_name ausente.")
+                logging.warning(f"missing company_short_name in JWT payload.")
                 return None
 
-            logging.debug(
-                f"JWT validado exitosamente para company: {payload.get('company_short_name')}, user: {payload.get('external_user_id')}")
             return payload
 
         except jwt.InvalidTokenError as e:
-            logging.warning(f"Validación JWT fallida: token inválido . Error: {e}")
+            logging.warning(f"Invalid JWT token:: {e}")
             return None
         except Exception as e:
-            logging.error(f"Error inesperado durante validación de JWT : {e}")
+            logging.error(f"unexpected error during JWT validation: {e}")
             return None

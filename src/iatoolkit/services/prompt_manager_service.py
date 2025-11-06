@@ -5,21 +5,25 @@
 
 from injector import inject
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
-
-import logging
+from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from collections import defaultdict
 from iatoolkit.repositories.models import Prompt, PromptCategory, Company
 import os
 from iatoolkit.common.exceptions import IAToolkitException
 import importlib.resources
+import logging
 
 
 class PromptService:
     @inject
-    def __init__(self, llm_query_repo: LLMQueryRepo, profile_repo: ProfileRepo):
+    def __init__(self,
+                 llm_query_repo: LLMQueryRepo,
+                 profile_repo: ProfileRepo,
+                 i18n_service: I18nService):
         self.llm_query_repo = llm_query_repo
         self.profile_repo = profile_repo
+        self.i18n_service = i18n_service
 
     def create_prompt(self,
                       prompt_name: str,
@@ -36,20 +40,20 @@ class PromptService:
         if is_system_prompt:
             if not importlib.resources.files('iatoolkit.system_prompts').joinpath(prompt_filename).is_file():
                 raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
-                                f'No existe el archivo de prompt de sistemas: {prompt_filename}')
+                                f'missing system prompt file: {prompt_filename}')
         else:
             template_dir = f'companies/{company.short_name}/prompts'
 
             relative_prompt_path = os.path.join(template_dir, prompt_filename)
             if not os.path.exists(relative_prompt_path):
                 raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
-                               f'No existe el archivo de prompt: {relative_prompt_path}')
+                               f'missing prompt file: {relative_prompt_path}')
 
         if custom_fields:
             for f in custom_fields:
                 if ('data_key' not in f) or ('label' not in f):
                     raise IAToolkitException(IAToolkitException.ErrorType.INVALID_PARAMETER,
-                               f'El campo custom_fields debe contener los campos: data_key y label')
+                               f'The field "custom_fields" must contain the following keys: data_key y label')
 
                 # add default value for data_type
                 if 'type' not in f:
@@ -82,20 +86,20 @@ class PromptService:
             user_prompt = self.llm_query_repo.get_prompt_by_name(company, prompt_name)
             if not user_prompt:
                 raise IAToolkitException(IAToolkitException.ErrorType.DOCUMENT_NOT_FOUND,
-                                   f"No se encontró el prompt '{prompt_name}' para la empresa '{company.short_name}'")
+                                   f"prompt not found '{prompt_name}' for company '{company.short_name}'")
 
             prompt_file = f'companies/{company.short_name}/prompts/{user_prompt.filename}'
             absolute_filepath = os.path.join(execution_dir, prompt_file)
             if not os.path.exists(absolute_filepath):
                 raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
-                                   f"El archivo para el prompt '{prompt_name}' no existe: {absolute_filepath}")
+                                   f"prompt file '{prompt_name}' does not exist: {absolute_filepath}")
 
             try:
                 with open(absolute_filepath, 'r', encoding='utf-8') as f:
                     user_prompt_content = f.read()
             except Exception as e:
                 raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
-                                   f"Error leyendo el archivo de prompt '{prompt_name}' en {absolute_filepath}: {e}")
+                                   f"error while reading prompt: '{prompt_name}' in this pathname {absolute_filepath}: {e}")
 
             return user_prompt_content
 
@@ -105,9 +109,9 @@ class PromptService:
             raise
         except Exception as e:
             logging.exception(
-                f"Error al obtener el contenido del prompt para la empresa '{company.short_name}' y prompt '{prompt_name}': {e}")
+                f"error loading prompt '{prompt_name}' content for '{company.short_name}': {e}")
             raise IAToolkitException(IAToolkitException.ErrorType.PROMPT_ERROR,
-                               f'Error al obtener el contenido del prompt "{prompt_name}" para la empresa {company.short_name}: {str(e)}')
+                               f'error loading prompt "{prompt_name}" content for company {company.short_name}: {str(e)}')
 
     def get_system_prompt(self):
         try:
@@ -121,10 +125,10 @@ class PromptService:
                     content = importlib.resources.read_text('iatoolkit.system_prompts', prompt.filename)
                     system_prompt_content.append(content)
                 except FileNotFoundError:
-                    logging.warning(f"El archivo para el prompt de sistema no existe en el paquete: {prompt.filename}")
+                    logging.warning(f"Prompt file does not exist in the package: {prompt.filename}")
                 except Exception as e:
                     raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
-                                             f"Error leyendo el archivo de prompt del sistema '{prompt.filename}': {e}")
+                                             f"error reading system prompt '{prompt.filename}': {e}")
 
             # join the system prompts into a single string
             return "\n".join(system_prompt_content)
@@ -135,14 +139,14 @@ class PromptService:
             logging.exception(
                 f"Error al obtener el contenido del prompt de sistema: {e}")
             raise IAToolkitException(IAToolkitException.ErrorType.PROMPT_ERROR,
-                               f'Error al obtener el contenido de los prompts de sistema": {str(e)}')
+                               f'error reading the system prompts": {str(e)}')
 
     def get_user_prompts(self, company_short_name: str) -> dict:
         try:
             # validate company
             company = self.profile_repo.get_company_by_short_name(company_short_name)
             if not company:
-                return {'error': f'No existe la empresa: {company_short_name}'}
+                return {"error": self.i18n_service.t('errors.company_not_found', company_short_name=company_short_name)}
 
             # get all the prompts
             all_prompts = self.llm_query_repo.get_prompts(company)
@@ -183,6 +187,6 @@ class PromptService:
             return {'message': categorized_prompts}
 
         except Exception as e:
-            logging.error(f"Error en get_prompts: {e}")
+            logging.error(f"error in get_prompts: {e}")
             return {'error': str(e)}
 

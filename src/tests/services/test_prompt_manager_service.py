@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch, mock_open
 
 # Asegúrate de que todas las importaciones necesarias estén presentes y correctas
 from iatoolkit.services.prompt_manager_service import PromptService
+from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.repositories.models import Prompt, PromptCategory, Company
@@ -15,22 +16,25 @@ class TestPromptService:
         """Configura mocks y la instancia del servicio para cada test."""
         self.llm_query_repo = MagicMock(spec=LLMQueryRepo)
         self.profile_repo = MagicMock(spec=ProfileRepo)
+        self.mock_i18n_service = MagicMock(spec=I18nService)
+
+        self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
+
         self.prompt_service = PromptService(
             llm_query_repo=self.llm_query_repo,
-            profile_repo=self.profile_repo
+            profile_repo=self.profile_repo,
+            i18n_service=self.mock_i18n_service
         )
         self.mock_company = MagicMock(spec=Company)
         self.mock_company.id = 1
         self.mock_company.name = 'Test Company'
         self.mock_company.short_name = 'test_co'
 
-    # --- Tests para get_user_prompts ---
-
     def test_get_user_prompts_company_not_found(self):
         """Prueba que se devuelve un error cuando la empresa no existe."""
         self.profile_repo.get_company_by_short_name.return_value = None
         result = self.prompt_service.get_user_prompts(company_short_name='nonexistent_company')
-        assert result == {'error': 'No existe la empresa: nonexistent_company'}
+        assert result == {'error': 'translated:errors.company_not_found'}
 
     def test_get_user_prompts_no_prompts_exist(self):
         """Prueba que se devuelve una lista vacía cuando la empresa no tiene prompts."""
@@ -90,7 +94,7 @@ class TestPromptService:
 
         assert result == ""
         mock_logging.warning.assert_called_once()
-        assert "no existe" in mock_logging.warning.call_args[0][0]
+        assert "file does not exist" in mock_logging.warning.call_args[0][0]
 
     def test_get_system_prompt_handles_repo_exception(self):
         """Prueba que se maneja una excepción del repositorio."""
@@ -173,7 +177,7 @@ class TestPromptService:
                 company=self.mock_company
             )
         assert exc_info.value.error_type == IAToolkitException.ErrorType.INVALID_NAME
-        assert "No existe el archivo de prompt" in str(exc_info.value)
+        assert "missing prompt file" in str(exc_info.value)
 
     @patch('iatoolkit.services.prompt_manager_service.os.path.exists', return_value=True)
     def test_create_prompt_handles_db_exception(self, mock_exists):

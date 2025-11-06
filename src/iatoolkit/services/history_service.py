@@ -22,16 +22,14 @@ class HistoryService:
             # validate company
             company = self.profile_repo.get_company_by_short_name(company_short_name)
             if not company:
-                return {'error': f'No existe la empresa: {company_short_name}'}
+                return {'error': f'missing company: {company_short_name}'}
 
             history = self.llm_query_repo.get_history(company, user_identifier)
-
             if not history:
-                return {'message': 'Historial vacio actualmente', 'history': []}
+                return {'message': 'empty history', 'history': []}
 
             history_list = [query.to_dict() for query in history]
-
-            return {'message': 'Historial obtenido correctamente', 'history': history_list}
+            return {'message': 'history loades', 'history': history_list}
 
         except Exception as e:
             return {'error': str(e)}

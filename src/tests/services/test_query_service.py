@@ -8,6 +8,7 @@ import base64
 from iatoolkit.services.query_service import QueryService
 from iatoolkit.services.prompt_manager_service import PromptService
 from iatoolkit.services.user_session_context_service import UserSessionContextService
+from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.repositories.models import Company
@@ -39,6 +40,8 @@ class TestQueryService:
         self.mock_util = MagicMock(spec=Utility)
         self.mock_dispatcher = MagicMock(spec=Dispatcher)
         self.mock_session_context = MagicMock(spec=UserSessionContextService)
+        self.mock_i18n_service = MagicMock(spec=I18nService)
+
 
         # --- Instancia del servicio bajo prueba ---
         with patch.dict(os.environ, {"LLM_MODEL": "gpt-test"}):
@@ -50,11 +53,13 @@ class TestQueryService:
                 llmquery_repo=self.mock_llmquery_repo,
                 profile_repo=self.mock_profile_repo,
                 prompt_service=self.mock_prompt_service,
+                i18n_service=self.mock_i18n_service,
                 util=self.mock_util,
                 dispatcher=self.mock_dispatcher,
                 session_context=self.mock_session_context
             )
 
+        self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
 
         self.mock_company = Company(id=1, short_name=MOCK_COMPANY_SHORT_NAME)
         self.mock_profile_repo.get_company_by_short_name.return_value = self.mock_company
@@ -146,8 +151,7 @@ class TestQueryService:
                                         question="Hi")
 
         assert result['error'] is True
-        expected_error = f"No se encontró 'previous_response_id' para '{MOCK_COMPANY_SHORT_NAME}/{str(MOCK_LOCAL_USER_ID)}'"
-        assert expected_error in result['error_message']
+        assert 'translated:errors.services.missing_response_id' in result['error_message']
         self.mock_llm_client.invoke.assert_not_called()
 
     # --- Tests para load_files_for_context ---

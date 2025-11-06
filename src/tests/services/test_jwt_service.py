@@ -38,12 +38,12 @@ class TestJWTService:
         """Prueba que JWTService levante RuntimeError si falta configuración."""
         app_sin_config_key = Flask(__name__)
         app_sin_config_key.config['JWT_ALGORITHM'] = TEST_ALGORITHM  # Falta JWT_SECRET_KEY
-        with pytest.raises(RuntimeError, match="Configuración JWT esencial faltante: 'JWT_SECRET_KEY'"):
+        with pytest.raises(RuntimeError, match="missing JWT configuration variables: 'JWT_SECRET_KEY'"):
             JWTService(app_sin_config_key)
 
         app_sin_config_algo = Flask(__name__)
         app_sin_config_algo.config['JWT_SECRET_KEY'] = TEST_SECRET_KEY  # Falta JWT_ALGORITHM
-        with pytest.raises(RuntimeError, match="Configuración JWT esencial faltante: 'JWT_ALGORITHM'"):
+        with pytest.raises(RuntimeError, match="missing JWT configuration variables: 'JWT_ALGORITHM'"):
             JWTService(app_sin_config_algo)
 
     def test_generate_chat_jwt_success(self, jwt_service, app):

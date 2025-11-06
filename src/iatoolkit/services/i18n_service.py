@@ -27,7 +27,7 @@ class I18nService:
         """
         locales_dir = os.path.join(os.path.dirname(__file__), '..', 'locales')
         if not os.path.exists(locales_dir):
-            logging.error("El directorio 'locales' no fue encontrado.")
+            logging.error("Directory 'locales' not found.")
             return
 
         for filename in os.listdir(locales_dir):
@@ -37,7 +37,7 @@ class I18nService:
                 try:
                     self.translations[lang_code] = self.util.load_schema_from_yaml(filepath)
                 except Exception as e:
-                    logging.error(f"Fallo al cargar el archivo de traducción {filepath}: {e}")
+                    logging.error(f"Error while loading the translation file {filepath}: {e}")
 
     def _get_nested_key(self, lang: str, key: str):
         """

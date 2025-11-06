@@ -72,7 +72,7 @@ class FileProcessor:
             return False
 
         if self.config.echo:
-            print(f'cargando un total de {len(files)} archivos')
+            print(f'loading {len(files)} files')
 
         for file_info in files:
             file_path = file_info['path']

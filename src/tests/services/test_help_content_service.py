@@ -77,7 +77,7 @@ class TestHelpContentService:
         mock_exists.assert_called_once_with(expected_path)
         self.mock_util.load_schema_from_yaml.assert_called_once_with(expected_path)
         assert excinfo.value.error_type == IAToolkitException.ErrorType.CONFIG_ERROR
-        assert f"Error obteniendo help de {company_short_name}" in str(excinfo.value)
+        assert f"Error getting help file for bad_yaml_company" in str(excinfo.value)
         assert error_message in str(excinfo.value)
 
     @patch('os.path.exists', return_value=False)

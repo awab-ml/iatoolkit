@@ -25,8 +25,8 @@ $(document).ready(function () {
         const data = await callToolkit("/api/history", {}, "POST");
 
         if (!data || !data.history) {
+            historyLoading.hide();
             toastr.error(t_js('error_loading_history'));
-            historyModal.modal('hide');
             return;
         }
 
@@ -60,7 +60,7 @@ $(document).ready(function () {
         filteredHistory.forEach((item, index) => {
             const icon = $('<i>').addClass('bi bi-pencil-fill');
 
-            const link = $('<a>')
+            const edit_link = $('<a>')
                 .attr('href', 'javascript:void(0);')
                 .addClass('edit-pencil')
                 .attr('title', t_js('edit_query'))
@@ -70,16 +70,14 @@ $(document).ready(function () {
             const row = $('<tr>').append(
                 $('<td>').addClass('text-nowrap').text(formatDate(item.created_at)),
                 $('<td>').text(item.query),
-                $('<td>').append(link),
+                $('<td>').append(edit_link),
             );
-
             historyTableBody.append(row);
         });
     }
 
     function formatDate(dateString) {
         const date = new Date(dateString);
-
         const padTo2Digits = (num) => num.toString().padStart(2, '0');
 
         const day = padTo2Digits(date.getDate());

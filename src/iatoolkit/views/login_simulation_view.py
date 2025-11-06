@@ -10,17 +10,29 @@ from flask.views import MethodView
 from flask import render_template, request, Response
 from injector import inject
 from iatoolkit.services.profile_service import ProfileService
+from iatoolkit.services.branding_service import BrandingService
 
 
 class LoginSimulationView(MethodView):
     @inject
     def __init__(self,
-                 profile_service: ProfileService):
+                 profile_service: ProfileService,
+                 branding_service: BrandingService):
         self.profile_service = profile_service
+        self.branding_service = branding_service
+
 
     def get(self, company_short_name: str = None):
-        """Muestra el formulario para iniciar la simulación."""
+        company = self.profile_service.get_company_by_short_name(company_short_name)
+        if not company:
+            return render_template('error.html',
+                                   company_short_name=company_short_name,
+                                   message="Empresa no encontrada"), 404
+
+        branding_data = self.branding_service.get_company_branding(company)
+
         return render_template('login_simulation.html',
+                               branding=branding_data,
                                company_short_name=company_short_name
                                )
 

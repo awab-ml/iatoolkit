@@ -329,7 +329,7 @@ class TestProfileService:
     def test_new_api_key_when_not_company(self,mock_session_manager):
         self.mock_repo.get_company_by_short_name.return_value = None
         response = self.service.new_api_key(company_short_name='test_company')
-        assert "test_company no existe" in response['error']
+        assert 'translated:errors.company_not_found' == response['error']
 
     def test_new_api_key_when_ok(self,mock_session_manager):
         self.mock_repo.get_company_by_short_name.return_value = self.mock_company

@@ -4,6 +4,7 @@
 # IAToolkit is open source software.
 
 from iatoolkit.infra.mail_app import MailApp
+from iatoolkit.services.i18n_service import I18nService
 from injector import inject
 from pathlib import Path
 from iatoolkit.common.exceptions import IAToolkitException
@@ -13,18 +14,22 @@ TEMP_DIR = Path("static/temp")
 
 class MailService:
     @inject
-    def __init__(self, mail_app: MailApp):
+    def __init__(self,
+                 mail_app: MailApp,
+                 i18n_service: I18nService):
         self.mail_app = mail_app
+        self.i18n_service = i18n_service
+
 
     def _read_token_bytes(self, token: str) -> bytes:
         # Defensa simple contra path traversal
         if not token or "/" in token or "\\" in token or token.startswith("."):
             raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
-                               "attachment_token inválido")
+                               "attachment_token invalid")
         path = TEMP_DIR / token
         if not path.is_file():
             raise IAToolkitException(IAToolkitException.ErrorType.MAIL_ERROR,
-                               f"Adjunto no encontrado: {token}")
+                               f"attach file not found: {token}")
         return path.read_bytes()
 
     def send_mail(self, **kwargs):
@@ -59,4 +64,4 @@ class MailService:
             body=body,
             attachments=norm_attachments)
 
-        return 'mail enviado'
+        return self.i18n_service.t('services.mail_sent')

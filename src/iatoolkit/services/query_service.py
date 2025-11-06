@@ -8,6 +8,7 @@ from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.repositories.document_repo import DocumentRepo
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.services.document_service import DocumentService
+from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.repositories.models import Task
 from iatoolkit.services.dispatcher_service import Dispatcher
@@ -37,6 +38,7 @@ class QueryService:
                  llmquery_repo: LLMQueryRepo,
                  profile_repo: ProfileRepo,
                  prompt_service: PromptService,
+                 i18n_service: I18nService,
                  util: Utility,
                  dispatcher: Dispatcher,
                  session_context: UserSessionContextService
@@ -47,6 +49,7 @@ class QueryService:
         self.llmquery_repo = llmquery_repo
         self.profile_repo = profile_repo
         self.prompt_service = prompt_service
+        self.i18n_service = i18n_service
         self.util = util
         self.dispatcher = dispatcher
         self.session_context = session_context
@@ -56,7 +59,7 @@ class QueryService:
         self.model = os.getenv("LLM_MODEL", "")
         if not self.model:
             raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
-                               "La variable de entorno 'LLM_MODEL' no está configurada.")
+                               "missing ENV variable 'LLM_MODEL' configuration.")
 
     def _build_context_and_profile(self, company_short_name: str, user_identifier: str) -> tuple:
         # this method read the user/company context from the database and renders the system prompt
@@ -127,7 +130,7 @@ class QueryService:
         lock_key = f"lock:context:{company_short_name}/{user_identifier}"
         if not self.session_context.acquire_lock(lock_key, expire_seconds=60):
             logging.warning(
-                f"Intento de reconstruir contexto para {user_identifier} mientras ya estaba en progreso. Se omite.")
+                f"try to rebuild context for user {user_identifier} while is still in process, ignored.")
             return
 
         try:
@@ -138,11 +141,9 @@ class QueryService:
             prepared_context, version_to_save = self.session_context.get_and_clear_prepared_context(company_short_name,
                                                                                                     user_identifier)
             if not prepared_context:
-                logging.info(
-                    f"No se requiere reconstrucción de contexto para {company_short_name}/{user_identifier}. Finalización rápida.")
                 return
 
-            logging.info(f"Enviando contexto al LLM para {company_short_name}/{user_identifier}...")
+            logging.info(f"sending context to LLM for: {company_short_name}/{user_identifier}...")
 
             # Limpiar solo el historial de chat y el ID de respuesta anterior
             self.session_context.clear_llm_history(company_short_name, user_identifier)
@@ -161,9 +162,9 @@ class QueryService:
                 self.session_context.save_context_version(company_short_name, user_identifier, version_to_save)
 
             logging.info(
-                f"Contexto de {company_short_name}/{user_identifier} establecido en {int(time.time() - start_time)} seg.")
+                f"Context for: {company_short_name}/{user_identifier} settled in {int(time.time() - start_time)} sec.")
         except Exception as e:
-            logging.exception(f"Error en finalize_context_rebuild para {company_short_name}: {e}")
+            logging.exception(f"Error in finalize_context_rebuild for {company_short_name}: {e}")
             raise e
         finally:
             # --- Liberar el Bloqueo ---
@@ -181,11 +182,11 @@ class QueryService:
             company = self.profile_repo.get_company_by_short_name(short_name=company_short_name)
             if not company:
                 return {"error": True,
-                        "error_message": f'No existe Company ID: {company_short_name}'}
+                        "error_message": self.i18n_service.t('errors.company_not_found', company_short_name=company_short_name)}
 
             if not prompt_name and not question:
                 return {"error": True,
-                        "error_message": f'Hola, cual es tu pregunta?'}
+                        "error_message": self.i18n_service.t('services.start_query')}
 
             # get the previous response_id and context history
             previous_response_id = None
@@ -196,7 +197,7 @@ class QueryService:
                 previous_response_id = self.session_context.get_last_response_id(company.short_name, user_identifier)
                 if not previous_response_id:
                     return {'error': True,
-                            "error_message": f"No se encontró 'previous_response_id' para '{company.short_name}/{user_identifier}'. Reinicia el contexto para continuar."
+                            "error_message": self.i18n_service.t('errors.services.missing_response_id', company_short_name=company.short_name, user_identifier=user_identifier)
                             }
             elif self.util.is_gemini_model(self.model):
                 # check the length of the context_history and remove old messages
@@ -294,7 +295,7 @@ class QueryService:
                 return len(history) >= 1
             return False
         except Exception as e:
-            logging.warning(f"Error verificando caché de contexto: {e}")
+            logging.warning(f"error verifying context cache: {e}")
             return False
 
     def load_files_for_context(self, files: list) -> str:
@@ -353,7 +354,7 @@ class QueryService:
         try:
             total_tokens = sum(self.llm_client.count_tokens(json.dumps(message)) for message in context_history)
         except Exception as e:
-            logging.error(f"Error al calcular tokens del historial: {e}. No se pudo recortar el contexto.")
+            logging.error(f"error counting tokens for history: {e}.")
             return
 
         # Si se excede el límite, eliminar mensajes antiguos (empezando por el segundo)
@@ -364,8 +365,8 @@ class QueryService:
                 removed_tokens = self.llm_client.count_tokens(json.dumps(removed_message))
                 total_tokens -= removed_tokens
                 logging.warning(
-                    f"Historial de contexto ({total_tokens + removed_tokens} tokens) excedía el límite de {GEMINI_MAX_TOKENS_CONTEXT_HISTORY}. "
-                    f"Nuevo total: {total_tokens} tokens."
+                    f"history tokens ({total_tokens + removed_tokens} tokens) exceed the limit of: {GEMINI_MAX_TOKENS_CONTEXT_HISTORY}. "
+                    f"new context: {total_tokens} tokens."
                 )
             except IndexError:
                 # Se produce si solo queda el mensaje del sistema, el bucle debería detenerse.

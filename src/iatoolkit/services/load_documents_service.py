@@ -72,7 +72,7 @@ class LoadDocumentsService:
         """
         if not connector_config:
             raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER,
-                        f"Falta configurar conector")
+                        f"Missing connector config")
 
         try:
             if not filters:
@@ -123,7 +123,7 @@ class LoadDocumentsService:
 
         if not company:
             raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER,
-                        f"Falta configurar empresa")
+                        f"missing company")
 
         # check if file exist in repositories
         if self.doc_repo.get(company_id=company.id,filename=filename):
@@ -182,6 +182,6 @@ class LoadDocumentsService:
             self.doc_repo.session.rollback()
 
             # if something fails, throw exception
-            logging.exception("Error procesando el archivo %s: %s", filename, str(e))
+            logging.exception("Error processing file %s: %s", filename, str(e))
             raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR,
-                               f"Error al procesar el archivo {filename}")
+                               f"Error while processing file: {filename}")

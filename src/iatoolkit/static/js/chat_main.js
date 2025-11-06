@@ -229,9 +229,7 @@ const callToolkit = async function(apiPath, data, method, timeoutMs = 500000) {
 
         }
         const response = await fetch(url, fetchOptions);
-
         clearTimeout(timeoutId);
-
         if (!response.ok) {
             try {
                 // Intentamos leer el error como JSON, que es el formato esperado de nuestra API.
@@ -244,9 +242,7 @@ const callToolkit = async function(apiPath, data, method, timeoutMs = 500000) {
                 // Si response.json() falla, es porque el cuerpo no era JSON (ej. un 502 con HTML).
                 // Mostramos un error genérico y más claro para el usuario.
                 const errorMessage = `Error de comunicación con el servidor (${response.status}). Por favor, intente de nuevo más tarde.`;
-                const errorIcon = '<i class="bi bi-exclamation-triangle"></i>';
-                const infrastructureError = $('<div>').addClass('error-section').html(errorIcon + `<p>${errorMessage}</p>`);
-                displayBotMessage(infrastructureError);
+                toastr.error(errorMessage);
             }
             return null;
         }
@@ -256,18 +252,7 @@ const callToolkit = async function(apiPath, data, method, timeoutMs = 500000) {
         if (error.name === 'AbortError') {
             throw error; // Re-throw to be handled by handleChatMessage
         } else {
-            // Log detallado en consola
-                console.error('Network error in callToolkit:', {
-                    url,
-                    method,
-                    error,
-                    message: error?.message,
-                    stack: error?.stack,
-                });
-            const friendlyMessage = t_js('network_error');
-            const errorIcon = '<i class="bi bi-exclamation-triangle"></i>';
-            const commError = $('<div>').addClass('error-section').html(errorIcon + `<p>${friendlyMessage}</p>`);
-            displayBotMessage(commError);
+            toastr.error(t_js('network_error') );
         }
         return null;
     }

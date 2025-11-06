@@ -5,6 +5,7 @@
 
 from unittest.mock import MagicMock, ANY
 from iatoolkit.repositories.profile_repo import ProfileRepo
+from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.services.user_feedback_service import UserFeedbackService
 from iatoolkit.repositories.models import Company, UserFeedback
 from iatoolkit.infra.google_chat_app import GoogleChatApp
@@ -17,10 +18,14 @@ class TestUserFeedbackService:
         self.profile_repo = MagicMock(ProfileRepo)
         self.google_chat_app = MagicMock(GoogleChatApp)
         self.mail_app = MagicMock(MailApp)
+        self.mock_i18n_service = MagicMock(spec=I18nService)
+
+        self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
 
         # Init the service with all required mocks
         self.service = UserFeedbackService(
             profile_repo=self.profile_repo,
+            i18n_service=self.mock_i18n_service,
             google_chat_app=self.google_chat_app,
             mail_app=self.mail_app
         )
@@ -167,7 +172,7 @@ class TestUserFeedbackService:
             user_identifier='any',
             rating=5
         )
-        assert response == {'error': 'No existe la empresa: unknown_company'}
+        assert response == {'error': 'translated:errors.company_not_found'}
 
     def test_feedback_when_error_saving_in_database(self):
         """Test error handling when saving to the database fails."""
@@ -178,4 +183,4 @@ class TestUserFeedbackService:
             user_identifier='any',
             rating=2
         )
-        assert response == {'error': 'No se pudo guardar el feedback'}
+        assert response == {'error': 'can not save the feedback'}

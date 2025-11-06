@@ -77,6 +77,8 @@ ui:
     stop: "Stop"
 
 errors:
+  company_not_found: "The company {company_short_name} does not exist."
+  timeout: "timeout expired."
   auth:
     invalid_password: "The provided password is incorrect."
     user_not_found: "A user with that email address was not found."
@@ -115,8 +117,28 @@ errors:
     password_no_digit: "Password must contain at least one number."
     password_no_special_char: "Password must contain at least one special character."
 
+  services:
+    no_text_file: "The file is not text or the encoding is not UTF-8"
+    no_output_file: "Missing output file name"
+    no_data_for_excel: "Missing data or it is not a list of dictionaries"
+    no_download_directory: "Temporary directory for saving Excel files is not configured"
+    cannot_create_excel: "Could not create the Excel file"
+    invalid_filename: "Invalid filename"
+    file_not_exist: "File not found"
+    path_is_not_a_file: "The path does not correspond to a file"
+    file_validation_error: "Error validating file"
+    user_not_authorized: "user is not authorized for this company"
+    account_not_verified: "Your account has not been verified. Please check your email."
+    missing_response_id: "Can not found 'previous_response_id' for '{company_short_name}/{user_identifier}'. Reinit context"
+
+
 api_responses:
   context_reloaded_success: "The context has been successfully reloaded."
+
+services:
+  mail_sent: "Email sent successfully."
+  start_query: "Hello, what can I help you with today?"
+
 
 flash_messages:
   password_changed_success: "Your password has been successfully reset. You can now log in."
@@ -142,3 +164,4 @@ js_messages:
   unknown_server_error: "Unknown server error."
   loading: "Loading..."
   reload_init: "init reloading context in background..."
+  no_history_found: "No query history found."

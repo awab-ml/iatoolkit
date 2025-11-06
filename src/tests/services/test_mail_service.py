@@ -5,15 +5,18 @@
 
 from unittest.mock import MagicMock
 from iatoolkit.services.mail_service import MailService
-
+from iatoolkit.services.i18n_service import I18nService
 
 class TestMailService:
 
     def setup_method(self):
         self.mock_mail_app = MagicMock()
+        self.mock_i18n_service = MagicMock(spec=I18nService)
+
+        self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
 
         # Instancia de MailService con la dependencia inyectada como mock
-        self.mail_service = MailService(mail_app=self.mock_mail_app)
+        self.mail_service = MailService(mail_app=self.mock_mail_app, i18n_service=self.mock_i18n_service)
 
         # Datos por defecto para enviar email
         self.recipient = 'destinatario@test.com'
@@ -36,7 +39,7 @@ class TestMailService:
             subject=self.subject,
             body=self.body,
             attachments=[]        )
-        assert result == 'mail enviado'
+        assert result == 'translated:services.mail_sent'
 
     def test_send_mail_when_no_recipient(self):
         # Probamos el comportamiento cuando falta el receptor del mensaje
@@ -67,4 +70,4 @@ class TestMailService:
             subject=None,
             body=None,
             attachments=[] )
-        assert result == 'mail enviado'
+        assert result == 'translated:services.mail_sent'

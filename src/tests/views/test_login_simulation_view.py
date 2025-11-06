@@ -5,6 +5,7 @@ import os
 
 from iatoolkit.views.login_simulation_view import LoginSimulationView
 from iatoolkit.services.profile_service import ProfileService
+from iatoolkit.services.branding_service import BrandingService
 
 
 class TestLoginSimulationView:
@@ -17,13 +18,16 @@ class TestLoginSimulationView:
 
         # 1. Mock del servicio que la vista necesita
         self.profile_service = MagicMock(spec=ProfileService)
+        self.branding_service = MagicMock(spec=BrandingService)
 
-        # --- INICIO DE LA SOLUCIÓN ---
+        self.branding_service.get_company_branding.return_value = {}
+
         # 2. Creamos la función de la vista, inyectando nuestro mock directamente.
         # El nombre del argumento (profile_service) debe coincidir con el del __init__ de la vista.
         view_func = LoginSimulationView.as_view(
             'login_simulation',
-            profile_service=self.profile_service
+            profile_service=self.profile_service,
+            branding_service=self.branding_service
         )
 
         # 3. Registramos la vista ya configurada en la aplicación de prueba.
@@ -42,7 +46,6 @@ class TestLoginSimulationView:
         """
         # Configurar el mock para que devuelva un HTML simple
         mock_render_template.return_value = "<html>Renderizado OK</html>"
-
         company = "acme_corp"
 
         # Ejecutar la petición a la vista

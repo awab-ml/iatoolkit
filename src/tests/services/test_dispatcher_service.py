@@ -173,14 +173,14 @@ class TestDispatcher:
         """Tests get_metadata_from_filename with an invalid company."""
         with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.get_metadata_from_filename("invalid_company", "test.txt")
-        assert "Empresa no configurada: invalid_company" in str(excinfo.value)
+        assert 'company not configured: invalid_company'in str(excinfo.value)
 
     def test_get_metadata_from_filename_company_exception(self):
         """Tests get_metadata_from_filename when the company method raises an exception."""
         self.mock_sample_company_instance.get_metadata_from_filename.side_effect = Exception("Company error")
         with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.get_metadata_from_filename("sample", "test.txt")
-        assert "Error en get_metadata_from_filename de sample" in str(excinfo.value)
+        assert "Error in get_metadata_from_filename" in str(excinfo.value)
 
 
     def test_get_user_info_external_user(self):
@@ -199,13 +199,13 @@ class TestDispatcher:
         self.mock_sample_company_instance.get_user_info.side_effect = Exception("DB error")
         with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.get_user_info("sample", "ext_user_123")
-        assert "Error en get_user_info de sample" in str(excinfo.value)
+        assert "Error in get_user_info" in str(excinfo.value)
 
     def test_get_user_info_invalid_company(self):
         """Tests get_user_info with an invalid company."""
         with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.get_user_info("invalid_company", "any_user")
-        assert "Empresa no configurada: invalid_company" in str(excinfo.value)
+        assert 'company not configured: invalid_company' in str(excinfo.value)
 
     def test_get_company_services(self):
         """Tests that get_company_services returns a correctly formatted list of tools."""

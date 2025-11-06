@@ -11,10 +11,13 @@ import os
 import pytesseract
 from injector import inject
 from iatoolkit.common.exceptions import IAToolkitException
+from iatoolkit.services.i18n_service import I18nService
 
 class DocumentService:
     @inject
-    def __init__(self):
+    def __init__(self, i18n_service: I18nService):
+        self.i18n_service = i18n_service
+
         # max number of pages to load
         self.max_doc_pages = int(os.getenv("MAX_DOC_PAGES", "200"))
 
@@ -29,7 +32,7 @@ class DocumentService:
                         file_content = file_content.decode('utf-8')
                     except UnicodeDecodeError:
                         raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
-                                           "El archivo no es texto o la codificación no es UTF-8")
+                                           self.i18n_service.t('errors.services.no_text_file'))
 
                 return file_content
             elif filename.lower().endswith('.pdf'):

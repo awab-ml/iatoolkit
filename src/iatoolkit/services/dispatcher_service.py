@@ -149,7 +149,7 @@ class Dispatcher:
         except Exception as e:
             logging.exception(e)
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
-                               f"Error en get_company_context de {company_name}: {str(e)}") from e
+                               f"Error getting company context of: {company_name}: {str(e)}") from e
 
     def get_company_services(self, company: Company) -> list[dict]:
         # create the syntax with openai response syntax, for the company function list
@@ -173,7 +173,7 @@ class Dispatcher:
     def get_user_info(self, company_name: str, user_identifier: str) -> dict:
         if company_name not in self.company_instances:
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
-                                     f"Empresa no configurada: {company_name}")
+                                     f"company not configured: {company_name}")
 
         # source 2: external company user
         company_instance = self.company_instances[company_name]
@@ -182,14 +182,14 @@ class Dispatcher:
         except Exception as e:
             logging.exception(e)
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
-                                     f"Error en get_user_info de {company_name}: {str(e)}") from e
+                                     f"Error in get_user_info: {company_name}: {str(e)}") from e
 
         return external_user_profile
 
     def get_metadata_from_filename(self, company_name: str, filename: str) -> dict:
         if company_name not in self.company_instances:
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
-                               f"Empresa no configurada: {company_name}")
+                               f"company not configured: {company_name}")
 
         company_instance = self.company_instances[company_name]
         try:
@@ -197,7 +197,7 @@ class Dispatcher:
         except Exception as e:
             logging.exception(e)
             raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
-                               f"Error en get_metadata_from_filename de {company_name}: {str(e)}") from e
+                               f"Error in get_metadata_from_filename: {company_name}: {str(e)}") from e
 
     def get_company_instance(self, company_name: str):
         """Returns the instance for a given company name."""
@@ -207,11 +207,10 @@ class Dispatcher:
 
 # iatoolkit system prompts
 _SYSTEM_PROMPT = [
-    {'name': 'query_main', 'description':'main prompt de iatoolkit'},
-    {'name': 'format_styles', 'description':'formatos y estilos de salida'},
-    {'name': 'sql_rules', 'description':'instrucciones para generar sql'}
+    {'name': 'query_main', 'description':'iatoolkit main prompt'},
+    {'name': 'format_styles', 'description':'output format styles'},
+    {'name': 'sql_rules', 'description':'instructions  for SQL queries'}
 ]
-
 
 # iatoolkit  function calls
 _FUNCTION_LIST = [

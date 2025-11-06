@@ -49,15 +49,15 @@ class ProfileService:
 
             company = self.profile_repo.get_company_by_short_name(company_short_name)
             if not company:
-                return {'success': False, "message": "Empresa no encontrada"}
+                return {'success': False, "message": "missing company"}
 
             # check that user belongs to company
             if company not in user.companies:
-                return {'success': False, "message": "Usuario no esta autorizado para esta empresa"}
+                return {'success': False, "message": self.i18n_service.t('errors.services.user_not_authorized')}
 
             if not user.verified:
                 return {'success': False,
-                        "message": "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."}
+                        "message": self.i18n_service.t('errors.services.account_not_verified')}
 
             # 1. Build the local user profile dictionary here.
             # the user_profile variables are used on the LLM templates also (see in query_main.prompt)
@@ -74,7 +74,7 @@ class ProfileService:
 
             # 3. create the web session
             self.set_session_for_user(company.short_name, user_identifier)
-            return {'success': True, "user_identifier": user_identifier, "message": "Login exitoso"}
+            return {'success': True, "user_identifier": user_identifier, "message": "Login ok"}
         except Exception as e:
             logging.error(f"Error in login: {e}")
             return {'success': False, "message": str(e)}
@@ -324,7 +324,7 @@ class ProfileService:
     def new_api_key(self, company_short_name: str):
         company = self.get_company_by_short_name(company_short_name)
         if not company:
-            return {"error": f"la empresa {company_short_name} no existe"}
+            return {"error": self.i18n_service.t('errors.company_not_found', company_short_name=company_short_name)}
 
         length = 40     # lenght of the api key
         alphabet = string.ascii_letters + string.digits

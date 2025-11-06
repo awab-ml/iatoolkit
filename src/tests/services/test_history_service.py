@@ -36,7 +36,7 @@ class TestHistoryService:
             user_identifier='test_user'
         )
 
-        assert result == {'error': 'No existe la empresa: nonexistent_company'}
+        assert result == {'error': 'missing company: nonexistent_company'}
         self.profile_repo.get_company_by_short_name.assert_called_once_with('nonexistent_company')
         self.llm_query_repo.get_history.assert_not_called()
 
@@ -70,7 +70,7 @@ class TestHistoryService:
             user_identifier=user_identifier
         )
 
-        assert result['message'] == 'Historial obtenido correctamente'
+        assert result['message'] == 'history loades'
         assert len(result['history']) == 2
         assert result['history'][0]['id'] == 1
 

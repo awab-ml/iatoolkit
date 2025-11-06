@@ -3,16 +3,15 @@
 #
 # IAToolkit is open source software.
 
+from iatoolkit.services.excel_service import ExcelService
+from iatoolkit.services.i18n_service import I18nService
+from iatoolkit.common.util import Utility
 import os
 import shutil
 import tempfile
 from unittest.mock import MagicMock, patch
-
 import pytest
 from flask import Flask
-
-from iatoolkit.services.excel_service import ExcelService
-from iatoolkit.common.util import Utility
 
 
 class TestExcelService:
@@ -29,7 +28,10 @@ class TestExcelService:
 
         # Mocks of services
         self.util = MagicMock(spec=Utility)
-        self.excel_service = ExcelService(util=self.util)
+        self.mock_i18n_service = MagicMock(spec=I18nService)
+        self.excel_service = ExcelService(util=self.util, i18n_service=self.mock_i18n_service)
+
+        self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
 
         yield
 
@@ -63,7 +65,7 @@ class TestExcelService:
 
         assert result is not None
         data = result.get_json()
-        assert data['error'] == 'Nombre de archivo inválido'
+        assert data['error'] == 'translated:errors.services.invalid_filename'
 
     def test_validate_file_access_path_traversal_absolute_unix(self):
         filename = '/etc/passwd'
@@ -75,7 +77,7 @@ class TestExcelService:
 
         assert result is not None
         data = result.get_json()
-        assert data['error'] == 'Nombre de archivo inválido'
+        assert data['error'] == 'translated:errors.services.invalid_filename'
 
     def test_validate_file_access_path_traversal_backslash(self):
         filename = 'folder\\..\\sensitive_file.txt'
@@ -87,7 +89,7 @@ class TestExcelService:
 
         assert result is not None
         data = result.get_json()
-        assert data['error'] == 'Nombre de archivo inválido'
+        assert data['error'] == 'translated:errors.services.invalid_filename'
 
     def test_validate_file_access_file_not_found(self):
         filename = 'non_existent_file.xlsx'
@@ -99,7 +101,7 @@ class TestExcelService:
 
         assert result is not None
         data = result.get_json()
-        assert data['error'] == 'Archivo no encontrado'
+        assert data['error'] == 'translated:errors.services.file_not_exist'
 
     def test_validate_file_access_is_directory(self):
         dirname = 'test_directory'
@@ -113,7 +115,7 @@ class TestExcelService:
 
         assert result is not None
         data = result.get_json()
-        assert data['error'] == 'La ruta no corresponde a un archivo'
+        assert data['error'] == 'translated:errors.services.path_is_not_a_file'
 
     def test_validate_file_access_exception_handling(self):
         filename = 'test_file.xlsx'
@@ -126,7 +128,7 @@ class TestExcelService:
 
         assert result is not None
         data = result.get_json()
-        assert data['error'] == 'Error validando archivo'
+        assert data['error'] == 'translated:errors.services.file_validation_error'
 
     def test_validate_file_access_logs_exception(self):
         filename = 'test_file.xlsx'
@@ -140,7 +142,7 @@ class TestExcelService:
 
         mock_logging.error.assert_called_once()
         error_msg = mock_logging.error.call_args[0][0]
-        assert 'Error validando acceso al archivo test_file.xlsx' in error_msg
+        assert 'File validation error test_file.xlsx' in error_msg
         assert 'Test exception' in error_msg
 
     def test_validate_file_access_various_valid_filenames(self):
@@ -183,7 +185,7 @@ class TestExcelService:
                     result = self.excel_service.validate_file_access(filename)
                     assert result is not None, f"Filename '{filename}' should be invalid"
                     data = result.get_json()
-                    assert data['error'] == 'Nombre de archivo inválido'
+                    assert data['error'] == 'translated:errors.services.invalid_filename'
 
     def test_validate_file_access_empty_filename(self):
         filename = ''
@@ -195,7 +197,7 @@ class TestExcelService:
 
         assert result is not None
         data = result.get_json()
-        assert data['error'] == 'Nombre de archivo inválido'
+        assert data['error'] == 'translated:errors.services.invalid_filename'
 
     def test_validate_file_access_none_filename(self):
         with self.app.app_context():
@@ -205,4 +207,4 @@ class TestExcelService:
 
         assert result is not None
         data = result.get_json()
-        assert data['error'] == 'Nombre de archivo inválido'
+        assert data['error'] == 'translated:errors.services.invalid_filename'

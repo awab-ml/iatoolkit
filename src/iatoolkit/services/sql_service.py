@@ -6,6 +6,7 @@
 from iatoolkit.repositories.database_manager import DatabaseManager
 
 from iatoolkit.common.util import Utility
+from iatoolkit.services.i18n_service import I18nService
 from sqlalchemy import text
 from injector import inject
 import json
@@ -14,8 +15,11 @@ from iatoolkit.common.exceptions import IAToolkitException
 
 class SqlService:
     @inject
-    def __init__(self,util: Utility):
+    def __init__(self,
+                 util: Utility,
+                 i18n_service: I18nService):
         self.util = util
+        self.i18n_service = i18n_service
 
     def exec_sql(self, db_manager: DatabaseManager, sql_statement: str) -> str:
         """
@@ -54,7 +58,7 @@ class SqlService:
 
             error_message = str(e)
             if 'timed out' in str(e):
-                error_message = 'Intentalo de nuevo, se agoto el tiempo de espera'
+                error_message = self.i18n_service.t('errors.timeout')
 
             raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
                                      error_message) from e

@@ -44,7 +44,7 @@ class TestLoadDocumentsService:
                                                  connector_config={})
 
         assert excinfo.value.error_type == IAToolkitException.ErrorType.MISSING_PARAMETER
-        assert "configurar conector" in str(excinfo.value)
+        assert 'Missing connector config' in str(excinfo.value)
 
     @patch("logging.exception")
     def test_load_company_files_when_exception(self, mock_logging_exception):
@@ -84,7 +84,7 @@ class TestLoadDocumentsService:
                     content=content)
 
         assert excinfo.value.error_type == IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR
-        assert "Error al procesar el archivo" in str(excinfo.value)
+        assert 'Error while processing file' in str(excinfo.value)
 
     def test_load_when_file_is_created(self):
         # Mock del archivo y contenido
