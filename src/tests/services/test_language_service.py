@@ -1,7 +1,7 @@
 # tests/services/test_language_service.py
 import pytest
 from flask import Flask, g
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 from iatoolkit.services.language_service import LanguageService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.repositories.models import Company, User
@@ -41,39 +41,46 @@ class TestLanguageService:
         def dummy_route_for_test(company_short_name):
             return "ok"
 
+    # --- Priority 1 Tests: User Preference ---
+
     @patch('iatoolkit.services.language_service.SessionManager')
-    def test_priority_1_user_preference_overrides_all(self, mock_session_manager):
+    def test_returns_user_language_when_user_has_preference(self, mock_session_manager):
         """
-        Tests that if a logged-in user has a preferred language, it is used,
-        ignoring the company's default language.
+        GIVEN a logged-in user with a preferred language ('de')
+        WHEN the current language is requested
+        THEN the user's preferred language is returned, ignoring other contexts.
         """
         # Arrange
-        # Session has both user and company. Company lang is 'en'.
-        mock_session_manager.get.side_effect = lambda key: 'user-de@acme.com' if key == 'user_identifier' else 'acme-en'
-        # Repo returns a user whose preferred language is 'de'
+        mock_session_manager.get.return_value = 'user-de@acme.com'
         self.mock_profile_repo.get_user_by_email.return_value = self.user_with_lang_de
-        # Repo also returns the company object, though it should be ignored.
-        self.mock_profile_repo.get_company_by_short_name.return_value = self.company_en
 
         with self.app.test_request_context():
             # Act
             lang = self.language_service.get_current_language()
 
             # Assert
-            assert lang == 'de' # The user's preference ('de') should win.
+            assert lang == 'de'  # The user's preference ('de') should win.
             self.mock_profile_repo.get_user_by_email.assert_called_once_with('user-de@acme.com')
-            # Verify that it didn't even need to check the company's language
+            # Verify that it returned immediately without checking for the company
             self.mock_profile_repo.get_company_by_short_name.assert_not_called()
+
+    # --- Priority 2 Tests: Company Default ---
+
     @patch('iatoolkit.services.language_service.SessionManager')
-    def test_priority_2_company_language_if_user_has_no_preference(self, mock_session_manager):
+    def test_returns_company_language_when_user_has_no_preference(self, mock_session_manager):
         """
-        Tests that if a user is logged in but has no preferred language,
-        the company's default language is used.
+        GIVEN a logged-in user with NO preferred language and a company with 'en'
+        WHEN the current language is requested
+        THEN the company's default language ('en') is returned.
         """
         # Arrange
-        # Session has user and company. Company lang is 'en'.
-        mock_session_manager.get.side_effect = lambda key: 'user-no-lang@acme.com' if key == 'user_identifier' else 'acme-en'
-        # Repo returns a user WITHOUT a preferred language
+        def session_get_side_effect(key):
+            if key == 'user_identifier':
+                return 'user-no-lang@acme.com'
+            if key == 'company_short_name':
+                return 'acme-en'
+            return None
+        mock_session_manager.get.side_effect = session_get_side_effect
         self.mock_profile_repo.get_user_by_email.return_value = self.user_without_lang
         self.mock_profile_repo.get_company_by_short_name.return_value = self.company_en
 
@@ -82,92 +89,107 @@ class TestLanguageService:
             lang = self.language_service.get_current_language()
 
             # Assert
-            assert lang == 'en' # The company's language ('en') should be used.
+            assert lang == 'en'  # The company's language should be used as fallback.
             self.mock_profile_repo.get_user_by_email.assert_called_once_with('user-no-lang@acme.com')
-            # It should have proceeded to check the company language
             self.mock_profile_repo.get_company_by_short_name.assert_called_once_with('acme-en')
 
     @patch('iatoolkit.services.language_service.SessionManager')
-    def test_get_language_from_url_args(self, mock_session_manager):
+    def test_returns_company_language_from_url_when_no_session(self, mock_session_manager):
         """
-        Test that if no session is found, the language is determined from the URL argument.
+        GIVEN no user is logged in
+        WHEN a request is made to a URL containing a company short name ('acme-fr')
+        THEN the company's default language ('fr') is returned.
         """
         # Arrange
-        mock_session_manager.get.return_value = None  # No active session for both company and user
+        mock_session_manager.get.return_value = None  # No active session
         self.mock_profile_repo.get_company_by_short_name.return_value = self.company_fr
 
-        # Create a request context that simulates a URL like /acme-fr/login
+        # Simulate a request to a URL like /acme-fr/login
         with self.app.test_request_context('/acme-fr/login'):
             # Act
             lang = self.language_service.get_current_language()
 
             # Assert
             assert lang == 'fr'
+            self.mock_profile_repo.get_company_by_short_name.assert_called_once_with('acme-fr')
+            # Verify that session was checked for both user and company
+            mock_session_manager.get.assert_has_calls([call('user_identifier'), call('company_short_name')], any_order=True)
 
-            # --- INICIO DE LA SOLUCIÓN ---
-            # Verify the calls to SessionManager.
-            # It's called twice: once for company_short_name, once for user_identifier.
-            from unittest.mock import call
-            expected_calls = [call('company_short_name'), call('user_identifier')]
-            mock_session_manager.get.assert_has_calls(expected_calls, any_order=True)
-            assert mock_session_manager.get.call_count == 2
+    # --- Priority 3 Tests: System Fallback ---
+
     @patch('iatoolkit.services.language_service.SessionManager')
-    def test_fallback_language_if_company_has_no_lang(self, mock_session_manager):
+    def test_returns_fallback_when_company_has_no_language(self, mock_session_manager):
         """
-        Test that it returns the fallback language ('es') if the company has no default_language set.
+        GIVEN a company context exists but the company has no default language
+        WHEN the current language is requested
+        THEN the system-wide fallback language ('es') is returned.
         """
-        # --- INICIO DE LA SOLUCIÓN ---
         # Arrange
-        # Configure a side effect to return different values based on the argument
-        def session_get_side_effect(key):
-            if key == 'company_short_name':
-                return 'acme-no-lang'
-            if key == 'user_identifier':
-                return None  # Explicitly simulate no logged-in user
-            return None
-        mock_session_manager.get.side_effect = session_get_side_effect
-        # --- FIN DE LA SOLUCIÓN ---
-
+        mock_session_manager.get.return_value = None  # No user
         self.mock_profile_repo.get_company_by_short_name.return_value = self.company_no_lang
 
-        with self.app.test_request_context():
+        with self.app.test_request_context('/acme-no-lang/login'):
             # Act
             lang = self.language_service.get_current_language()
 
             # Assert
             assert lang == 'es'
-
 
     @patch('iatoolkit.services.language_service.SessionManager')
-    def test_fallback_language_if_no_context_found(self, mock_session_manager):
+    def test_returns_fallback_when_no_context_found(self, mock_session_manager):
         """
-        Test that it returns the fallback language ('es') if no company context can be found at all.
+        GIVEN no user is logged in and the URL has no company context
+        WHEN the current language is requested
+        THEN the system-wide fallback language ('es') is returned.
         """
         # Arrange
-        mock_session_manager.get.return_value = None # No session
+        mock_session_manager.get.return_value = None  # No session
 
-        # Simulate a request to a URL without a company_short_name, e.g., a health check endpoint
-        with self.app.test_request_context('/health'):
+        with self.app.test_request_context('/health'): # URL without company
             # Act
             lang = self.language_service.get_current_language()
 
             # Assert
             assert lang == 'es'
-            # Ensure it didn't even try to query the database
             self.mock_profile_repo.get_company_by_short_name.assert_not_called()
 
-    def test_caching_in_g_object(self):
+    @patch('iatoolkit.services.language_service.SessionManager')
+    def test_returns_fallback_on_repository_exception(self, mock_session_manager):
         """
-        Test that the language is cached in g.lang to avoid re-computation within the same request.
+        GIVEN a repository call will fail with an exception
+        WHEN the current language is requested
+        THEN the service fails gracefully and returns the fallback language ('es').
+        """
+        # Arrange
+        mock_session_manager.get.return_value = 'user@acme.com' # Trigger user lookup
+        self.mock_profile_repo.get_user_by_email.side_effect = Exception("Database is down")
+
+        with self.app.test_request_context():
+            # Act
+            lang = self.language_service.get_current_language()
+
+            # Assert
+            assert lang == 'es'
+
+    # --- Caching Test ---
+
+    @patch('iatoolkit.services.language_service.SessionManager')
+    def test_returns_cached_language_from_g_without_external_calls(self, mock_session_manager):
+        """
+        GIVEN the language has already been determined and cached in g.lang
+        WHEN the current language is requested again in the same request
+        THEN the cached language is returned without any external calls.
         """
         with self.app.test_request_context():
-            # Arrange: Manually set the language in the 'g' object before calling the service
-            g.lang = 'de'
+            # Arrange
+            g.lang = 'xx-cached'
 
             # Act
             lang = self.language_service.get_current_language()
 
             # Assert
-            assert lang == 'de'
+            assert lang == 'xx-cached'
             # CRUCIAL: Verify that no external calls were made because the value was cached.
+            mock_session_manager.get.assert_not_called()
+            self.mock_profile_repo.get_user_by_email.assert_not_called()
             self.mock_profile_repo.get_company_by_short_name.assert_not_called()

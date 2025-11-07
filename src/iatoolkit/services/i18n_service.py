@@ -1,11 +1,11 @@
 # iatoolkit/services/i18n_service.py
 import os
 import logging
-from injector import inject
+from injector import inject, singleton
 from iatoolkit.common.util import Utility
 from iatoolkit.services.language_service import LanguageService
 
-
+@singleton
 class I18nService:
     """
     Servicio centralizado para manejar la internacionalización (i18n).

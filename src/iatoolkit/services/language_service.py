@@ -1,18 +1,20 @@
 # iatoolkit/services/language_service.py
 
 import logging
-from injector import inject
+from injector import inject, singleton
 from flask import g, request
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.common.session_manager import SessionManager
 
-
+@singleton
 class LanguageService:
     """
     Determines the correct language for the current request
     based on a defined priority order (session, URL, etc.)
     and caches it in the Flask 'g' object for the request's lifecycle.
     """
+
+    FALLBACK_LANGUAGE = 'es'
 
     @inject
     def __init__(self, profile_repo: ProfileRepo):
@@ -49,29 +51,27 @@ class LanguageService:
         if 'lang' in g:
             return g.lang
 
-        from iatoolkit.services.i18n_service import I18nService
-        lang = I18nService.FALLBACK_LANGUAGE
-
         try:
+            # Priority 1: User's preferred language
+            user_identifier = SessionManager.get('user_identifier')
+            if user_identifier:
+                user = self.profile_repo.get_user_by_email(user_identifier)
+                if user and user.preferred_language:
+                    g.lang = user.preferred_language
+                    return g.lang
+
+            # Priority 2: Company's default language
             company_short_name = self._get_company_short_name()
             if company_short_name:
-                # Prioridad 1: Preferencia del Usuario
-                user_identifier = SessionManager.get('user_identifier')
-                if user_identifier:
-                    # Usamos el repositorio para obtener el objeto User
-                    user = self.profile_repo.get_user_by_email(
-                        user_identifier)  # Asumiendo que el email es el identificador
-                    if user and user.preferred_language:
-                        g.lang = user.preferred_language
-                        return g.lang
-
-                # Prioridad 2: Idioma por defecto de la Compañía (si no se encontró preferencia de usuario)
                 company = self.profile_repo.get_company_by_short_name(company_short_name)
                 if company and company.default_language:
-                    lang = company.default_language
+                    g.lang = company.default_language
+                    return g.lang
         except Exception as e:
-            logging.debug(f"Could not determine language, falling back to default. Reason: {e}")
+            logging.info(f"Could not determine language, falling back to default. Reason: {e}")
             pass
 
-        g.lang = lang
-        return lang
+        # Priority 3: System-wide fallback
+        logging.info(f"Language determined by system fallback: {self.FALLBACK_LANGUAGE}")
+        g.lang = self.FALLBACK_LANGUAGE
+        return g.lang
