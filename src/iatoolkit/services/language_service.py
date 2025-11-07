@@ -57,6 +57,7 @@ class LanguageService:
             if user_identifier:
                 user = self.profile_repo.get_user_by_email(user_identifier)
                 if user and user.preferred_language:
+                    logging.debug(f"Language determined by user preference: {user.preferred_language}")
                     g.lang = user.preferred_language
                     return g.lang
 
@@ -65,6 +66,7 @@ class LanguageService:
             if company_short_name:
                 company = self.profile_repo.get_company_by_short_name(company_short_name)
                 if company and company.default_language:
+                    logging.debug(f"Language determined by company default: {company.default_language}")
                     g.lang = company.default_language
                     return g.lang
         except Exception as e:

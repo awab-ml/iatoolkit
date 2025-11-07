@@ -65,21 +65,6 @@ li::marker {
     padding-bottom: 0.2rem;
 }
 
-/* Esta parte para el prompt-assistant sigue siendo correcta */
-main.chat-layout-container.prompt-assistant-open {
-    height: auto;
-    overflow: visible;
-}
-
-
-/* CSS para el chat principal    */
-/* esta clase defines los atributos de cada bloque */
-.chat-block {
-    padding: 1rem;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem; /* Borde redondeado estándar de Bootstrap */
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06); /* Sombra suave y unificada */
-}
 
 /* sección del encabezado en el chat principal */
 .company-section {
@@ -97,6 +82,15 @@ main.chat-layout-container.prompt-assistant-open {
     background-color: #fff; /* Fondo blanco para el contenedor del chat */
 }
 
+/* CSS para el chat principal    */
+/* esta clase defines los atributos de cada bloque */
+.chat-block {
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem; /* Borde redondeado estándar de Bootstrap */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); /* Sombra suave y unificada */
+}
+
 /* El textarea "invisible" en el centro */
 .chat-textarea {
     flex-grow: 1;
@@ -106,12 +100,6 @@ main.chat-layout-container.prompt-assistant-open {
     resize: none;
     max-height: 150px;
     min-height: 38px;
-}
-
-
-/* La caja principal que envuelve toda el área de entrada */
-.input-area {
-    background-color: var(--brand-prompt-assistant-bg, #f8f9fa);
 }
 
 /* La barra "cápsula" que envuelve el texto y los iconos */
@@ -128,6 +116,11 @@ main.chat-layout-container.prompt-assistant-open {
     border-color: #86b7fe;
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
+/* La caja principal que envuelve toda el área de entrada */
+.input-area {
+    background-color: var(--brand-prompt-assistant-bg, #f8f9fa);
+}
+
 
 #question {
     width: 100%;
@@ -142,12 +135,6 @@ main.chat-layout-container.prompt-assistant-open {
     outline: none;
     border-color: #80bdff;
     box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
-}
-
-.answer-section, .error-section {
-    max-width: 100%;
-    word-wrap: break-word;
-    margin-bottom: 10px;
 }
 
 /* Estilo del mensaje ingresado por el usuario */
@@ -168,6 +155,13 @@ main.chat-layout-container.prompt-assistant-open {
   line-height: 1.6;
   background-color: #f7f7f8;
 }
+
+.answer-section, .error-section {
+    max-width: 100%;
+    word-wrap: break-word;
+    margin-bottom: 10px;
+}
+
 
 .answer-section {
     align-self: flex-start;
@@ -315,7 +309,7 @@ main.chat-layout-container.prompt-assistant-open {
     color: #343a40;
 }
 
-/* 6. Anulación específica para el botón de ENVIAR usando su ID (Máxima Prioridad) */
+/* Anulación específica para el botón de ENVIAR usando su ID (Máxima Prioridad) */
 #send-button i {
     font-size: 1.7rem; /* Ligeramente más grande */
 }
@@ -395,27 +389,23 @@ main.chat-layout-container.prompt-assistant-open {
     border-bottom: none;
 }
 
+/* estilos para el selector de prompts */
 .prompt-select-button {
-    /* Estado por defecto: Estilo "outline" sutil */
-    background-color: var(--brand-primary-color);
-    color: var(--brand-text-on-primary);
-    border: 1px solid var(--brand-primary-color); /* Borde fino con el color primario */
-
-    /* Estilos de botón estándar */
-    border-radius: 0.25rem;
+    color: #202123;
+    border: 2px solid var(--brand-primary-color);
+    border-radius: 0.25rem;     /* Estilos de botón estándar */
     padding: 0.5rem 1rem;
     cursor: pointer;
     text-align: center;
-    font-weight: 500; /* Un poco más de peso para el texto */
+    font-weight: 500;
 
     /* Transición suave para el cambio en hover */
     transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 .prompt-select-button:hover {
-    /* Estado hover: Se rellena para dar feedback claro */
-    background-color: transparent;
-    color: var(--brand-primary-color);
+    background-color: var(--brand-primary-color);
+    color: var(--brand-text-on-primary);
 }
 
 
