@@ -1,0 +1,37 @@
+## Understanding the "Company" Concept
+
+IAToolkit is a multi-tenant framework designed to serve multiple, isolated companies (or projects) from a single core application.
+A Company is not just a user or a profile; it is a self-contained Python module that encapsulates
+all the specific data, logic, branding, and context required for
+the AI to operate within a particular business domain.
+
+### Anatomy of a Company Module
+
+Every Company resides in its own directory within the `companies/` folder.
+An an example, `companies/sample_company/` provides a complete implementation for sample_company.
+Here is the breakdown of its essential components:
+
+*   **`sample_company.py`**: This is the heart of your module. It contains a primary class (e.g., `SampleCompany`) that inherits from `iatoolkit.base_company.BaseCompany`.
+* **`configuration.py`**: This file contains company specific configuration, such as function calls for the LLM, branding style for sample_company and company specific prompts.
+    *   Custom Flask CLI commands for administrative tasks, such as populating a database.
+
+*   **`context/`**: This directory contains `.md` (Markdown) files. Any text you place here—business rules, operational procedures, product descriptions, FAQs—is automatically loaded into the AI's system prompt. This is the primary way to provide the AI with the static, domain-specific knowledge it needs to answer questions accurately.
+
+*   **`schema/`**: This directory holds `.yaml` files that define data structures. These can be database table schemas, API response structures, or any other structured data. By providing these schemas, you enable the AI to understand your data models, allowing it to generate precise SQL queries or correctly interpret API responses.
+
+*   **`prompts/`**: This directory is for `.prompt` files, which are Jinja2 templates. They are used for complex, multi-step tasks or for generating structured outputs. You can instruct the AI to use a specific prompt to perform a task, guiding its reasoning process.
+
+By using this structure, you can build a powerful, context-aware AI agent that is deeply integrated with your unique business environment.
+
+Now, let's create a new Company by scaffolding it from the sample_company.
+1. Duplicate the Folder: In the companies/ directory, copy sample_company and rename the copy to my_company.
+2. Rename the Core File: Inside companies/my_company/, rename sample_company.py to my_company.py.
+3. Update the Class Name: Open my_company.py and change the class name from SampleCompany to MyCompany.
+4. Register the New Company: open app.py and add the following lines:
+```
+from .my_company import MyCompany
+from iatoolkit.company_registry import register_company
+
+# The first argument is the unique short_name, the second is the class
+register_company("my_company", MyCompany)
+```
