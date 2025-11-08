@@ -62,8 +62,13 @@ class Dispatcher:
         self.setup_iatoolkit_system()
 
         """Loads the configuration of every company"""
-        for company in self.company_instances.values():
-            self.config_service.register_company(company)
+        for company_name, company_instance in self.company_instances.items():
+            try:
+                # register the company configuration
+                self.config_service.register_company(company_name, company_instance)
+            except Exception as e:
+                logging.error(f"❌ Failed to register configuration for '{company_name}': {e}")
+                continue
 
         return True
 

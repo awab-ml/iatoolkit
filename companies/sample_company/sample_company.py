@@ -4,7 +4,7 @@
 # IAToolkit is open source software.
 
 from iatoolkit import IAToolkit, BaseCompany, DatabaseManager
-from iatoolkit import SqlService, LoadDocumentsService, SearchService
+from iatoolkit import SqlService, LoadDocumentsService, SearchService, ConfigurationService
 from injector import inject
 from companies.sample_company.sample_database import SampleCompanyDatabase
 import os
@@ -15,19 +15,22 @@ import logging
 class SampleCompany(BaseCompany):
     @inject
     def __init__(self,
+            config_service: ConfigurationService,
             sql_service: SqlService,
             search_service: SearchService):
         super().__init__()
+        self.config_service = config_service
         self.sql_service = sql_service
         self.search_service = search_service
         self.sample_db_manager = None
         self.sample_database = None
 
-        # set the company object
-        self._load_company_by_short_name('sample_company')
+        # get the company configuration
+        config = self.config_service.get_company_content('sample_company', 'data_sources')
+        db_env_var = config.get('sql', [{}])[0].get('connection_string_env')
 
         # connect to Internal database
-        sample_db_uri = os.getenv('NORTHWIND_DATABASE_URI')
+        sample_db_uri = os.getenv(db_env_var) if db_env_var else None
         if not sample_db_uri:
             # if not exists use the same iatoolkit database
             sample_db_uri = os.getenv('DATABASE_URI')
@@ -51,34 +54,32 @@ class SampleCompany(BaseCompany):
         if not self.sample_db_manager:
             return ''
 
-        # this list should contain all the tables that are used
-        # by this company and the schema file for the table.
-        # the schema should exist in the schema folder.
-        database_tables = [
-            {'table_name': 'products', 'schema_name': 'product'},
-            {'table_name': 'regions', 'schema_name': 'region'},
-            {'table_name': 'shippers', 'schema_name': 'shipper'},
-            {'table_name': 'suppliers', 'schema_name': 'supplier'},
-            {'table_name': 'categories', 'schema_name': 'category'},
-            {'table_name': 'customers', 'schema_name': 'customer'},
-            {'table_name': 'territories', 'schema_name': 'territory'},
-            {'table_name': 'employees', 'schema_name': 'employee'},
-            {'table_name': 'employee_territories', 'schema_name': 'employee_territory'},
-            {'table_name': 'orders', 'schema_name': 'order'},
-            {'table_name': 'order_details', 'schema_name': 'order_detail'},
-        ]
+        # get the configuration for 'data_sources' from the ConfigurationService
+        data_sources_config = self.config_service.get_company_content(self.id, 'data_sources')
+        if not data_sources_config or not data_sources_config.get('sql'):
+            logging.warning(f"No 'data_sources.sql' configuration found for company '{self.id}'.")
+            return ''
 
-        db_context = ''
-        for table in database_tables:
+        # the first SQL source defined in the YAML configuration
+        sql_source = data_sources_config['sql'][0]
+        database_tables = sql_source.get('tables', [])
+        db_description = sql_source.get('description', '')
+
+        db_context = f"{db_description}\n" if db_description else ""
+        for table_info in database_tables:
             try:
+                table_name = table_info['table_name']
+
+                # if schema_name is not defined, use table_name as default value.
+                schema_name = table_info.get('schema_name', table_name)
                 table_definition = self.sample_db_manager.get_table_schema(
-                    table_name=table['table_name'],
-                    schema_name=table['schema_name'],
+                    table_name=table_name,
+                    schema_name=schema_name,
                     exclude_columns=[]
                 )
                 db_context += table_definition
-            except RuntimeError as e:
-                logging.warning(f"Advertencia al generar esquema para {table['table_name']}: {e}")
+            except Exception as e:
+                logging.warning(f"Advertencia al generar esquema para {table_info['table_name']}: {e}")
 
         return db_context
 

@@ -7,7 +7,6 @@
 from abc import ABC, abstractmethod
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
-
 from iatoolkit.services.prompt_manager_service import PromptService
 from iatoolkit.repositories.models import Company, Function, PromptCategory
 from iatoolkit import IAToolkit
@@ -21,10 +20,6 @@ class BaseCompany(ABC):
         self.llm_query_repo: LLMQueryRepo = injector.get(LLMQueryRepo)
         self.prompt_service: PromptService = injector.get(PromptService)
         self.company: Company | None = None
-
-    def _load_company_by_short_name(self, short_name: str) -> Company:
-        self.company = self.profile_repo.get_company_by_short_name(short_name)
-        return self.company
 
     def _create_company(self,
                         short_name: str,

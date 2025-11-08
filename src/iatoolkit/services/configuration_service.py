@@ -4,6 +4,7 @@
 
 from pathlib import Path
 from iatoolkit import BaseCompany
+from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.repositories.models import Company
 from iatoolkit.common.util import Utility
 from injector import inject
@@ -16,7 +17,10 @@ class ConfigurationService:
     """
 
     @inject
-    def __init__(self, utility: Utility):
+    def __init__(self,
+                 profile_repo: ProfileRepo,
+                 utility: Utility):
+        self.profile_repo = profile_repo
         self.utility = utility
         self._loaded_configs = {}   # cache for store loaded configurations
 
@@ -28,27 +32,30 @@ class ConfigurationService:
         self._ensure_config_loaded(company_short_name)
         return self._loaded_configs[company_short_name].get(content_key)
 
-    def register_company(self, company_instance: BaseCompany):
+    def register_company(self, company_short_name: str, company_instance: BaseCompany):
         """
         Main entry point for configuring a company instance.
         This method is invoked by the dispatcher for each registered company.
         """
-        company_short_name = company_instance.company.short_name
         logging.info(f"⚙️  Starting configuration for company '{company_short_name}'...")
 
-        # 1. Load the main configuration file and supplementary content files
+        # 1. identify the instance with his name and load info from database
+        company_instance.id = company_short_name
+        company_instance.company = self.profile_repo.get_company_by_short_name(company_short_name)
+
+        # 2. Load the main configuration file and supplementary content files
         config = self._load_and_merge_configs(company_short_name)
 
-        # 2. Register core company details and get the database object
+        # 3. Register core company details and get the database object
         company_db_object = self._register_core_details(company_instance, config)
 
-        # 3. Register tools (functions)
+        # 4. Register tools (functions)
         self._register_tools(company_instance, config.get('tools', []))
 
-        # 4. Register prompt categories and prompts
+        # 5. Register prompt categories and prompts
         self._register_prompts(company_instance, config)
 
-        # 5. Link the persisted Company object back to the running instance
+        # 6. Link the persisted Company object back to the running instance
         company_instance.company = company_db_object
 
         logging.info(f"✅ Company '{company_short_name}' configured successfully.")
