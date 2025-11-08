@@ -19,31 +19,33 @@ all powered by leading models from OpenAI, Google Gemini, and more.
 
 ## 🚀 Key Features
 
-*   **🔗 Unified Data Connection**:
-    *   **Natural Language to SQL**: Let your chatbot query relational databases (PostgreSQL, MySQL, SQLite) using everyday language.
-    *   **Semantic Document Search**: Automatically chunk, embed, and search across your private documents (PDFs, Word, etc.) to provide contextually accurate answers.
+* **🔗 Unified Data Connection**
+    * **Natural Language to SQL**: Let your chatbot query relational databases (PostgreSQL, MySQL, SQLite) using everyday language.
+    * **Semantic Document Search**: Automatically chunk, embed, and search across your private documents (PDFs, Word, etc.) to provide contextually accurate answers.
 
-*   **🏢 Enterprise-Ready Multi-Tenancy**:
-    *   Deploy isolated "Company" modules, each with its own data, tools, and context. Perfect for SaaS products or internal departmental agents.
+* **🏢 Enterprise-Ready Multi-Tenancy**
+    * Deploy isolated "Company" modules, each with its own data, tools, and context. 
+    * Perfect for SaaS products or internal departmental agents.
 
-*   **🧠 LLM Agnostic**:
-    *   Switch between **OpenAI (GPT-*)** and **Google (Gemini-*)** with a single line change in your configuration. No code refactoring needed.
+* **🎨 Fully Brandable UI**
+    * Customize the look and feel for each "Company" with its own logos, colors, and even language settings (i18n).
+    * Provides a white-labeled experience for your users.
 
-*   **🛠️ Developer-First Experience**:
-    *   Built with a clean, **Dependency Injection** architecture.
-    *   High-quality code base with **90%+ test coverage**.
-    *   Powerful Flask-based **CLI** for database setup, API key generation, and more.
+* **🧠 LLM Agnostic**
+    * Switch between **OpenAI (GPT-*)** and **Google (Gemini-*)** with a single line change in your configuration. 
+    * No code refactoring needed.
 
+* **🛠️ Developer-First Experience**
+    * Built with a clean **Dependency Injection** architecture.  
+    * High-quality code base with **90%+ test coverage**.
 
-*   **🎨 Fully Brandable UI: Customize the look and feel for each "Company" with its own logos, colors, and even language settings (i18n), providing a white-labeled experience for your users.
-*   **🔒 Security & Observability Built-In**:
-    *   Comes with integrated user authentication, api-keys, and secure session handling out of the box.
-    *   Full traceability with detailed logging of all queries, function calls, token usage, and costs.
+* **🔒 Security & Observability Built-In**
+    * Comes with integrated user authentication, API keys, and secure session handling out of the box.  
+    * Full traceability with detailed logging of all queries, function calls, token usage, and costs.
+## ⚡ Quick Start: Try our 'hello world' example
 
-## ⚡ Quick Start: Create a Custom Tool in 30 Seconds
-
-See how easy it is to give your AI a new skill. Just define a method inside your Company class and describe it. 
-IAToolkit handles the rest.
+Ready to see it in action? Our Quickstart Guide will walk you through downloading, configuring, and launching your first AI assistant in just a few minutes. 
+It's the best way to experience the toolkit's capabilities firsthand.
 
 ## 🤝 Contributing
 
