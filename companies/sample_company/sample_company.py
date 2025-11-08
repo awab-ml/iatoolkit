@@ -6,8 +6,6 @@
 from iatoolkit import IAToolkit, BaseCompany, DatabaseManager
 from iatoolkit import SqlService, LoadDocumentsService, SearchService
 from injector import inject
-from companies.sample_company.configuration import (FUNCTION_LIST,
-                PROMPT_LIST, ONBOARDING_CARDS, BRANDING)
 from companies.sample_company.sample_database import SampleCompanyDatabase
 import os
 import click
@@ -153,21 +151,4 @@ class SampleCompany(BaseCompany):
                 except Exception as e:
                     logging.exception(e)
                     click.echo(f"Error: {str(e)}")
-
-
-    def _create_prompts(self):
-        # 1. create the general category
-        c_general = self._create_prompt_category(name='General', order=1)
-
-        # 2. create the company prompts
-        for prt in PROMPT_LIST:
-            self._create_prompt(
-                prompt_name=prt['name'],
-                description=prt['description'],
-                order=prt['order'],
-                category=c_general,
-                active=prt.get('active', True),
-                custom_fields=prt.get('custom_fields', [])
-            )
-
 
