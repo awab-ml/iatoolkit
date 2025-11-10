@@ -453,7 +453,7 @@ class TestUtil:
         # Arrange
         company_name = "sample_co"
         template_name = "welcome_email.txt"
-        template_content = "Hola, bienvenido a {{ company_name }}!"
+        template_content = "Hola, bienvenido a {{ company_short_name }}!"
         expected_path = os.path.join(os.getcwd(), f'companies/{company_name}/templates/{template_name}')
 
         with patch("builtins.open", mock_open(read_data=template_content)) as mock_file:

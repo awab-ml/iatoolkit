@@ -43,6 +43,7 @@ class Dispatcher:
         self.tool_handlers = {
             "iat_generate_excel": self.excel_service.excel_generator,
             "iat_send_email": self.mail_service.send_mail,
+            "iat_sql_query": self.sql_service.exec_sql
         }
 
     @property
@@ -129,21 +130,21 @@ class Dispatcher:
             i += 1
 
 
-    def dispatch(self, company_name: str, action: str, **kwargs) -> dict:
-        company_key = company_name.lower()
+    def dispatch(self, company_short_name: str, action: str, **kwargs) -> dict:
+        company_key = company_short_name.lower()
 
         if company_key not in self.company_instances:
             available_companies = list(self.company_instances.keys())
             raise IAToolkitException(
                 IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
-                f"Empresa '{company_name}' no configurada. Empresas disponibles: {available_companies}"
+                f"Empresa '{company_short_name}' no configurada. Empresas disponibles: {available_companies}"
             )
 
         # check if action is a system function
         if action in self.tool_handlers:
             return  self.tool_handlers[action](**kwargs)
 
-        company_instance = self.company_instances[company_name]
+        company_instance = self.company_instances[company_short_name]
         try:
             return company_instance.handle_request(action, **kwargs)
         except IAToolkitException as e:
@@ -216,17 +217,34 @@ _SYSTEM_PROMPT = [
     {'name': 'sql_rules', 'description':'instructions  for SQL queries'}
 ]
 
-# iatoolkit  function calls
+# iatoolkit  built-in functions (Tools)
 _FUNCTION_LIST = [
     {
-        "name": "iat_generate_excel",
+        "function_name": "iat_sql_query",
+        "description": "Servicio SQL de IAToolkit: consultas SQL sobre  bases de datos.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "database": {
+                    "type": "string",
+                    "description": "nombre de la base de datos a consultar."
+                },
+                "query": {
+                    "type": "string",
+                    "description": "string con la consulta en sql"
+                },
+            },
+            "required": ["database", "query"]
+            }
+    },
+    {
+        "function_name": "iat_generate_excel",
         "description": "Generador de Excel."
                     "Genera un archivo Excel (.xlsx) a partir de una lista de diccionarios. "
                     "Cada diccionario representa una fila del archivo. "
                     "el archivo se guarda en directorio de descargas."
                     "retorna diccionario con filename, attachment_token (para enviar archivo por mail)"
                     "content_type y download_link",
-        "function_name": "iat_generate_excel",
         "parameters": {
             "type": "object",
             "properties": {
@@ -266,11 +284,10 @@ _FUNCTION_LIST = [
         }
     },
     {
-        'name': 'Envio de mails',
-         'description':  "iatoolkit mail system. "        
+        'function_name': "iat_send_email",
+        'description':  "iatoolkit mail system. "        
             "envia mails cuando un usuario lo solicita."
             "Si no te indican quien envia el correo utiliza la dirección iatoolkit@iatoolkit.com",
-         'function_name': "iat_send_email",
          'parameters': {
             "type": "object",
             "properties": {

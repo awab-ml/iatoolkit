@@ -136,7 +136,7 @@ class llmClient:
                     logging.info(f"start execution fcall: {function_name}")
                     try:
                         result = self.dispatcher.dispatch(
-                            company_name=company.short_name,
+                            company_short_name=company.short_name,
                             action=function_name,
                             **args
                         )

@@ -98,7 +98,6 @@ class TestDispatcher:
             sql_service=self.mock_sql_service
         )
 
-
     def teardown_method(self, method):
         """Clean up patches after each test."""
         if hasattr(self, 'get_instance_patcher'):

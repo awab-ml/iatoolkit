@@ -13,7 +13,6 @@ from .base_company import BaseCompany
 
 # --- Services ---
 from iatoolkit.services.query_service import QueryService
-from iatoolkit.services.sql_service import SqlService
 from iatoolkit.services.document_service import DocumentService
 from iatoolkit.services.search_service import SearchService
 from iatoolkit.services.load_documents_service import LoadDocumentsService
@@ -27,7 +26,6 @@ __all__ = [
     'register_company',
     'BaseCompany',
     'QueryService',
-    'SqlService',
     'ExcelService',
     'DocumentService',
     'SearchService',

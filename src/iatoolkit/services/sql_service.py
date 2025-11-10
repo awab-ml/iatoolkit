@@ -55,16 +55,16 @@ class SqlService:
                 f"Database '{db_name}' is not registered with the SqlService."
             )
 
-    def exec_sql(self, db_name: str, sql_statement: str) -> str:
+    def exec_sql(self, database: str, query: str) -> str:
         """
         Executes a raw SQL statement against a registered database and returns the result as a JSON string.
         """
         try:
             # 1. Get the database manager from the cache
-            db_manager = self.get_database_manager(db_name)
+            db_manager = self.get_database_manager(database)
 
             # 2. Execute the SQL statement
-            result = db_manager.get_session().execute(text(sql_statement))
+            result = db_manager.get_session().execute(text(query))
             cols = result.keys()
             rows_context = [dict(zip(cols, row)) for row in result.fetchall()]
 
@@ -77,7 +77,7 @@ class SqlService:
             raise
         except Exception as e:
             # Attempt to rollback if a session was active
-            db_manager = self._db_connections.get(db_name)
+            db_manager = self._db_connections.get(database)
             if db_manager:
                 db_manager.get_session().rollback()
 

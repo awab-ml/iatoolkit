@@ -101,7 +101,8 @@ class CompanyContextService:
                 continue
 
             db_description = source.get('description', '')
-            sql_context += f"{db_description}\n" if db_description else ""
+            sql_context = f'***Base de datos***: {db_name}\n'
+            sql_context += f"**Descripción:**: {db_description}\n" if db_description else ""
 
             # 1. get the list of tables to process.
             tables_to_process = []

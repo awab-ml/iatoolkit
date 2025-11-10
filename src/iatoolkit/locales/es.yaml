@@ -87,7 +87,7 @@
         no_user_identifier_api: "No se proporcionó user_identifier para la llamada a la API."
       templates:
         company_not_found: "Empresa no encontrada."
-        home_template_not_found: "La plantilla de la página de inicio para la empresa '{company_name}' no está configurada."
+        home_template_not_found: "La plantilla de la página de inicio para la empresa '{company_short_name}' no está configurada."
         processing_error: "Error al procesar el template: {error}"
         template_not_found: "No se encontro el template: '{template_name}'."
 
@@ -95,7 +95,7 @@
         unexpected_error: "Ha ocurrido un error inesperado: {error}."
         unsupported_language: "El idioma seleccionado no es válido."
       signup:
-        company_not_found: "La empresa {company_name} no existe."
+        company_not_found: "La empresa {company_short_name} no existe."
         incorrect_password_for_existing_user: "La contraseña para el usuario {email} es incorrecta."
         user_already_registered: "El usuario con email '{email}' ya existe en esta empresa."
         password_mismatch: "Las contraseñas no coinciden. Por favor, inténtalo de nuevo."
