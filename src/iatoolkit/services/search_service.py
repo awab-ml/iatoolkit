@@ -5,19 +5,22 @@
 
 from iatoolkit.repositories.vs_repo import VSRepo
 from iatoolkit.repositories.document_repo import DocumentRepo
+from iatoolkit.repositories.profile_repo import ProfileRepo
+from iatoolkit.repositories.models import Company
 from injector import inject
 
 
 class SearchService:
     @inject
     def __init__(self,
+                 profile_repo: ProfileRepo,
                  doc_repo: DocumentRepo,
                  vs_repo: VSRepo):
-        super().__init__()
+        self.profile_repo = profile_repo
         self.vs_repo = vs_repo
         self.doc_repo = doc_repo
 
-    def search(self, company_id:  int, query: str, metadata_filter: dict = None) -> str:
+    def search(self, company_short_name: str, query: str, metadata_filter: dict = None) -> str:
         """
         Performs a semantic search for a given query within a company's documents.
 
@@ -26,7 +29,7 @@ class SearchService:
         content of the retrieved documents, which can be used as context for an LLM.
 
         Args:
-            company_id: The ID of the company to search within.
+            company_short_name: The  company to search within.
             query: The text query to search for.
             metadata_filter: An optional dictionary to filter documents by their metadata.
 
@@ -34,7 +37,11 @@ class SearchService:
             A string containing the concatenated content of the found documents,
             formatted to be used as a context.
         """
-        document_list = self.vs_repo.query(company_id=company_id,
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            return f"error: company {company_short_name} not found"
+
+        document_list = self.vs_repo.query(company_id=company.id,
                                            query_text=query,
                                            metadata_filter=metadata_filter)
 

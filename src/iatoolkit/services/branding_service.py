@@ -75,7 +75,7 @@ class BrandingService:
         fusionando los valores por defecto con los personalizados.
         """
         final_branding_values = self._default_branding.copy()
-        branding_data = self.config_service.get_company_content(company_short_name, 'branding')
+        branding_data = self.config_service.get_configuration(company_short_name, 'branding')
         final_branding_values.update(branding_data)
 
 
@@ -140,7 +140,7 @@ class BrandingService:
         """
 
         # get the company name from configuration for the branding render
-        company_name = self.config_service.get_company_content(company_short_name, 'name')
+        company_name = self.config_service.get_configuration(company_short_name, 'name')
 
         return {
             "name": company_name,

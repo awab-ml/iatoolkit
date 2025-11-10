@@ -68,7 +68,7 @@ class LanguageService:
             # Priority 2: Company's default language
             company_short_name = self._get_company_short_name()
             if company_short_name:
-                locale = self.config_service.get_company_content(company_short_name, 'locale')
+                locale = self.config_service.get_configuration(company_short_name, 'locale')
                 if locale:
                     company_language = locale.split('_')[0]
                     g.lang = company_language

@@ -20,7 +20,7 @@ class ConfigurationService:
         self.utility = utility
         self._loaded_configs = {}   # cache for store loaded configurations
 
-    def get_company_content(self, company_short_name: str, content_key: str):
+    def get_configuration(self, company_short_name: str, content_key: str):
         """
         Public method to provide a specific section of a company's configuration.
         It uses a cache to avoid reading files from disk on every call.
@@ -28,7 +28,7 @@ class ConfigurationService:
         self._ensure_config_loaded(company_short_name)
         return self._loaded_configs[company_short_name].get(content_key)
 
-    def register_company(self, company_short_name: str, company_instance):
+    def load_configuration(self, company_short_name: str, company_instance):
         """
         Main entry point for configuring a company instance.
         This method is invoked by the dispatcher for each registered company.

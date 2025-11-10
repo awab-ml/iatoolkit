@@ -3,8 +3,8 @@
 #
 # IAToolkit is open source software.
 
-from iatoolkit import IAToolkit, BaseCompany, DatabaseManager
-from iatoolkit import SqlService, LoadDocumentsService, SearchService, ConfigurationService
+from iatoolkit import IAToolkit, BaseCompany
+from iatoolkit import SqlService, LoadDocumentsService, SearchService
 from injector import inject
 from companies.sample_company.sample_database import SampleCompanyDatabase
 import os
@@ -15,22 +15,21 @@ import logging
 class SampleCompany(BaseCompany):
     @inject
     def __init__(self,
-            config_service: ConfigurationService,
             sql_service: SqlService,
             search_service: SearchService):
         super().__init__()
-        self.config_service = config_service
         self.sql_service = sql_service
         self.search_service = search_service
-        self.sample_database = None
 
     def handle_request(self, action: str, **kwargs) -> str:
         if action == "sql_query":
-            sql_query = kwargs.get('query')
-            return self.sql_service.exec_sql('sample_database', sql_query)
+            return self.sql_service.exec_sql(
+                                db_name='sample_database',
+                                sql_statement=kwargs.get('query'))
+
         elif action == "document_search":
             query_string = kwargs.get('query')
-            return self.search_service.search(self.company.id, query_string)
+            return self.search_service.search(self.company_short_name, query_string)
         else:
             return self.unsupported_operation(action)
 

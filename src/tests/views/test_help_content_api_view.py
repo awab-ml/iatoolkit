@@ -50,7 +50,7 @@ class TestHelpContentApiView:
         mock_help_response = {
             'example_questions': [{'category': 'Ventas', 'questions': ['Pregunta 1']}]
         }
-        self.mock_config_service.get_company_content.return_value = mock_help_response
+        self.mock_config_service.get_configuration.return_value = mock_help_response
 
         # Act
         response = self.client.post(self.url)
@@ -61,7 +61,7 @@ class TestHelpContentApiView:
 
         # Verifica que se llamó al servicio de autenticación y al de ayuda con los parámetros correctos
         self.mock_auth_service.verify.assert_called_once()
-        self.mock_config_service.get_company_content.assert_called_once_with(
+        self.mock_config_service.get_configuration.assert_called_once_with(
             company_short_name=MOCK_COMPANY_SHORT_NAME,
             content_key='help_content'
         )
@@ -79,14 +79,14 @@ class TestHelpContentApiView:
         # Assert
         assert response.status_code == 401
         assert "Token inválido" in response.json['error_message']
-        self.mock_config_service.get_company_content.assert_not_called()
+        self.mock_config_service.get_configuration.assert_not_called()
 
     def test_get_content_handles_service_error(self):
         """
         Prueba que la vista maneja un error controlado devuelto por el servicio de ayuda.
         """
         # Arrange
-        self.mock_config_service.get_company_content.return_value = {
+        self.mock_config_service.get_configuration.return_value = {
             'error': 'El archivo de contenido está corrupto'
         }
 
@@ -96,14 +96,14 @@ class TestHelpContentApiView:
         # Assert
         assert response.status_code == 400
         assert response.json['error_message'] == 'El archivo de contenido está corrupto'
-        self.mock_config_service.get_company_content.assert_called_once()
+        self.mock_config_service.get_configuration.assert_called_once()
 
     def test_get_content_handles_unexpected_exception(self):
         """
         Prueba que la vista devuelve un error 500 si ocurre una excepción inesperada.
         """
         # Arrange
-        self.mock_config_service.get_company_content.side_effect = Exception("Fallo crítico de lectura de archivo")
+        self.mock_config_service.get_configuration.side_effect = Exception("Fallo crítico de lectura de archivo")
 
         # Act
         response = self.client.post(self.url)

@@ -10,10 +10,8 @@ from .iatoolkit import IAToolkit, current_iatoolkit, create_app
 # for registering the client companies
 from .company_registry import register_company
 from .base_company import BaseCompany
-from iatoolkit.repositories.database_manager import DatabaseManager
 
 # --- Services ---
-from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.services.query_service import QueryService
 from iatoolkit.services.sql_service import SqlService
 from iatoolkit.services.document_service import DocumentService
@@ -28,9 +26,7 @@ __all__ = [
     'current_iatoolkit',
     'register_company',
     'BaseCompany',
-    'DatabaseManager',
     'QueryService',
-    'ConfigurationService',
     'SqlService',
     'ExcelService',
     'DocumentService',

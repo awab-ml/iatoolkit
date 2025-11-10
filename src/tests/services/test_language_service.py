@@ -58,7 +58,7 @@ class TestLanguageService:
             assert lang == 'de'
             self.mock_profile_repo.get_user_by_email.assert_called_once_with('user-de@acme.com')
             # Verify no downstream calls were made
-            self.mock_config_service.get_company_content.assert_not_called()
+            self.mock_config_service.get_configuration.assert_not_called()
 
     # --- Priority 2 Tests: Company Default ---
 
@@ -77,7 +77,7 @@ class TestLanguageService:
         mock_session_manager.get.side_effect = session_get_side_effect
         self.mock_profile_repo.get_user_by_email.return_value = self.user_without_lang
         # The service now calls ConfigurationService instead of ProfileRepo for company language
-        self.mock_config_service.get_company_content.return_value = 'en_US'
+        self.mock_config_service.get_configuration.return_value = 'en_US'
 
         with self.app.test_request_context():
             # Act
@@ -86,7 +86,7 @@ class TestLanguageService:
             # Assert
             assert lang == 'en'  # Should extract 'en' from 'en_US'
             self.mock_profile_repo.get_user_by_email.assert_called_once_with('user-no-lang@acme.com')
-            self.mock_config_service.get_company_content.assert_called_once_with('acme-en', 'locale')
+            self.mock_config_service.get_configuration.assert_called_once_with('acme-en', 'locale')
 
     @patch('iatoolkit.services.language_service.SessionManager')
     def test_returns_company_language_from_url_when_no_session(self, mock_session_manager):
@@ -97,7 +97,7 @@ class TestLanguageService:
         """
         # Arrange
         mock_session_manager.get.return_value = None  # No active session
-        self.mock_config_service.get_company_content.return_value = 'fr_FR'
+        self.mock_config_service.get_configuration.return_value = 'fr_FR'
 
         # Simulate a request to a URL like /acme-fr/login
         with self.app.test_request_context('/acme-fr/login'):
@@ -106,7 +106,7 @@ class TestLanguageService:
 
             # Assert
             assert lang == 'fr'
-            self.mock_config_service.get_company_content.assert_called_once_with('acme-fr', 'locale')
+            self.mock_config_service.get_configuration.assert_called_once_with('acme-fr', 'locale')
             self.mock_profile_repo.get_user_by_email.assert_not_called()
 
     # --- Priority 3 Tests: System Fallback ---
@@ -120,7 +120,7 @@ class TestLanguageService:
         """
         # Arrange
         mock_session_manager.get.return_value = None  # No user
-        self.mock_config_service.get_company_content.return_value = None  # Simulate missing config
+        self.mock_config_service.get_configuration.return_value = None  # Simulate missing config
 
         with self.app.test_request_context('/acme-no-lang/login'):
             # Act
@@ -128,7 +128,7 @@ class TestLanguageService:
 
             # Assert
             assert lang == self.language_service.FALLBACK_LANGUAGE
-            self.mock_config_service.get_company_content.assert_called_once_with('acme-no-lang', 'locale')
+            self.mock_config_service.get_configuration.assert_called_once_with('acme-no-lang', 'locale')
 
     @patch('iatoolkit.services.language_service.SessionManager')
     def test_returns_fallback_when_no_context_found(self, mock_session_manager):
@@ -146,7 +146,7 @@ class TestLanguageService:
 
             # Assert
             assert lang == self.language_service.FALLBACK_LANGUAGE
-            self.mock_config_service.get_company_content.assert_not_called()
+            self.mock_config_service.get_configuration.assert_not_called()
 
     @patch('iatoolkit.services.language_service.SessionManager')
     def test_returns_fallback_on_config_service_exception(self, mock_session_manager):
@@ -157,7 +157,7 @@ class TestLanguageService:
         """
         # Arrange
         mock_session_manager.get.side_effect = [None, 'acme-en'] # No user, but company context
-        self.mock_config_service.get_company_content.side_effect = Exception("YAML file is corrupted")
+        self.mock_config_service.get_configuration.side_effect = Exception("YAML file is corrupted")
 
         with self.app.test_request_context():
             # Act
@@ -187,4 +187,4 @@ class TestLanguageService:
             # CRUCIAL: Verify that no external calls were made
             mock_session_manager.get.assert_not_called()
             self.mock_profile_repo.get_user_by_email.assert_not_called()
-            self.mock_config_service.get_company_content.assert_not_called()
+            self.mock_config_service.get_configuration.assert_not_called()

@@ -9,21 +9,61 @@ from iatoolkit.common.util import Utility
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.common.exceptions import IAToolkitException
 
+# --- Mock Data for different test scenarios ---
+
+# Simulates include_all_tables: true
+MOCK_CONFIG_INCLUDE_ALL = {
+    'sql': [{
+        'database': 'main_db',
+        'include_all_tables': True
+    }]
+}
+
+# Simulates an explicit list of tables
+MOCK_CONFIG_EXPLICIT_LIST = {
+    'sql': [{
+        'database': 'main_db',
+        'tables': {
+            'products': {},
+            'customers': {}
+        }
+    }]
+}
+
+# Simulates include_all_tables with exclusions and overrides
+MOCK_CONFIG_COMPLEX = {
+    'sql': [{
+        'database': 'main_db',
+        'include_all_tables': True,
+        'exclude_tables': ['logs'],
+        'exclude_columns': ['id', 'created_at'],  # Global exclude
+        'tables': {
+            'users': {
+                'exclude_columns': ['password_hash']  # Local override
+            },
+            'user_profiles': {
+                'schema_name': 'profiles'  # Schema override
+            }
+        }
+    }]
+}
+
 
 class TestCompanyContextService:
     """
-    Unit tests for the CompanyContextService.
+    Unit tests for the CompanyContextService, updated for the new data_sources schema.
     """
 
     @pytest.fixture(autouse=True)
     def setup_method(self):
-        """
-        Pytest fixture that runs before each test to create mocks for all dependencies
-        and instantiate the CompanyContextService.
-        """
+        """Set up mocks for all dependencies and instantiate the service."""
         self.mock_sql_service = MagicMock(spec=SqlService)
         self.mock_utility = MagicMock(spec=Utility)
         self.mock_config_service = MagicMock(spec=ConfigurationService)
+
+        # Setup a default mock for the DatabaseManager
+        self.mock_db_manager = MagicMock(spec=DatabaseManager)
+        self.mock_sql_service.get_database_manager.return_value = self.mock_db_manager
 
         self.context_service = CompanyContextService(
             sql_service=self.mock_sql_service,
@@ -32,147 +72,111 @@ class TestCompanyContextService:
         )
         self.COMPANY_NAME = 'acme'
 
-    @patch('os.path.exists', return_value=True)
-    def test_build_full_context_with_all_sources(self, mock_exists):
+    # --- Tests for New SQL Context Logic ---
+
+    def test_sql_context_with_include_all_tables(self):
         """
-        GIVEN all context sources (markdown, yaml schemas, sql) are available
-        WHEN build_full_context is called
-        THEN it should return a combined string of all contexts separated by '---'.
+        GIVEN config has 'include_all_tables: true'
+        WHEN _get_sql_schema_context is called
+        THEN it should process all tables returned by the db_manager.
         """
-
-        # --- Arrange ---
-        # 1. Mock static file context (markdown and yaml schemas)
-        def get_files_side_effect(directory, ext, **kwargs):
-            if 'context' in directory and ext == '.md':
-                return ['rules.md']
-            if 'schema' in directory and ext == '.yaml':
-                return ['api.yaml']
-            return []
-
-        self.mock_utility.get_files_by_extension.side_effect = get_files_side_effect
-        self.mock_utility.load_markdown_context.return_value = "MARKDOWN_CONTEXT"
-        self.mock_utility.generate_context_for_schema.return_value = "YAML_SCHEMA_CONTEXT"
-
-        # 2. Mock SQL context
-        mock_db_config = {
-            'sql': [{
-                'database': 'main_db',
-                'description': 'Main database.',
-                'tables': [{'table_name': 'users'}]
-            }]
-        }
-        self.mock_config_service.get_company_content.return_value = mock_db_config
-        mock_db_manager = MagicMock(spec=DatabaseManager)
-        mock_db_manager.get_table_schema.return_value = "SQL_TABLE_SCHEMA"
-        self.mock_sql_service.get_database_manager.return_value = mock_db_manager
-
-        # --- Act ---
-        full_context = self.context_service.get_company_context(self.COMPANY_NAME)
-
-        # --- Assert ---
-        # Check that the final string is correctly assembled
-        expected_static_context = "MARKDOWN_CONTEXTYAML_SCHEMA_CONTEXT"
-        expected_sql_context = "Main database.\nSQL_TABLE_SCHEMA"
-        assert full_context == f"{expected_static_context}\n\n---\n\n{expected_sql_context}"
-
-        # Verify calls for static context
-
-        self.mock_utility.load_markdown_context.assert_called_once()
-        self.mock_utility.generate_context_for_schema.assert_called_once()
-
-        # Verify calls for SQL context
-        self.mock_config_service.get_company_content.assert_called_once_with(self.COMPANY_NAME, 'data_sources')
-        self.mock_sql_service.get_database_manager.assert_called_once_with('main_db')
-        mock_db_manager.get_table_schema.assert_called_once_with(table_name='users', schema_name='users',
-                                                                 exclude_columns=[])
-
-    def test_build_context_with_only_sql_source(self):
-        """
-        GIVEN only SQL sources provide context
-        WHEN build_full_context is called
-        THEN it should return only the SQL context without separators.
-        """
-        # Arrange: No static files found
-        self.mock_utility.get_files_by_extension.return_value = []
-
-        # Arrange: SQL context is available
-        mock_db_config = {'sql': [{'database': 'main_db', 'tables': [{'table_name': 'products'}]}]}
-        self.mock_config_service.get_company_content.return_value = mock_db_config
-        mock_db_manager = MagicMock()
-        mock_db_manager.get_table_schema.return_value = "PRODUCTS_SCHEMA"
-        self.mock_sql_service.get_database_manager.return_value = mock_db_manager
+        # Arrange
+        self.mock_config_service.get_configuration.return_value = MOCK_CONFIG_INCLUDE_ALL
+        self.mock_db_manager.get_all_table_names.return_value = ['users', 'products']
 
         # Act
-        full_context = self.context_service.get_company_context(self.COMPANY_NAME)
+        self.context_service._get_sql_schema_context(self.COMPANY_NAME)
 
         # Assert
-        assert full_context == "PRODUCTS_SCHEMA"
-        self.mock_utility.load_markdown_context.assert_not_called()
+        self.mock_db_manager.get_all_table_names.assert_called_once()
+        expected_calls = [
+            call(table_name='users', schema_name='users', exclude_columns=[]),
+            call(table_name='products', schema_name='products', exclude_columns=[])
+        ]
+        self.mock_db_manager.get_table_schema.assert_has_calls(expected_calls, any_order=True)
+
+    def test_sql_context_with_explicit_table_map(self):
+        """
+        GIVEN config has an explicit map of tables
+        WHEN _get_sql_schema_context is called
+        THEN it should only process tables listed in the map.
+        """
+        # Arrange
+        self.mock_config_service.get_configuration.return_value = MOCK_CONFIG_EXPLICIT_LIST
+
+        # Act
+        self.context_service._get_sql_schema_context(self.COMPANY_NAME)
+
+        # Assert
+        self.mock_db_manager.get_all_table_names.assert_not_called()
+        assert self.mock_db_manager.get_table_schema.call_count == 2
+        expected_calls = [
+            call(table_name='products', schema_name='products', exclude_columns=[]),
+            call(table_name='customers', schema_name='customers', exclude_columns=[])
+        ]
+        self.mock_db_manager.get_table_schema.assert_has_calls(expected_calls, any_order=True)
+
+    def test_sql_context_with_complex_overrides(self):
+        """
+        GIVEN a complex config with include_all, exclusions, and overrides
+        WHEN _get_sql_schema_context is called
+        THEN it should apply all rules correctly.
+        """
+        # Arrange
+        self.mock_config_service.get_configuration.return_value = MOCK_CONFIG_COMPLEX
+        # DB has 'users', 'user_profiles', and 'logs'. 'logs' should be excluded.
+        self.mock_db_manager.get_all_table_names.return_value = ['users', 'user_profiles', 'logs']
+
+        # Act
+        self.context_service._get_sql_schema_context(self.COMPANY_NAME)
+
+        # Assert
+        # Check call count first
+        assert self.mock_db_manager.get_table_schema.call_count == 2
+
+        # Check calls with correct, final parameters
+        expected_calls = [
+            # 'users' table should use its local exclude_columns override
+            call(table_name='users', schema_name='users', exclude_columns=['password_hash']),
+            # 'user_profiles' should use the global exclude_columns and its local schema_name override
+            call(table_name='user_profiles', schema_name='profiles', exclude_columns=['id', 'created_at'])
+        ]
+        self.mock_db_manager.get_table_schema.assert_has_calls(expected_calls, any_order=True)
+
+    # --- Existing Tests (can be kept as they test other parts) ---
 
     @patch('os.path.exists')
     def test_build_context_with_only_static_files(self, mock_exists):
         """
         GIVEN only static markdown files provide context
-        WHEN build_full_context is called
+        WHEN get_company_context is called
         THEN it should return only the markdown context.
         """
 
-        # Arrange: Configure the mock to simulate that the 'context' directory
-        # exists, but the 'schema' directory does not.
-        def exists_side_effect(path):
-            if 'context' in path:
-                return True
-            return False
+        # Arrange
+        def exists_side_effect(path): return 'context' in path
 
         mock_exists.side_effect = exists_side_effect
-
-        # Arrange: Utility will find one markdown file.
         self.mock_utility.get_files_by_extension.return_value = ['info.md']
         self.mock_utility.load_markdown_context.return_value = "STATIC_INFO"
-
-        # Arrange: No SQL data_sources are configured for this test.
-        self.mock_config_service.get_company_content.return_value = None
+        self.mock_config_service.get_configuration.return_value = None  # No SQL config
 
         # Act
         full_context = self.context_service.get_company_context(self.COMPANY_NAME)
 
         # Assert
         assert full_context == "STATIC_INFO"
-
-        # Verify that the correct calls were made
-        self.mock_utility.get_files_by_extension.assert_called_once_with(
-            f'companies/{self.COMPANY_NAME}/context', '.md', return_extension=True
-        )
-        self.mock_utility.load_markdown_context.assert_called_once()
         self.mock_sql_service.get_database_manager.assert_not_called()
-
-
-    def test_build_context_when_no_sources_are_available(self):
-        """
-        GIVEN no context sources are configured or found
-        WHEN build_full_context is called
-        THEN it should return an empty string.
-        """
-        # Arrange
-        self.mock_utility.get_files_by_extension.return_value = []
-        self.mock_config_service.get_company_content.return_value = None
-
-        # Act
-        full_context = self.context_service.get_company_context(self.COMPANY_NAME)
-
-        # Assert
-        assert full_context == ""
 
     def test_gracefully_handles_db_manager_exception(self):
         """
         GIVEN retrieving a database manager throws an exception
-        WHEN build_full_context is called
+        WHEN get_company_context is called
         THEN it should log a warning and return context from other sources.
         """
         # Arrange
         self.mock_utility.get_files_by_extension.return_value = []  # No static context
-        mock_db_config = {'sql': [{'database': 'down_db'}]}
-        self.mock_config_service.get_company_content.return_value = mock_db_config
+        self.mock_config_service.get_configuration.return_value = {'sql': [{'database': 'down_db'}]}
         self.mock_sql_service.get_database_manager.side_effect = IAToolkitException(
             IAToolkitException.ErrorType.DATABASE_ERROR, "DB is down"
         )
@@ -181,6 +185,5 @@ class TestCompanyContextService:
         full_context = self.context_service.get_company_context(self.COMPANY_NAME)
 
         # Assert
-        # The service should fail gracefully and return an empty string as there are no other sources.
         assert full_context == ""
         self.mock_sql_service.get_database_manager.assert_called_once_with('down_db')

@@ -29,7 +29,7 @@ class TestBrandingService:
             if content_key == 'name':
                 return "Test Corp"
             return None
-        self.configuration_service.get_company_content.side_effect = side_effect_for_no_branding
+        self.configuration_service.get_configuration.side_effect = side_effect_for_no_branding
 
         # Act
         branding = self.branding_service.get_company_branding("test-corp")
@@ -41,7 +41,7 @@ class TestBrandingService:
         assert expected_css_var in branding['css_variables']
         # Verificar las llamadas al mock.
         expected_calls = [call("test-corp", 'branding'), call("test-corp", 'name')]
-        self.configuration_service.get_company_content.assert_has_calls(expected_calls, any_order=True)
+        self.configuration_service.get_configuration.assert_has_calls(expected_calls, any_order=True)
 
     def test_get_branding_with_partial_custom_branding(self):
         """
@@ -57,7 +57,7 @@ class TestBrandingService:
             if content_key == 'name':
                 return "Partial Brand Inc."
             return None
-        self.configuration_service.get_company_content.side_effect = side_effect_for_partial_branding
+        self.configuration_service.get_configuration.side_effect = side_effect_for_partial_branding
 
         # Act
         branding = self.branding_service.get_company_branding("partial-brand-inc")
@@ -87,7 +87,7 @@ class TestBrandingService:
             if content_key == 'name':
                 return "Full Brand LLC"
             return None
-        self.configuration_service.get_company_content.side_effect = side_effect_for_full_branding
+        self.configuration_service.get_configuration.side_effect = side_effect_for_full_branding
 
         # Act
         branding = self.branding_service.get_company_branding("full-brand-llc")

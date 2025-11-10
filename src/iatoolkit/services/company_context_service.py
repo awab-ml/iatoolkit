@@ -79,23 +79,22 @@ class CompanyContextService:
         return static_context
 
     def _get_sql_schema_context(self, company_short_name: str) -> str:
-        # generate schema from the live DB connection.
-        # get the configuration for 'data_sources' from the ConfigurationService
-        data_sources_config = self.config_service.get_company_content(company_short_name, 'data_sources')
+        """
+        Generates the SQL schema context by inspecting live database connections
+        based on the flexible company.yaml configuration.
+        It supports including all tables and providing specific overrides for a subset of them.
+        """
+        data_sources_config = self.config_service.get_configuration(company_short_name, 'data_sources')
         if not data_sources_config or not data_sources_config.get('sql'):
-            return ''       # No SQL data sources configured for this company
+            return ''
 
         sql_context = ''
-        sql_sources = data_sources_config.get('sql', [])
-
-        # iterate over all SQL sources defined in the YAML configuration
-        for source in sql_sources:
+        for source in data_sources_config.get('sql', []):
             db_name = source.get('database')
             if not db_name:
                 continue
 
             try:
-                # get a handle to the DB manager
                 db_manager = self.sql_service.get_database_manager(db_name)
             except IAToolkitException as e:
                 logging.warning(f"Could not get DB manager for '{db_name}': {e}")
@@ -104,22 +103,43 @@ class CompanyContextService:
             db_description = source.get('description', '')
             sql_context += f"{db_description}\n" if db_description else ""
 
-            # iterate over all tables defined in the SQL source
-            for table_info in source.get('tables', []):
+            # 1. get the list of tables to process.
+            tables_to_process = []
+            if source.get('include_all_tables', False):
+                all_tables = db_manager.get_all_table_names()
+                tables_to_exclude = set(source.get('exclude_tables', []))
+                tables_to_process = [t for t in all_tables if t not in tables_to_exclude]
+            elif 'tables' in source:
+                # if not include_all_tables, use the list of tables explicitly specified in the map.
+                tables_to_process = list(source['tables'].keys())
+
+            # 2. get the global list of columns to exclude.
+            global_exclude_columns = source.get('exclude_columns', [])
+
+            # 3. get the overrides for specific tables.
+            table_overrides = source.get('tables', {})
+
+            # 3. iterate over the tables.
+            for table_name in tables_to_process:
                 try:
-                    table_name = table_info['table_name']
+                    # 4. get the table specific configuration.
+                    table_config = table_overrides.get(table_name, {})
 
-                    # if schema_name is not defined, use table_name as default value.
-                    schema_name = table_info.get('schema_name', table_name)
+                    # 5. define the schema name, using the override if it exists.
+                    schema_name = table_config.get('schema_name', table_name)
 
-                    # get the schema definition for the table, using ispector
+                    # 6. define the list of columns to exclude, (local vs. global).
+                    local_exclude_columns = table_config.get('exclude_columns')
+                    final_exclude_columns = local_exclude_columns if local_exclude_columns is not None else global_exclude_columns
+
+                    # 7. get the table schema definition.
                     table_definition = db_manager.get_table_schema(
                         table_name=table_name,
                         schema_name=schema_name,
-                        exclude_columns=[]
+                        exclude_columns=final_exclude_columns
                     )
                     sql_context += table_definition
                 except (KeyError, RuntimeError) as e:
-                    logging.warning(f"Could not generate schema for table '{table_info.get('table_name')}': {e}")
+                    logging.warning(f"Could not generate schema for table '{table_name}': {e}")
 
         return sql_context

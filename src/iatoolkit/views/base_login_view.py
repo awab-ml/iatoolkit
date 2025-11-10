@@ -57,7 +57,7 @@ class BaseLoginView(MethodView):
         """
         # --- Get the company branding and onboarding_cards
         branding_data = self.branding_service.get_company_branding(company_short_name)
-        onboarding_cards = self.config_service.get_company_content(company_short_name, 'onboarding_cards')
+        onboarding_cards = self.config_service.get_configuration(company_short_name, 'onboarding_cards')
 
         # this service decides is the context needs to be rebuilt or not
         prep_result = self.query_service.prepare_context(

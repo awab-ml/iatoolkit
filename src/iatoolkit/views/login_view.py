@@ -129,7 +129,7 @@ class FinalizeContextView(MethodView):
 
             # 3. render the chat page.
             prompts = self.prompt_service.get_user_prompts(company_short_name)
-            onboarding_cards = self.config_service.get_company_content(company_short_name, 'onboarding_cards')
+            onboarding_cards = self.config_service.get_configuration(company_short_name, 'onboarding_cards')
 
             # Get the entire 'js_messages' block in the correct language.
             js_translations = self.i18n_service.get_translation_block('js_messages')

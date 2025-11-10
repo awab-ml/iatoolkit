@@ -68,7 +68,7 @@ class Dispatcher:
         for company_name, company_instance in self.company_instances.items():
             try:
                 # read company configuration from company.yaml
-                self.config_service.register_company(company_name, company_instance)
+                self.config_service.load_configuration(company_name, company_instance)
 
                 # register the company databases
                 self._register_company_databases(company_name)
@@ -85,7 +85,7 @@ class Dispatcher:
         database with the central SqlService.
         """
         logging.info(f"  -> Registering databases for '{company_name}'...")
-        data_sources_config = self.config_service.get_company_content(company_name, 'data_sources')
+        data_sources_config = self.config_service.get_configuration(company_name, 'data_sources')
 
         if not data_sources_config or not data_sources_config.get('sql'):
             logging.info(f"  -> No SQL data sources to register for '{company_name}'.")

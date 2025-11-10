@@ -37,7 +37,7 @@ class HelpContentApiView(MethodView):
             user_identifier = auth_result.get('user_identifier')
 
             # 2. Call the config service with the unified identifier.
-            response = self.config_service.get_company_content(
+            response = self.config_service.get_configuration(
                 company_short_name=company_short_name,
                 content_key='help_content'      # specific key for this service
             )

@@ -70,6 +70,11 @@ class DatabaseManager:
     def remove_session(self):
         self.scoped_session.remove()
 
+    def get_all_table_names(self) -> list[str]:
+        # Returns a list of all table names in the database
+        inspector = inspect(self._engine)
+        return inspector.get_table_names()
+
     def get_table_schema(self,
                          table_name: str,
                          schema_name: str | None = None,

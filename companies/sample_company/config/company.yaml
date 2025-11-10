@@ -22,23 +22,36 @@ data_sources:
     - database: "sample_database"
       connection_string_env: "SAMPLE_DATABASE_URI"
       description: |
-        Esta es la base de datos principal de la empresa, modelada a partir del conjunto de datos 'Northwind'.
-        Contiene toda la información operativa, incluyendo productos, clientes, empleados, órdenes de compra y detalles de envío.
-        Es la fuente principal para responder preguntas sobre ventas y operaciones.
+        Esta es la base de datos principal de  Sample Company.
+        Contiene toda la información comercial y operativa la empresa.
+        Es la fuente principal para responder preguntas sobre ventas, despachos,
+        ordenes de compra, empleados, paises y territorios.
+
+      # Loads all the databases tables automatically
+      include_all_tables: true
+      # ...but ignore these specific tables
+      exclude_tables:
+        - "test_table"
+        - "logs"
+      # exclude these columns from all tables
+      exclude_columns: [ created', 'updated' ]
+      #    El servicio usará esta sección para añadir detalles a las tablas
+      #    que se cargaron automáticamente con 'include_all_tables'.
       tables:
-        - table_name: "products"
-        - table_name: "regions"
-        - table_name: "shippers"
-        - table_name: "suppliers"
-        - table_name: "categories"
-        - table_name: "customers"
-        - table_name: "territories"
-        - table_name: "employees"
-        - table_name: "employee_territories"
+        employee_territories:
+          # Para esta tabla, usa un nombre de esquema personalizado.
           schema_name: "employee_territory"
-        - table_name: "orders"
-        - table_name: "order_details"
-          schema_name: "order_detail"   # Optional: only is schema name is different from table name
+
+        orders:
+          # Para la tabla 'orders', ignora la lista global 'exclude_columns'
+          # y usa esta lista más específica en su lugar.
+          exclude_columns: [ 'internal_notes', 'processing_id' ]
+
+        products:
+          # Para la tabla 'products', no hay overrides, pero podríamos
+          # añadir una descripción personalizada aquí si quisiéramos.
+          description: "Catálogo de productos de la compañía."
+
 
 # 3. Tools (Functions)
 # Defines the custom actions the LLM can take, including their parameters.

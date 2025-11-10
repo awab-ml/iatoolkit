@@ -36,7 +36,7 @@ class TestBaseLoginView:
         # Arrange
         self.mock_services["query_service"].prepare_context.return_value = {"rebuild_needed": True}
         self.mock_services["branding_service"].get_company_branding.return_value = {"logo": "logo.png"}
-        self.mock_services["config_service"].get_company_content.return_value = [{"title": "Card 1"}]
+        self.mock_services["config_service"].get_configuration.return_value = [{"title": "Card 1"}]
 
         app = Flask(__name__)
         with app.test_request_context():
@@ -53,7 +53,7 @@ class TestBaseLoginView:
             company_short_name=COMPANY_SHORT_NAME, user_identifier=USER_IDENTIFIER
         )
         self.mock_services["branding_service"].get_company_branding.assert_called_once_with(COMPANY_SHORT_NAME)
-        self.mock_services["config_service"].get_company_content.assert_called_once_with(COMPANY_SHORT_NAME, 'onboarding_cards')
+        self.mock_services["config_service"].get_configuration.assert_called_once_with(COMPANY_SHORT_NAME, 'onboarding_cards')
 
         mock_rt.assert_called_once()
         template_name, ctx = mock_rt.call_args[0], mock_rt.call_args[1]
@@ -68,7 +68,7 @@ class TestBaseLoginView:
         self.mock_services["query_service"].prepare_context.return_value = {"rebuild_needed": False}
         self.mock_services["branding_service"].get_company_branding.return_value = {"theme": "dark"}
         self.mock_services["prompt_service"].get_user_prompts.return_value = [{"id": "p1"}]
-        self.mock_services["config_service"].get_company_content.return_value = []
+        self.mock_services["config_service"].get_configuration.return_value = []
 
         app = Flask(__name__)
         with app.test_request_context():
