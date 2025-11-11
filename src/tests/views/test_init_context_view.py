@@ -57,6 +57,7 @@ class TestInitContextApiView:
         """
         Tests the flow for a pure API call using an API Key.
         """
+        self.mock_query_service.finalize_context_rebuild.return_value = {'response_id': 'messagge_1234'}
         response = self.client.post(
             f'/api/{MOCK_COMPANY_SHORT_NAME}/init-context',
             json={'external_user_id': MOCK_USER_IDENTIFIER}
@@ -64,6 +65,7 @@ class TestInitContextApiView:
 
         assert response.status_code == 200
         assert response.json['status'] == 'OK'
+        assert response.json['response_id'] == 'messagge_1234'
 
         # Verify the sequence was called with the user ID from the JSON payload.
         self.mock_query_service.session_context.clear_all_context.assert_called_once_with(MOCK_COMPANY_SHORT_NAME,

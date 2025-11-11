@@ -49,14 +49,20 @@ class InitContextApiView(MethodView):
                 user_identifier=user_identifier
             )
 
-            self.query_service.finalize_context_rebuild(
+            response = self.query_service.finalize_context_rebuild(
                 company_short_name=company_short_name,
                 user_identifier=user_identifier
             )
 
             # 3. Respond with JSON, as this is an API endpoint.
             success_message = self.i18n_service.t('api_responses.context_reloaded_success')
-            return jsonify({'status': 'OK', 'message': success_message}), 200
+            response_message = {'status': 'OK', 'message': success_message}
+
+            # if received a response ID with the context, return it
+            if response.get('response_id'):
+                response_message['response_id'] = response['response_id']
+
+            return jsonify(response_message), 200
 
         except Exception as e:
             logging.exception(f"errors while reloading context: {e}")

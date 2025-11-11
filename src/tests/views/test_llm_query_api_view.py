@@ -65,6 +65,7 @@ class TestLLMQueryApiView:
             question='',
             prompt_name=None,
             client_data={},
+            response_id=None,
             files=[]
         )
 

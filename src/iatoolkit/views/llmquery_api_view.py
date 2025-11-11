@@ -44,6 +44,7 @@ class LLMQueryApiView(MethodView):
                 question=data.get('question', ''),
                 prompt_name=data.get('prompt_name'),
                 client_data=data.get('client_data', {}),
+                response_id = data.get('response_id'),
                 files=data.get('files', [])
             )
             if 'error' in result:

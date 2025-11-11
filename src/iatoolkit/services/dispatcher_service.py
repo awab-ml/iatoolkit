@@ -221,13 +221,13 @@ _SYSTEM_PROMPT = [
 _FUNCTION_LIST = [
     {
         "function_name": "iat_sql_query",
-        "description": "Servicio SQL de IAToolkit: consultas SQL sobre  bases de datos.",
+        "description": "Servicio SQL de IAToolkit: debes utilizar este servicio para todas las consultas a base de datos.",
         "parameters": {
             "type": "object",
             "properties": {
                 "database": {
                     "type": "string",
-                    "description": "nombre de la base de datos a consultar."
+                    "description": "nombre de la base de datos a consultar: `database_name`"
                 },
                 "query": {
                     "type": "string",

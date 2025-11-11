@@ -125,11 +125,11 @@ class QueryService:
 
     def finalize_context_rebuild(self, company_short_name: str, user_identifier: str, model: str = ''):
 
-        # end the initilization, if there is a prepare context send it to llm
+        # This service  finish the initilization, if there is a prepare context send it to llm
         if not model:
             model = self.model
 
-        # --- Lógica de Bloqueo ---
+        # blocking logic to avoid multiple requests for the same user/company at the same time
         lock_key = f"lock:context:{company_short_name}/{user_identifier}"
         if not self.session_context.acquire_lock(lock_key, expire_seconds=60):
             logging.warning(
@@ -148,13 +148,13 @@ class QueryService:
 
             logging.info(f"sending context to LLM for: {company_short_name}/{user_identifier}...")
 
-            # Limpiar solo el historial de chat y el ID de respuesta anterior
+            # clean only the chat history and the last response ID for this user/company
             self.session_context.clear_llm_history(company_short_name, user_identifier)
 
+            response_id = ''
             if self.util.is_gemini_model(model):
                 context_history = [{"role": "user", "content": prepared_context}]
                 self.session_context.save_context_history(company_short_name, user_identifier, context_history)
-
             elif self.util.is_openai_model(model):
                 response_id = self.llm_client.set_company_context(
                     company=company, company_base_context=prepared_context, model=model
@@ -170,8 +170,10 @@ class QueryService:
             logging.exception(f"Error in finalize_context_rebuild for {company_short_name}: {e}")
             raise e
         finally:
-            # --- Liberar el Bloqueo ---
+            # release the lock
             self.session_context.release_lock(lock_key)
+
+        return {'response_id': response_id }
 
     def llm_query(self,
                   company_short_name: str,
@@ -180,6 +182,7 @@ class QueryService:
                   prompt_name: str = None,
                   question: str = '',
                   client_data: dict = {},
+                  response_id: str = '',
                   files: list = []) -> dict:
         try:
             company = self.profile_repo.get_company_by_short_name(short_name=company_short_name)
@@ -196,12 +199,16 @@ class QueryService:
             context_history = self.session_context.get_context_history(company.short_name, user_identifier) or []
 
             if self.util.is_openai_model(self.model):
-                # get user context
-                previous_response_id = self.session_context.get_last_response_id(company.short_name, user_identifier)
-                if not previous_response_id:
-                    return {'error': True,
-                            "error_message": self.i18n_service.t('errors.services.missing_response_id', company_short_name=company.short_name, user_identifier=user_identifier)
-                            }
+                if response_id:
+                    # context is getting from this response_id
+                    previous_response_id = response_id
+                else:
+                    # use the full user history context
+                    previous_response_id = self.session_context.get_last_response_id(company.short_name, user_identifier)
+                    if not previous_response_id:
+                        return {'error': True,
+                                "error_message": self.i18n_service.t('errors.services.missing_response_id', company_short_name=company.short_name, user_identifier=user_identifier)
+                                }
             elif self.util.is_gemini_model(self.model):
                 # check the length of the context_history and remove old messages
                 self._trim_context_history(context_history)
