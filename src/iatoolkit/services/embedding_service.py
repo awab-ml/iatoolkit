@@ -69,9 +69,9 @@ class EmbeddingClientFactory:
             raise ValueError(f"Embedding provider not configured for company '{company_short_name}'.")
         model = embedding_config.get('model')
 
-        # IMPORTANT: API-KEY is obtained  from the llm configuration
-        llm_config = self.config_service.get_configuration(company_short_name, 'llm')
-        api_key_name = llm_config.get('api-key')
+        api_key_name = embedding_config.get('api_key_name')
+        if not api_key_name:
+            raise ValueError(f"Missiong configuration for embedding_provider:api_key_name en config.yaml.")
 
         api_key = os.getenv(api_key_name)
         if not api_key:
@@ -92,7 +92,7 @@ class EmbeddingClientFactory:
         else:
             raise NotImplementedError(f"Embedding provider '{provider}' is not implemented.")
 
-        logging.info(f"Embedding client for '{company_short_name}' created with model: {model} via {provider}")
+        logging.debug(f"Embedding client for '{company_short_name}' created with model: {model} via {provider}")
         self._clients[company_short_name] = wrapper
         return wrapper
 

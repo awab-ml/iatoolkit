@@ -11,16 +11,15 @@ llm:
   model: "gpt-5"
   api-key: "OPENAI_API_KEY"
 
-# in case don't want to pay form openai embeddings
-# embedding_provider:
-#  provider: "huggingface"
-#  model: "sentence-transformers/all-MiniLM-L6-v2"
-#  api_key_name: "HF_TOKEN"
-
+# Embeddings: supported only openai and huggingface. only one at a atime
 embedding_provider:
   provider: "openai"
   model: "text-embedding-ada-002"
+  api_key_name: "OPENAI_API_KEY"
 
+#  provider: "huggingface" this is the other option
+#  model: "sentence-transformers/all-MiniLM-L6-v2"
+#  api_key_name: "huggingface_token"
 
 # 2. Data Sources
 data_sources:
