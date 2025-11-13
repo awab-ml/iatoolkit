@@ -30,7 +30,7 @@ all powered by leading models from OpenAI, Google Gemini, and more.
 * **⚙️ Configuration-First Architecture**
     * **Zero-Code Data Integration**: Connect your databases with a simple YAML configuration—no coding required. Just declare your data sources, and IAToolkit handles the rest.
     * **Declarative Setup**: Define everything from database connections, embedding providers, custom tools, and UI branding in a single, intuitive `company.yaml` file.
-    * **Smart Table Mapping**: Automatically discover and map all your database tables, or selectively include/exclude specific tables and columns with simple YAML directives.
+    * 
 
 * **🔗 Unified Data Connection**
     * **Natural Language to SQL**: Let your chatbot query relational databases (PostgreSQL, MySQL, SQLite) using everyday language.
