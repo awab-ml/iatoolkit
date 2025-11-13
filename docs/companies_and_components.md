@@ -34,7 +34,15 @@ This file serves as a complete, working example that you can use as a template w
 ### 2.1 General Information
 
 This section defines the basic identity of the company and the primary LLM it will use.
-
+```yaml
+# 1. General Company Information
+id: "sample_company"
+name: "Sample Company"
+locale: "es_ES"
+llm:
+  model: "gpt-5"
+  api-key: "OPENAI_API_KEY"
+```
 
 *   **`id`**: A unique, lowercase string identifier used in URLs and internal lookups.
 *   **`name`**: The full, user-facing name of the company.
