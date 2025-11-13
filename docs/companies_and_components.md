@@ -35,7 +35,7 @@ This file serves as a complete, working example that you can use as a template w
 
 This section defines the basic identity of the company and the primary LLM it will use.
 ```yaml
-# 1. General Company Information
+# General Company Information
 id: "sample_company"
 name: "Sample Company"
 locale: "es_ES"
@@ -54,7 +54,13 @@ llm:
 ### 2.2 Embedding Provider
 
 This configures the model used for creating vector embeddings, which is essential for semantic search (RAG).
-
+```yaml
+# Embeddings: supported only openai and huggingface. only one at a atime
+embedding_provider:
+  provider: "openai"
+  model: "text-embedding-ada-002"
+  api_key_name: "OPENAI_API_KEY"
+```
 *   **`provider`**: The embedding service. Currently supports `openai` and `huggingface`.
 *   **`model`**: The specific embedding model to use.
 *   **`api_key_name`**: The **name of the environment variable** that holds the API key for the embedding provider. Often, this is the same as the LLM's API key.
@@ -64,6 +70,43 @@ This configures the model used for creating vector embeddings, which is essentia
 ### 2.3 Data Sources (SQL)
 
 This section defines the structured data sources (databases) the AI can query.
+```yaml
+# Data Sources
+data_sources:
+  sql:
+    - database: "sample_database"
+      connection_string_env: "SAMPLE_DATABASE_URI"
+      description: |
+        Esta es la base de datos principal de  Sample Company.
+        Contiene toda la información comercial y operativa la empresa.
+        Es la fuente principal para responder preguntas sobre ventas, despachos,
+        ordenes de compra, empleados, paises y territorios.
+
+      # Loads all the databases tables automatically
+      include_all_tables: true
+      # ...but ignore these specific tables
+      exclude_tables:
+        - "test_table"
+        - "logs"
+      # exclude these columns from all tables
+      exclude_columns: [ 'created', 'updated' ]
+      #    El servicio usará esta sección para añadir detalles a las tablas
+      #    que se cargaron automáticamente con 'include_all_tables'.
+      tables:
+        employee_territories:
+          # Para esta tabla, usa un nombre de esquema personalizado.
+          schema_name: "employee_territory"
+
+        orders:
+          # Para la tabla 'orders', ignora la lista global 'exclude_columns'
+          # y usa esta lista más específica en su lugar.
+          exclude_columns: [ 'internal_notes', 'processing_id' ]
+
+        products:
+          # Para la tabla 'products', no hay overrides, pero podríamos
+          # añadir una descripción personalizada aquí si quisiéramos.
+          description: "Catálogo de productos de la compañía."
+```
 
 *   **`database`**: A logical name for this database.
 *   **`connection_string_env`**: The name of the environment variable containing the database connection URI.
@@ -79,6 +122,20 @@ This section defines the structured data sources (databases) the AI can query.
 ### 2.4 Tools (Functions)
 
 Here, you define custom functions the LLM can call to perform actions. This is the foundation of the agent's capabilities.
+```yaml
+# ools (Functions)
+# Defines the custom actions the LLM can take, including their parameters.
+tools:
+  - function_name: "document_search"
+    description: "Busquedas sobre documentos: manuales, contratos de trabajo de empleados, manuales de procedimientos, y documentos legales."
+    params:
+      type: "object"
+      properties:
+        query:
+          type: "string"
+          description: "Texto o pregunta a buscar en los documentos."
+      required: ["query"]
+```
 
 *   **`function_name`**: The name of the function the LLM will invoke. This maps to a function you implement in your Company's Python code.
 *   **`description`**: A clear, natural language description telling the AI *when* and *why* it should use this tool.
@@ -87,6 +144,38 @@ Here, you define custom functions the LLM can call to perform actions. This is t
 ### 2.5 Prompts
 
 This section configures the list of pre-defined prompts that appear in the user interface, helping guide users toward common tasks.
+```yaml
+# Prompts
+# Defines the ordered list of categories and the prompts available in the UI.
+prompt_categories:
+  - "General"
+  - "Análisis Avanzado"     # sample for adding more categories
+
+prompts:
+  - category: "General"     # assign this prompt to the category "General"
+    name: "analisis_ventas"
+    description: "Analisis de ventas"
+    order: 1
+  - category: "General"
+    name: "supplier_report"
+    description: "Análisis de proveedores"
+    order: 2
+    custom_fields:
+      - data_key: "supplier_id"
+        label: "Identificador del Proveedor"
+  - category: "General"
+    name: "analisis_despachos"
+    description: "Analisis de despachos"
+    order: 3
+    custom_fields:
+      - data_key: "init_date"
+        label: "Fecha desde"
+        type: "date"
+      - data_key: "end_date"
+        label: "Fecha hasta"
+        type: "date"
+
+```
 
 *   **`prompt_categories`**: Defines the groups for organizing prompts in the UI.
 *   **`prompts`**: A list of available prompts.
@@ -102,7 +191,16 @@ This section configures the list of pre-defined prompts that appear in the user 
 ### 2.6 Company-specific Parameters
 
 A flexible key-value store for any custom parameters your company's logic might need.
-
+```yaml
+parameters:
+  cors_origin:
+    - "https://portal-interno.empresa_de_ejemplo.cl"
+  user_feedback:
+    channel: "email"
+    destination: "fernando.libedinsky@gmail.com"
+  external_urls:
+    logout_url: ""
+```
 *   **`cors_origin`**: List of allowed origins for CORS (Cross-Origin Resource Sharing).
 *   **`user_feedback`**: Configuration for user feedback collection.
 *   **`external_urls`**: External URLs for integration (e.g., custom logout redirects).
@@ -110,20 +208,68 @@ A flexible key-value store for any custom parameters your company's logic might 
 ### 2.7 Branding
 
 Defines the color scheme to give the UI a custom look and feel for this company.
-
+```yaml
+# Branding and Content Files
+branding:
+  header_background_color: "#4C6A8D"
+  header_text_color: "#FFFFFF"
+  brand_primary_color: "#4C6A8D"
+  brand_secondary_color: "#9EADC0"
+  brand_text_on_primary: "#FFFFFF"
+  brand_text_on_secondary: "#FFFFFF"
+```
 All colors are specified in hexadecimal format. These values control various UI elements, allowing each company to have its own visual identity.
 
 ### 2.8 Help Files
 
 Points to other YAML files containing content for UI elements like onboarding tutorials or help modals.
-
+```yaml
+# Help files
+help_files:
+  onboarding_cards: "onboarding_cards.yaml"
+  help_content: "help_content.yaml"
+```
 
 These files should be located in the company's `config/` directory.
 
 ### 2.9 Knowledge Base (RAG)
 
 This powerful section defines the sources of unstructured documents (like PDFs, Word docs, etc.) that will be indexed into the vector store for Retrieval-Augmented Generation (RAG).
+```yaml
+# Knowledge Base (RAG)
+# Defines the sources of unstructured documents for indexing.
+knowledge_base:
 
+  # 7.1. Connectors
+  # Defines how to connect to the document storage for different environments.
+  # El comando 'load' usará el conector apropiado según el FLASK_ENV.
+  connectors:
+    development:
+      type: "local"
+    production:
+      type: "s3"
+      bucket: "iatoolkit"
+      prefix: "sample_company"
+      aws_access_key_id_env: "AWS_ACCESS_KEY_ID"
+      aws_secret_access_key_env: "AWS_SECRET_ACCESS_KEY"
+      aws_region_env: "AWS_REGION"
+
+  # 7.2. Document Sources
+  # A map defining the logical groups of documents to be indexed.
+  # Cada clave es un tipo de fuente, que contiene su ubicación y metadatos.
+  document_sources:
+    supplier_manuals:
+      path: "companies/sample_company/sample_data/supplier_manuals"
+      # Metadatos que se aplicarán a todos los documentos de esta fuente.
+      metadata:
+        type: "supplier_manual"
+
+    employee_contracts:
+      path: "companies/sample_company/sample_data/employee_contracts"
+      metadata:
+        type: "employee_contract"
+
+```
 *   **`connectors`**: Defines where to find the documents depending on the environment (`development` vs. `production`). This allows you to test with local files and use cloud storage like S3 in production.
     *   **`development`**: Typically uses `type: "local"` to read from the local filesystem.
     *   **`production`**: Typically uses `type: "s3"` for AWS S3 storage, requiring bucket name, prefix, and AWS credentials from environment variables.
