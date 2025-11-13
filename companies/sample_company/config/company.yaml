@@ -3,7 +3,7 @@
 # Location: companies/sample_company/config/company.yaml
 # ===================================================================
 
-# 1. General Company Information
+# General Company Information
 id: "sample_company"
 name: "Sample Company"
 locale: "es_ES"
@@ -21,7 +21,8 @@ embedding_provider:
 #  model: "sentence-transformers/all-MiniLM-L6-v2"
 #  api_key_name: "huggingface_token"
 
-# 2. Data Sources
+# Data Sources
+# Defines the SQL data sources available to the LLM.
 data_sources:
   sql:
     - database: "sample_database"
@@ -58,7 +59,7 @@ data_sources:
           description: "Catálogo de productos de la compañía."
 
 
-# 3. Tools (Functions)
+# Tools (Functions)
 # Defines the custom actions the LLM can take, including their parameters.
 tools:
   - function_name: "document_search"
@@ -71,8 +72,11 @@ tools:
           description: "Texto o pregunta a buscar en los documentos."
       required: ["query"]
 
-# 4. Prompts
+# Prompts
 # Defines the ordered list of categories and the prompts available in the UI.
+# Prompts are files in the company prompts/ folder, abd the
+# name of the file is the prompt name.prompt.
+# Example: analisis_ventas.prompt
 prompt_categories:
   - "General"
   - "Análisis Avanzado"     # sample for adding more categories
@@ -101,7 +105,8 @@ prompts:
         label: "Fecha hasta"
         type: "date"
 
-# 5. Company-specific Parameters
+# Company-specific Parameters
+# These parameters are used by the company code to customize its behavior.
 parameters:
   cors_origin:
     - "https://portal-interno.empresa_de_ejemplo.cl"
@@ -111,7 +116,8 @@ parameters:
   external_urls:
     logout_url: ""
 
-# 6. Branding and Content Files
+# Branding and Content Files
+# this section defines the colors used in the UI
 branding:
   header_background_color: "#4C6A8D"
   header_text_color: "#FFFFFF"
@@ -120,17 +126,18 @@ branding:
   brand_text_on_primary: "#FFFFFF"
   brand_text_on_secondary: "#FFFFFF"
 
-# 7. Help files
+# Help files
+# These files are used to populate the help content in the UI.
 help_files:
   onboarding_cards: "onboarding_cards.yaml"
   help_content: "help_content.yaml"
 
 
-# 8. Knowledge Base (RAG)
+# Knowledge Base (RAG)
 # Defines the sources of unstructured documents for indexing.
 knowledge_base:
 
-  # 7.1. Connectors
+  # Connectors
   # Defines how to connect to the document storage for different environments.
   # El comando 'load' usará el conector apropiado según el FLASK_ENV.
   connectors:
@@ -144,7 +151,7 @@ knowledge_base:
       aws_secret_access_key_env: "AWS_SECRET_ACCESS_KEY"
       aws_region_env: "AWS_REGION"
 
-  # 7.2. Document Sources
+  # Document Sources
   # A map defining the logical groups of documents to be indexed.
   # Cada clave es un tipo de fuente, que contiene su ubicación y metadatos.
   document_sources:
