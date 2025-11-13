@@ -31,10 +31,8 @@ The configuration file for the Sample Company can be found at:
 
 This file serves as a complete, working example that you can use as a template when creating your own company configurations.
 ```yaml
-# ===================================================================
 # IAToolkit Company Configuration for: sample_company
 # Location: companies/sample_company/config/company.yaml
-# ===================================================================
 
 # General Company Information
 id: "sample_company"
@@ -62,34 +60,9 @@ data_sources:
       connection_string_env: "SAMPLE_DATABASE_URI"
       description: |
         Esta es la base de datos principal de  Sample Company.
-        Contiene toda la información comercial y operativa la empresa.
-        Es la fuente principal para responder preguntas sobre ventas, despachos,
-        ordenes de compra, empleados, paises y territorios.
-
+ 
       # Loads all the databases tables automatically
       include_all_tables: true
-      # ...but ignore these specific tables
-      exclude_tables:
-        - "test_table"
-        - "logs"
-      # exclude these columns from all tables
-      exclude_columns: [ 'created', 'updated' ]
-      #    El servicio usará esta sección para añadir detalles a las tablas
-      #    que se cargaron automáticamente con 'include_all_tables'.
-      tables:
-        employee_territories:
-          # Para esta tabla, usa un nombre de esquema personalizado.
-          schema_name: "employee_territory"
-
-        orders:
-          # Para la tabla 'orders', ignora la lista global 'exclude_columns'
-          # y usa esta lista más específica en su lugar.
-          exclude_columns: [ 'internal_notes', 'processing_id' ]
-
-        products:
-          # Para la tabla 'products', no hay overrides, pero podríamos
-          # añadir una descripción personalizada aquí si quisiéramos.
-          description: "Catálogo de productos de la compañía."
 
 
 # Tools (Functions)
@@ -126,28 +99,6 @@ prompts:
     custom_fields:
       - data_key: "supplier_id"
         label: "Identificador del Proveedor"
-  - category: "General"
-    name: "analisis_despachos"
-    description: "Analisis de despachos"
-    order: 3
-    custom_fields:
-      - data_key: "init_date"
-        label: "Fecha desde"
-        type: "date"
-      - data_key: "end_date"
-        label: "Fecha hasta"
-        type: "date"
-
-# Company-specific Parameters
-# These parameters are used by the company code to customize its behavior.
-parameters:
-  cors_origin:
-    - "https://portal-interno.empresa_de_ejemplo.cl"
-  user_feedback:
-    channel: "email"
-    destination: "fernando.libedinsky@gmail.com"
-  external_urls:
-    logout_url: ""
 
 # Branding and Content Files
 # this section defines the colors used in the UI
@@ -155,16 +106,6 @@ branding:
   header_background_color: "#4C6A8D"
   header_text_color: "#FFFFFF"
   brand_primary_color: "#4C6A8D"
-  brand_secondary_color: "#9EADC0"
-  brand_text_on_primary: "#FFFFFF"
-  brand_text_on_secondary: "#FFFFFF"
-
-# Help files
-# These files are used to populate the help content in the UI.
-help_files:
-  onboarding_cards: "onboarding_cards.yaml"
-  help_content: "help_content.yaml"
-
 
 # Knowledge Base (RAG)
 # Defines the sources of unstructured documents for indexing.
@@ -179,11 +120,7 @@ knowledge_base:
     production:
       type: "s3"
       bucket: "iatoolkit"
-      prefix: "sample_company"
-      aws_access_key_id_env: "AWS_ACCESS_KEY_ID"
-      aws_secret_access_key_env: "AWS_SECRET_ACCESS_KEY"
-      aws_region_env: "AWS_REGION"
-
+ 
   # Document Sources
   # A map defining the logical groups of documents to be indexed.
   # Cada clave es un tipo de fuente, que contiene su ubicación y metadatos.
@@ -193,12 +130,6 @@ knowledge_base:
       # Metadatos que se aplicarán a todos los documentos de esta fuente.
       metadata:
         type: "supplier_manual"
-
-    employee_contracts:
-      path: "companies/sample_company/sample_data/employee_contracts"
-      metadata:
-        type: "employee_contract"
-
 ```
 ### 2.1 General Information
 
