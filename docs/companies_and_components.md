@@ -26,9 +26,11 @@ companies/sample_company/              # Company module directory
 │   ├── procedures.md                  # Standard operating procedures
 │   └── faqs.md                        # Frequently asked questions
 │
-├── schema/                            # Data structure definitions (YAML)
-│   ├── database_schemas.yaml          # Database table schemas
-│   └── api_schemas.yaml               # API response structures
+├├── schema/                            # YAML schemas (one file per table/entity)
+│   ├── customers.yaml                 # Schema for the "customers" table
+│   ├── orders.yaml                    # Schema for the "orders" table
+│   ├── products.yaml                  # Schema for the "products" table
+│   └── employee_territories.yaml      # Schema for the "employee_territories" table
 │
 ├── prompts/                           # Jinja2 prompt templates
 │   ├── analisis_ventas.prompt         # Sales analysis prompt
