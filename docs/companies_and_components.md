@@ -13,6 +13,7 @@ resources—from configuration and AI context to prompt templates and sample dat
 The structure below shows the organization of a typical company module, 
 using `sample_company` as the reference implementation:
 
+```text
 companies/sample_company/              # Company module directory
 ├── config/                            # Configuration files
 │   ├── company.yaml                   # Main company configuration
@@ -42,7 +43,7 @@ companies/sample_company/              # Company module directory
 │   └── employee_contracts/            # Employee contract documents
 │
 └── sample_company.py                  # Company module entry point (Python class)
-
+```
 ---
 
 ## 2. The `company.yaml` Configuration File
