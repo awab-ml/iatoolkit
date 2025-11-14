@@ -15,10 +15,41 @@ reliability.
 
 ## 1. Project Structure Overview
 
-The IAToolkit codebase is organized following a layered architecture pattern.
-Understanding this structure is essential for navigating the code and knowing where 
-to add new features.
 
+The IAToolkit codebase is organized following a layered architecture pattern. 
+Understanding this structure is essential for navigating the code and knowing where 
+to add new features. 
+The diagram below illustrates the complete project organization:
+
+iatoolkit/
+├── src/
+│   ├── iatoolkit/                    # Core framework code
+│   │   ├── common/                   # Cross-cutting concerns and utilities
+│   │   ├── infra/                    # Infrastructure layer (external integrations)
+│   │   ├── repositories/             # Data access layer
+│   │   ├── services/                 # Business logic layer
+│   │   ├── views/                    # Presentation layer (Flask routes)
+│   │   ├── templates/                # HTML Jinja2 templates
+│   │   ├── static/                   # CSS, JavaScript, images
+│   │   ├── cli_commands.py           # Flask CLI commands
+│   │   ├── iatoolkit.py              # Main application factory
+│   │   └── base_company.py           # Base class for company modules
+│   │
+│   └── tests/                        # Comprehensive test suite (90%+ coverage)
+│
+├── companies/                        # Company-specific modules
+│   └── sample_company/               # Reference implementation
+│       ├── context/                  # Markdown files for AI context
+│       ├── schema/                   # YAML schema definitions
+│       ├── prompts/                  # Jinja2 prompt templates
+│       ├── config/                   # Company configuration files
+│       └── sample_company.py         # Company module entry point
+│
+├── docs/                             # Documentation files
+├── requirements.txt                  # Python dependencies
+├── .env.example                      # Environment variables template
+├── app.py                            # Application entry point
+└── README.md                         # Project overview
 
 ### Layer Responsibilities
 
