@@ -515,8 +515,7 @@ To create a new company, you can scaffold it from the `sample_company` template:
 4. **Update the Configuration**: Edit `companies/my_company/config/company.yaml` and update all the configuration values according to your needs.
 
 5. **Register the New Company**: Open `app.py` and add the following lines:
-#todo: mostrar el codigo en app.py
-mostrar el codigo de sample_company.py
+#todo: mostrar el codigo en app.py , mostrar el codigo de sample_company.py
 
 6. **Add Context and Resources**:
    - Place Markdown files in `companies/my_company/context/`

@@ -195,7 +195,7 @@ The Dispatcher is the bridge between the LLM's function calling capability and y
 - Caches configurations for performance
 
 ---
-### 3.5 Company Context Service (`company_context_service.py`) and user_session_context
+### 3.5 Company Context Service (`company_context_service.py`) 
 
 **Purpose**: Centralizes all *per-company* and *per-session* context that is needed across views, services, and prompts.
 
@@ -206,21 +206,13 @@ the **Company Context Service** is responsible for providing a *runtime view* of
 - Which user (if any) is associated with the session.
 - Which language, branding, and feature flags apply to the current request.
 
-This context is exposed through a small, session-scoped structure usually referred to as `user_session_context`.
-
 **Key Responsibilities:**
 
-- Resolve the **current company** based on:
-  - URL prefix (e.g., `/sample_company/...`)
-  - Session variables (e.g., `company_short_name`)
-  - Authentication information
-- Load and cache:
-  - Company configuration (`company.yaml`) via `ConfigurationService`
-  - Branding information (`BrandingService`)
-  - Language/locale (`LanguageService` / `I18nService`)
-- Build a unified context object (`user_session_context`) that can be:
-  - Injected into services and views.
-  - Passed to prompts and tools to ensure they operate in the correct tenant context.
+- Resolve the **current company** 
+- create the company context based on: schema and context files in the company directory
+ 
+Another service  `user_session_context_service` keeps session-scoped structure based
+on the current user_identity.
 
 ---
 
@@ -321,7 +313,7 @@ Uses the Factory pattern (`EmbeddingClientFactory`) to create provider-specific 
   - Conversation continuation across sessions.
   - Auditing and compliance (who asked what, when, and what was answered).
 
-This history is often used by `QueryService` to build richer prompts, including previous messages from the same conversation.
+This history can be consulted by the UI to provide a rich chat experience.
 
 #### UserFeedbackService
 
