@@ -78,6 +78,6 @@ class LanguageService:
             pass
 
         # Priority 3: System-wide fallback
-        logging.info(f"Language determined by system fallback: {self.FALLBACK_LANGUAGE}")
+        logging.debug(f"Language determined by system fallback: {self.FALLBACK_LANGUAGE}")
         g.lang = self.FALLBACK_LANGUAGE
         return g.lang

@@ -36,24 +36,40 @@ Configure the core settings of the application by creating a `.env` file.
 1.  **Create the `.env` file** in the project's root directory. 
 2. You can copy the provided `.env.example` if it exists.
 3. add values for the following variables:
-    - `OPENAI_API_KEY` or `GEMINI_API_KEY`
-    - `LLM_MODEL`: can use 'gpt5' or 'gemini'
+    - `OPENAI_API_KEY` or `GEMINI_API_KEY` (see company.yaml)
     - `DATABASE_URI` like: 'postgresql://postgres:xxxxxxx@127.0.0.1:5432/iatoolkit'
     - `IATOOLKIT_BASE_URL`: "http://127.0.0.1:5008"
     - `REDIS_URL`: "redis://localhost:6379/0"
+    - `IATOOLKIT_SECRET_KEY`: "company key for encripyting"
+    - `FERNET_KEY`: "define-your-own-tH9Y0PlZcOGIC3Vz"
 
-#todo: configurar mail
-
+    
 ### Step 3: Run the Application
 You are now ready to start the IAToolkit web server.
+```text
+(venv) iatoolkit-install %flask run
+2025-11-19 12:22:56,496 - IATOOLKIT - root - INFO - ✅ Base de datos configurada correctamente
+2025-11-19 12:22:56,504 - IATOOLKIT - root - INFO - ✅ Dependencias configuradas correctamente
+2025-11-19 12:22:56,521 - IATOOLKIT - root - INFO - ✅ Routes registered.
+2025-11-19 12:22:56,601 - IATOOLKIT - root - ERROR - -> Skipping database registration for 'sample_company' due to missing 'database' name or invalid connection URI.
+2025-11-19 12:22:56,611 - IATOOLKIT - root - INFO - ✅ Redis y sesiones configurados correctamente
+2025-11-19 12:22:56,611 - IATOOLKIT - root - INFO - ✅ CORS configurado para: ['http://127.0.0.1:5020', 'https://portal-interno.empresa_de_ejemplo.cl']
+2025-11-19 12:22:56,611 - IATOOLKIT - root - INFO - ✅ Comandos CLI del núcleo registrados.
+2025-11-19 12:22:56,611 - IATOOLKIT - root - INFO - ✅ download dir created in: /Users/fernando/Documents/software/iatoolkit-install/iatoolkit-downloads
+2025-11-19 12:22:56,611 - IATOOLKIT - root - INFO - 🎉 IAToolkit v0.10.2 inicializado correctamente
+ * Debug mode: off
+2025-11-19 12:22:56,613 - IATOOLKIT - werkzeug - INFO - WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.                                                                                                                                                                
+ * Running on http://127.0.0.1:5000
+2025-11-19 12:22:56,613 - IATOOLKIT - werkzeug - INFO - Press CTRL+C to quit
 ```
-flask run
-```
+---
 
 The application will be available at `IATOOLKIT_BASE_URL`. 
 You can now navigate to the web interface, register as a new user, 
 and start chatting with your newly configured AI!
-#todo: explicar que debe llegar una confrmación de email
+
+This instance is configured for not sending any emails, so you won't receive 
+any confirmation emails (see company.yaml for more details).
 
 ### Step 4: Populate the SampleCompany Database 
 Most companies need access to their own data. IAToolkit allows you to define custom CLI commands for this purpose. 

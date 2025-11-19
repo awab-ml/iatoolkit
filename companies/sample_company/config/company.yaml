@@ -12,7 +12,7 @@ locale: "es_ES"
 # Can be overridden in the API call: llm_query_api_view and init_context_api_view
 llm:
   model: "gpt-5"
-  api-key: "OPENAI_API_KEY"
+  api-key: "OPENAI_API_KEY"     # the name of the api-key in the .env file
 
   # Values for Gemini
   # model: "gemini-2.5-pro"
