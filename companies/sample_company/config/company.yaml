@@ -11,7 +11,7 @@ locale: "es_ES"
 # Default Language Model and api-key for provider
 # Can be overridden in the API call: llm_query_api_view and init_context_api_view
 llm:
-  model: "gpt-5-mini"
+  model: "gpt-5"
   api-key: "OPENAI_API_KEY"
 
   # Values for Gemini
@@ -23,6 +23,11 @@ embedding_provider:
   provider: "openai"
   model: "text-embedding-ada-002"
   api_key_name: "OPENAI_API_KEY"
+
+  #  provider: "huggingface" this is the other option
+  #  model: "sentence-transformers/all-MiniLM-L6-v2"
+  #  api_key_name: "huggingface_token"
+
 
 security:
   verify_account: false      # IMPORTANT! in production recommend to set to true
@@ -49,11 +54,6 @@ mail_provider:
     use_tls_env: "SMTP_USE_TLS"
     use_ssl_env: "SMTP_USE_SSL"
 
-
-#  provider: "huggingface" this is the other option
-#  model: "sentence-transformers/all-MiniLM-L6-v2"
-#  api_key_name: "huggingface_token"
-
 # Data Sources
 # Defines the SQL data sources available to the LLM.
 data_sources:
@@ -61,11 +61,9 @@ data_sources:
     - database: "sample_database"
       connection_string_env: "SAMPLE_DATABASE_URI"
       description: |
-        Esta es la base de datos principal de  Sample Company.
-        Contiene toda la información comercial y operativa la empresa.
-        Es la fuente principal para responder preguntas sobre ventas, despachos,
-        ordenes de compra, empleados, paises y territorios.
-
+        This is Sample Company’s main database.
+        It contains all of the company’s commercial and operational information.
+        It is the primary source for answering questions about sales, shipments, purchase orders, employees, countries, and territories.
       # Loads all the databases tables automatically
       include_all_tables: true
       # ...but ignore these specific tables

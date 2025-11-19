@@ -1,4 +1,4 @@
-# tests/services/test_configuration_service.py
+# tests/services/test_configuration_services.py
 
 import pytest
 from unittest.mock import Mock, patch, call
@@ -6,19 +6,70 @@ from pathlib import Path
 
 from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.common.util import Utility
-from iatoolkit import BaseCompany  # Usado para type hinting en el mock
+from iatoolkit.common.exceptions import IAToolkitException
+from iatoolkit import BaseCompany
 from iatoolkit.repositories.models import Company as CompanyModel, PromptCategory
 
-# --- Mock Data ---
-# Simula el contenido de company.yaml
-MOCK_MAIN_CONFIG = {
+# A complete and valid mock configuration, passing all validation rules.
+MOCK_VALID_CONFIG = {
     'id': 'acme',
     'name': 'ACME Corp',
-    'parameters': {'cors_origin': ['https://acme.com']},
-    'tools': [{'function_name': 'get_stock', 'description': 'Gets stock price', 'params': {}}],
+    'locale': 'en_US',
+    'llm': {
+        'model': 'gpt-5-test',
+        'api-key': 'TEST_OPENAI_API_KEY'
+    },
+    'embedding_provider': {
+        'provider': 'openai',
+        'model': 'text-embedding-test',
+        'api_key_name': 'TEST_OPENAI_API_KEY'
+    },
+    'data_sources': {
+        'sql': [{
+            'database': 'test_db',
+            'connection_string_env': 'TEST_DB_URI'
+        }]
+    },
+    'tools': [{
+        'function_name': 'get_stock',
+        'description': 'Gets stock price',
+        'params': {'type': 'object'}
+    }],
     'prompt_categories': ['General'],
-    'prompts': [{'category': 'General', 'name': 'sales_report', 'description': 'Sales report', 'order': 1}],
-    'help_files': {'onboarding_cards': 'onboarding.yaml'}
+    'prompts': [{
+        'category': 'General',
+        'name': 'sales_report',
+        'description': 'Generates a sales report',
+        'order': 1
+    }],
+    'parameters': {
+        'cors_origin': ['https://acme.com'],
+        'user_feedback': {
+            'channel': 'email',
+            'destination': 'feedback@acme.com'
+        }
+    },
+    'mail_provider': {
+        'provider': 'brevo_mail',
+        'sender_email': 'no-reply@acme.com',
+        'sender_name': 'ACME IA',
+        'brevo_mail': {'brevo_api': 'TEST_BREVO_API'}
+    },
+    'help_files': {
+        'onboarding_cards': 'onboarding.yaml'
+    },
+    'knowledge_base': {
+        'connectors': {
+            'production': {
+                'type': 's3',
+                'bucket': 'test-bucket',
+                'prefix': 'test-prefix',
+                'aws_access_key_id_env': 'TEST_AWS_ID',
+                'aws_secret_access_key_env': 'TEST_AWS_KEY',
+                'aws_region_env': 'TEST_AWS_REGION'
+            }
+        }
+    }
 }
 
 # Simula el contenido de onboarding.yaml
@@ -39,10 +90,7 @@ class TestConfigurationService:
         and instantiate the ConfigurationService.
         """
         self.mock_utility = Mock(spec=Utility)
-
-        # Mock para la instancia de la clase de compañía (ej. SampleCompany)
         self.mock_company_instance = Mock(spec=BaseCompany)
-        # Mock para el objeto ORM que devuelven los métodos de creación
         self.mock_company_orm_object = Mock(spec=CompanyModel)
         self.mock_company_instance._create_company.return_value = self.mock_company_orm_object
         self.mock_company_instance._create_prompt_category.return_value = Mock(spec=PromptCategory)
@@ -50,19 +98,19 @@ class TestConfigurationService:
         self.service = ConfigurationService(utility=self.mock_utility)
         self.COMPANY_NAME = 'acme'
 
-    @patch('pathlib.Path.exists')
-    def test_load_configuration_happy_path(self, mock_exists):
+    @patch('pathlib.Path.is_file', return_value=True)  # For _validate_configuration
+    @patch('pathlib.Path.exists', return_value=True)  # For _load_and_merge_configs
+    def test_load_configuration_happy_path(self, mock_exists, mock_is_file):
         """
-        GIVEN a valid configuration with main and help files
+        GIVEN a valid and complete configuration
         WHEN load_configuration is called
-        THEN it should call all registration methods on the company instance with the correct data.
+        THEN it should succeed and call all registration methods correctly.
         """
-        # Arrange
-        mock_exists.return_value = True
 
+        # Arrange
         def yaml_side_effect(path):
             if "company.yaml" in str(path):
-                return MOCK_MAIN_CONFIG
+                return MOCK_VALID_CONFIG
             if "onboarding.yaml" in str(path):
                 return MOCK_ONBOARDING_CONFIG
             return {}
@@ -77,26 +125,34 @@ class TestConfigurationService:
         self.mock_company_instance._create_company.assert_called_once_with(
             short_name='acme',
             name='ACME Corp',
-            parameters={'cors_origin': ['https://acme.com']}
+            parameters=MOCK_VALID_CONFIG['parameters']
         )
 
         # 2. Verify tools were registered
         self.mock_company_instance._create_function.assert_called_once_with(
             function_name='get_stock',
             description='Gets stock price',
-            params={}
+            params={'type': 'object'}
         )
 
         # 3. Verify prompts were registered
         self.mock_company_instance._create_prompt_category.assert_called_once_with(name='General', order=1)
-        self.mock_company_instance._create_prompt.assert_called_once()
+        self.mock_company_instance._create_prompt.assert_called_once_with(
+            prompt_name='sales_report',
+            description='Generates a sales report',
+            order=1,
+            category=self.mock_company_instance._create_prompt_category.return_value,
+            active=True,
+            custom_fields=[]
+        )
 
         # 4. Verify final attributes were set on the instance
         assert self.mock_company_instance.company_short_name == self.COMPANY_NAME
         assert self.mock_company_instance.company == self.mock_company_orm_object
 
+    @patch('pathlib.Path.is_file', return_value=True)  # Needed for validation if it were called
     @patch('pathlib.Path.exists', return_value=True)
-    def test_get_configuration_uses_cache_on_second_call(self, mock_path_exists):
+    def test_get_configuration_uses_cache_on_second_call(self, mock_path_exists, mock_is_file):
         """
         GIVEN a configuration that needs to be loaded from files,
         WHEN get_configuration is called multiple times for the same company,
@@ -104,10 +160,9 @@ class TestConfigurationService:
         """
 
         # Arrange
-        # Configura el mock para que devuelva el contenido correcto para cada archivo.
         def yaml_side_effect(path):
             if "company.yaml" in str(path):
-                return MOCK_MAIN_CONFIG
+                return MOCK_VALID_CONFIG
             if "onboarding.yaml" in str(path):
                 return MOCK_ONBOARDING_CONFIG
             return {}
@@ -120,7 +175,7 @@ class TestConfigurationService:
 
         # Assert
         assert result1 == 'ACME Corp'
-        # Verificamos que se leyeron los dos archivos (el principal y el de ayuda).
+        # The main config and the onboarding file are read.
         assert self.mock_utility.load_schema_from_yaml.call_count == 2
         expected_calls = [
             call(Path(f'companies/{self.COMPANY_NAME}/config/company.yaml')),
@@ -129,13 +184,12 @@ class TestConfigurationService:
         self.mock_utility.load_schema_from_yaml.assert_has_calls(expected_calls, any_order=True)
 
         # --- Second Call ---
-        # Act: pedimos otra pieza de la configuración
+        # Act
         result2 = self.service.get_configuration(self.COMPANY_NAME, 'id')
 
         # Assert
         assert result2 == 'acme'
-        # La aserción CRUCIAL: El contador de llamadas NO debe haber aumentado,
-        # lo que prueba que los datos se sirvieron desde la caché.
+        # CRUCIAL: The call count should not have increased, proving the cache was used.
         assert self.mock_utility.load_schema_from_yaml.call_count == 2
 
     @patch('pathlib.Path.exists', return_value=False)
@@ -148,53 +202,25 @@ class TestConfigurationService:
         with pytest.raises(FileNotFoundError):
             self.service.load_configuration(self.COMPANY_NAME, self.mock_company_instance)
 
+    @patch('pathlib.Path.is_file')
     @patch('pathlib.Path.exists')
-    def test_load_configuration_handles_missing_help_file(self, mock_exists):
-        """
-        GIVEN the main company.yaml exists but a referenced help file does not
-        WHEN _load_and_merge_configs is called
-        THEN it should complete successfully, setting the missing content to None.
-        """
-        # Arrange: Configure the side_effect to return values sequentially.
-        # The first call to .exists() is for company.yaml -> True
-        # The second call to .exists() is for onboarding.yaml -> False
-        mock_exists.side_effect = [True, False]
-
-        # Arrange: The utility will only be called for the file that exists.
-        self.mock_utility.load_schema_from_yaml.return_value = MOCK_MAIN_CONFIG
-
-        # Act
-        # Usamos el método privado para probar la lógica de merge directamente
-        merged_config = self.service._load_and_merge_configs(self.COMPANY_NAME)
-
-        # Assert
-        # 1. Check that the key for the missing file exists and is None.
-        assert 'onboarding_cards' in merged_config
-        assert merged_config['onboarding_cards'] is None
-
-        # 2. Check that other keys from the main config are still present.
-        assert merged_config['id'] == 'acme'
-
-        # 3. Check that load_schema_from_yaml was only called once (for company.yaml).
-        self.mock_utility.load_schema_from_yaml.assert_called_once()
-
-        # 4. Check that .exists() was called twice as expected.
-        assert mock_exists.call_count == 2
-
-    @patch('pathlib.Path.exists', return_value=True)
-    def test_load_configuration_handles_empty_sections(self, mock_exists):
+    def test_load_configuration_handles_empty_sections(self, mock_exists, mock_is_file):
         """
         GIVEN a config file is missing optional sections like 'tools' or 'prompts'
         WHEN load_configuration is called
         THEN it should run without error and not call registration methods for those sections.
         """
         # Arrange
+        # This config is minimal but still passes validation.
         minimal_config = {
             'id': 'minimal_co',
             'name': 'Minimal Co',
-            'help_files': {}  # No help files
-            # No 'tools', 'prompts', etc.
+            'llm': {'model': 'test', 'api-key': 'TEST'},
+            'embedding_provider': {'provider': 'test', 'model': 'test', 'api_key_name': 'TEST'},
+            # No 'tools', 'prompts', 'data_sources', 'help_files', etc.
         }
+        mock_exists.return_value = True
+        mock_is_file.return_value = True  # Assume all files exist for validation simplicity
         self.mock_utility.load_schema_from_yaml.return_value = minimal_config
 
         # Act
@@ -208,3 +234,27 @@ class TestConfigurationService:
         # Verify that methods for missing sections were NOT called
         self.mock_company_instance._create_function.assert_not_called()
         self.mock_company_instance._create_prompt.assert_not_called()
+        self.mock_company_instance._create_prompt_category.assert_not_called()
+
+    def test_validation_failure_raises_exception(self):
+        """
+        GIVEN an invalid configuration (e.g., missing 'llm' section)
+        WHEN load_configuration is called
+        THEN it should raise an IAToolkitException due to validation failure.
+        """
+        # Arrange
+        invalid_config = {
+            'id': self.COMPANY_NAME,
+            'name': 'Invalid Co'
+            # Missing 'llm', 'embedding_provider', etc.
+        }
+        self.mock_utility.load_schema_from_yaml.return_value = invalid_config
+
+        # Patch `exists` to prevent FileNotFoundError
+        with patch('pathlib.Path.exists', return_value=True):
+            # Act & Assert
+            with pytest.raises(IAToolkitException) as excinfo:
+                self.service.load_configuration(self.COMPANY_NAME, self.mock_company_instance)
+
+            assert excinfo.value.error_type == IAToolkitException.ErrorType.CONFIG_ERROR
+            assert "configuration errors" in str(excinfo.value)

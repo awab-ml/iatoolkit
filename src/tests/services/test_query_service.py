@@ -116,7 +116,7 @@ class TestQueryService:
         self.mock_session_context.get_and_clear_prepared_context.return_value = (self.mock_final_context, mock_version)
         self.mock_util.is_openai_model.return_value = True
         self.mock_util.is_gemini_model.return_value = False
-        self.mock_configuration_service.get_configuration.return_value = None  # Simula que no hay modelo de compañía
+        self.mock_configuration_service.get_configuration.return_value = {'model': 'gpt-test'}
 
         self.service.set_context_for_llm(MOCK_COMPANY_SHORT_NAME, user_identifier=str(MOCK_LOCAL_USER_ID))
 

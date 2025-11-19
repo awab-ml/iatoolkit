@@ -4,6 +4,7 @@
 
 from pathlib import Path
 from iatoolkit.repositories.models import Company
+from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.common.util import Utility
 from injector import inject
 import logging
@@ -261,10 +262,14 @@ class ConfigurationService:
             if not help_file_path.is_file():
                 add_error(f"help_files.{key}", f"Help file not found: {help_file_path}")
 
-        # If any errors were found, raise a single exception with all messages
+        # If any errors were found, log all messages and raise an exception
         if errors:
             error_summary = f"Configuration for '{company_short_name}' has validation errors:\n" + "\n".join(
                 f" - {e}" for e in errors)
             logging.error(error_summary)
 
-            # raise Exception(error_summary)  # Replace with a specific IAToolkitException if available
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.CONFIG_ERROR,
+                "configuration errors, review your company.yaml file"
+            )
+
