@@ -136,6 +136,33 @@ From your project's root directory, execute the following command:
 ```bash
     flask load
 ```
+
+After running you will see the service processing each file from the configured sources:
+```bash
+(venv) iatoolkit-install %flask load
+2025-11-19 18:17:58,893 - IATOOLKIT - root - INFO - ✅ Base de datos configurada correctamente
+2025-11-19 18:17:58,899 - IATOOLKIT - root - INFO - ✅ Dependencias configuradas correctamente
+2025-11-19 18:17:58,911 - IATOOLKIT - root - INFO - ✅ Routes registered.
+2025-11-19 18:17:58,984 - IATOOLKIT - root - INFO - ✅ Redis y sesiones configurados correctamente
+2025-11-19 18:17:58,984 - IATOOLKIT - root - INFO - ✅ CORS configurado para: ['https://portal-interno.empresa_de_ejemplo.cl']
+2025-11-19 18:17:58,984 - IATOOLKIT - root - INFO - ✅ Comandos CLI del núcleo registrados.
+2025-11-19 18:17:58,984 - IATOOLKIT - root - INFO - ✅ download dir created in: /Users/fernando/Documents/software/iatoolkit-install/iatoolkit-downloads
+2025-11-19 18:17:58,984 - IATOOLKIT - root - INFO - 🎉 IAToolkit v0.10.2 inicializado correctamente
+2025-11-19 18:17:58,993 - IATOOLKIT - root - INFO - Processing source 'employee_contracts' for company 'sample_company'...
+loading 10 files
+loading: contract_Noah_Hernandez.pdf
+2025-11-19 18:18:00,142 - IATOOLKIT - root - INFO - Successfully processed file: companies/sample_company/sample_data/employee_contracts/contract_Noah_Hernandez.pdf
+loading: contract_Chloe_Hernandez.pdf
+2025-11-19 18:18:01,248 - IATOOLKIT - root - INFO - Successfully processed file: companies/sample_company/sample_data/employee_contracts/contract_Chloe_Hernandez.pdf
+
+....
+
+2025-11-19 18:18:47,020 - IATOOLKIT - root - INFO - Successfully processed file: companies/sample_company/sample_data/supplier_manuals/net shaped solutions.pdf
+loading: huf_group_supplier_manual.pdf
+```
+Now that the documents are indexed, you can ask the assistant questions related to their content, 
+such as *"What is the company's vacation policy?"* or *"Summarize the quality standards from the ACME supplier manual."*
+
 ## Next Steps
 
 Now that you have IAToolkit running, you're ready to create your own company and customize it for your specific needs.

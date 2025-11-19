@@ -173,7 +173,7 @@ The service layer is the heart of IAToolkit's business logic. Here's a detailed 
 
 **Key Responsibilities:**
 - Document upload to the iatoolkit database: `documents` and `vsdocs`tables
-- Documents can be uploaded using the `/api/load` api-view (for a single document) or through `document_sources` defined in the `knowledge_base` section de `company.yaml` file. The batch load should be activaded by a cli command.
+- Documents can be uploaded using the `/api/load` api-view (for a single document) or through a cli command. 
 - File format handling (PDF, DOCX, TXT, etc.)
 - Document chunking for vector storage
 - Metadata management
@@ -183,7 +183,7 @@ The service layer is the heart of IAToolkit's business logic. Here's a detailed 
 ### 3.3 Dispatcher (`dispatcher_service.py`)
 
 **Purpose**: The Dispatcher is the central router between the LLM’s tool/function calls and the actual business logic implemented per company. 
-It takes a high‑level request (typically coming from the LLM or an API endpoint), resolves which company and tools are involved, 
+It takes a high‑level request (typically coming from the iatoolkit chat or an API endpoint), resolves which company and tools are involved, 
 and then orchestrates the execution of the appropriate methods on the company service.
 
 The Dispatcher is the bridge between:
@@ -195,16 +195,16 @@ The Dispatcher is the bridge between:
 #### Relationship with `BaseCompany`
 
 Each company in the system is represented by a concrete class that extends `BaseCompany`. 
-`BaseCompany` defines the common interface and shared behavior that all company services must implement, for example:
+`BaseCompany` defines the common interface and shared behavior that all company services must implement.
 
 - How to **load configuration** and credentials
 - How to **fetch user information** (`user_info`) from the company’s data source (e.g., internal API, database, SSO)
-- Which **tools / actions** are exposed to the LLM and how they should be invoked
+- Which **tools / actions** are exposed (`handle_request`) to the LLM and how they should be invoked 
 
 The Dispatcher does **not** implement business logic itself. Instead, it:
 
 1. **Identifies the target company** (e.g. from a `company_short_name`).
-2. **Instantiates or retrieves** the corresponding `BaseCompany` subclass (e.g. `AcmeCompany`, `ContosoCompany`) using the loaded configuration.
+2. **Retrieves** the corresponding `BaseCompany` subclass (e.g. `AcmeCompany`, `ContosoCompany`) using the loaded configuration.
 3. **Delegates tool calls** to methods defined on that company instance.
 
 This separation allows:
@@ -243,13 +243,13 @@ While `ConfigurationService` focuses on static configuration (mainly from `compa
 the **Company Context Service** is responsible for providing a *runtime view* of:
 
 - Which company is currently active.
-- Which user (if any) is associated with the session.
+- Which user (if any) is associated with the session (`user_session_context_service`)
 - Which language, branding, and feature flags apply to the current request.
 
 **Key Responsibilities:**
 
-- Resolve the **current company** 
 - create the company context based on: schema and context files in the company directory
+- store and retrieve the company/user context from redis store.
  
 Another service  `user_session_context_service` keeps session-scoped structure based
 on the current user_identity.
@@ -261,11 +261,11 @@ on the current user_identity.
 **Purpose**: Handles user authentication and authorization.
 
 **Key Responsibilities:**
-- User login/logout
+- User login validation
 - Session management
 - Password hashing (bcrypt)
 - API key validation for programmatic access
-- Integration with external auth providers (when configured)
+- log the access events `iat_access_log` table
 
 ---
 
@@ -320,6 +320,7 @@ on the current user_identity.
 **Purpose**: Manages user profile data and exposes a unified view of the “current user” within a given session and company.
 
 **Key Responsibilities:**
+- signin/signup business logic
 - Retrieves the current user’s profile based on the active session.
 - Resolves the current company for the user (especially when a user can access multiple companies).
 - Integrates with `SessionManager` and `AuthService` to keep the profile in sync with the authentication state.
@@ -332,9 +333,9 @@ on the current user_identity.
 
 **Key Responsibilities:**
 - Provide APIs to:
-  - Load recent history for a given user/company/session.
-  - Filter history by date, tool usage, or tags.
+  - Load recent history for a given `company/user_identification`.
   - Conversation continuation across sessions.
+  - display the history in the UI.
 
 This history can be consulted by the UI to provide a rich chat experience.
 
@@ -377,7 +378,8 @@ Feedback configuration (channel, destination) is usually defined in `company.yam
 
 ## 4. The IAToolkit Object and Application Lifecycle
 
-The `IAToolkit` class (`iatoolkit.py`) is the core application factory and implements the Singleton pattern to ensure only one instance exists throughout the application lifecycle.
+The `IAToolkit` class (`iatoolkit.py`) is the core application factory and implements the 
+Singleton pattern to ensure only one instance exists throughout the application lifecycle.
 
 ### 4.1 Initialization Flow
 
@@ -392,136 +394,77 @@ When you call `create_app()`, the following happens:
 7. **Dispatcher Configuration**: Tools and configurations are loaded for each company
 8. **Middleware Setup**: CORS, session management, and other middleware are configured
 
-### 4.2 Flow of a query
+### 4.2 Flow of a Query
 
-This section describes the end-to-end flow of a user query, from the moment it is sent from the browser until it reaches the LLM provider (e.g., OpenAI) and comes back as a response.
+This section provides a high-level overview of how a user's query is processed by IAToolkit, 
+from the initial request to the final answer. The entire process is designed to be a conversation, 
+where the system can use tools to gather information before formulating a response.
 
-At a high level, the flow crosses the following layers:
+#### High-Level Sequence Diagram
 
-1. **View (Flask route)** – Receives the HTTP request from the UI.
-2. **QueryService** – Orchestrates the query: builds prompts, calls tools, and talks to the LLM.
-3. **Dispatcher** – Executes tools (functions) defined by each Company.
-4. **LLM Client / Proxy** – Routes the request to the correct provider (OpenAI, Gemini, etc.).
-5. **Provider Adapter** – Adapts IAToolkit’s internal format to the provider SDK (e.g., `openai`).
-6. **LLM Provider** – Executes the model and returns a completion.
-7. **Back to QueryService** – Combines results, logs, and returns the final answer to the view.
-
-#### High-level sequence diagram
+The flow is orchestrated primarily by the `QueryService`, which acts as the central "brain" for 
+handling a user's request.
 
 ```text
-[Browser] 
-   |
-   | 1. POST /<company>/api/llm_query (message)
-   v
-[Flask View (views/)]
-   |
-   | 2. Build request + resolve company/user
-   |    DI -> QueryService
-   v
-[QueryService]
-   |
-   | 3. Load company config, context, history
-   | 4. Build system/user messages
-   |
-   |--(optional)--> [Dispatcher] --(call tool)--> [Company Tool / Repo]
-   |                                ^                  |
-   |                                |-- tool result ---|
-   |
-   | 5. Call LLMProxy/llmClient(model, messages, tools)
-   v
-[LLMProxy]
-   |
-   | 6. Route to provider adapter (OpenAIAdapter / GeminiAdapter)
-   v
-[OpenAIAdapter]
-   |
-   | 7. openai.Client(...) -> chat/completions.create(...)
-   v
-[OpenAI API]
-   |
-   | 8. Completion
-   v
-[OpenAIAdapter] -> [LLMProxy] -> [QueryService]
-   |
-   | 9. Log query, store history/feedback context
-   | 10. Return final answer text
-   v
-[Flask View] -> JSON response -> [Browser UI]
+[] User / Browser
+        |
+        v
+[1] Flask View (receives request, authenticates)
+        |
+        v
+[2] QueryService (builds full prompt using config + context)
+        |
+        v
+[3] LLM (first call: decides answer OR requests a tool)
+        |
+        +--> If tool is needed:
+               |
+               v
+        [5] Dispatcher (executes the tool function)
+               |
+               v
+        [] Data Sources (DB, APIs, documents)
+               |
+               v
+        [6] Dispatcher → QueryService (returns tool result)
+               |
+               v
+        [7] LLM (second call with tool result → final answer)
+        |
+        v
+[8] llmClient (logs everything, formats response)
+        |
+        v
+[] Flask View → Browser (final JSON answer)
+
 ```
 
 
-#### Step-by-step
+#### Step-by-Step Breakdown
 
-1. **UI → View (Flask)**  
-   - The user types a message in the chat UI and clicks “Send”.  
-   - The browser sends a `POST` request to an endpoint like:  
-     `/<company_short_name>/api/llm_query`.  
-   - The Flask view (defined in `views/` and registered via `routes.py`) validates:
-     - Session or API key (security).
-     - Required fields (e.g., `message`, optional metadata).
+1.  **Request Reception (The View)**
+    The user sends a message from the browser. A Flask view (like `LLMQueryApiView`) receives the HTTP request, authenticates the user (via session or API key), and passes the query to the `QueryService`.
 
-2. **View → QueryService**  
-   - Using dependency injection, the view obtains an instance of `QueryService`.  
-   - It builds a `QueryRequest` object (or equivalent dict) with:
-     - `company_short_name`
-     - User message
-     - Conversation history / `user_session_context`
-     - Optional tool hints or prompt identifiers  
-   - It calls `query_service.llm_query(...)`.
+2.  **Orchestration (`QueryService`)**
+    The `QueryService` is the main orchestrator. It loads the company's configuration and context (system prompts, available tools from `company.yaml`, etc.) and combines it with the user's message and conversation history to build a complete prompt for the Large Language Model (LLM).
 
-3. **QueryService: building the LLM request**  
-   Inside `llm_query()`:
+3.  **First LLM Call**
+    The `QueryService` sends the prompt to the configured LLM provider (e.g., OpenAI, Gemini). This is the "thinking" step where the LLM decides what to do next.
 
-   - Loads **company configuration** from `ConfigurationService` and `CompanyContextService`:
-     - LLM model
-     - Available tools
-     - Language/branding settings
-   - Loads **context** (system prompts) from:
-     - `context/` files for the active company.
-   - Optionally retrieves **recent history** from `HistoryService` to build a conversation-aware prompt.
-   - Constructs the final **system + user + (optional tool) messages** to send to the LLM.
+4.  **Tool Call (Optional)**
+    Often, the LLM can't answer directly and needs more information. In this case, it will respond not with an answer, but with a structured request to call a tool. For example, it might ask to execute `document_search(query="company vacation policy")`.
 
-4. **QueryService ↔ Dispatcher (tool calls)**  
-   - If the LLM response requests a tool call (e.g., `document_search`, `sql_query`):
-     - `QueryService` delegates execution to `Dispatcher`.
-     - The Dispatcher:
-       - Finds the corresponding tool implementation registered by the Company class.
-       - Executes it (e.g., calls `VSRepo` for document search, or a custom Company function).
-       - Returns the tool result back to `QueryService`.
-   - `QueryService` then:
-     - Feeds the tool result back into the LLM as a follow-up message.
-     - Continues the conversation until a final answer is produced.
+5.  **Tool Execution (`Dispatcher`)**
+    The `QueryService` receives the tool call request and delegates it to the `Dispatcher`. The Dispatcher is responsible for finding the correct Python function that corresponds to the tool's name and executing it with the provided arguments. This is how the AI interacts with your databases, APIs, and other data sources.
 
-5. **QueryService → LLM Client / Proxy**  
-   - When ready to call the LLM, `QueryService` uses a client such as `llmClient` or `LLMProxy` (from `infra/`):
-     - It passes:
-       - `model` (e.g., `gpt-4`, `gpt-4o-mini`)
-       - The list of messages
-       - Optional tool/function definitions.
-   - `LLMProxy` decides which provider to use:
-     - If `util.is_openai_model(model)` → use **OpenAIAdapter**.
-     - If `util.is_gemini_model(model)` → use **GeminiAdapter**, etc.
+6.  **Continuing the Conversation**
+    The result from the tool (e.g., the content of a document or the result of a SQL query) is returned to the  LLM in a second call, essentially saying, "I ran the tool you asked for, here is the result. Now, can you answer the user's original question?"
 
-6. **LLMProxy → OpenAIAdapter → OpenAI SDK**  
-   - `OpenAIAdapter` transforms the internal `create_response` call into an SDK call, for example:
-     - `client.chat.completions.create(...)` or  
-     - `client.responses.create(...)` (depending on SDK version).
-   - The adapter ensures:
-     - Proper mapping of messages and tools.
-     - Correct timeout and error handling.
-   - The OpenAI Python client sends the request to the OpenAI API and returns the raw response.
+7.  **Final Response**
+    With all the necessary information in hand, the LLM generates the final, human-readable answer.
 
-7. **Backpropagating the response**  
-   - `OpenAIAdapter` converts the raw SDK response into an internal `LLMResponse` object.
-   - `LLMProxy` returns it to `QueryService`.
-   - `QueryService`:
-     - Logs the interaction in `LLMQuery` (tokens, model, cost, etc.).
-     - Optionally stores history and feedback context.
-     - Extracts the final answer text and any structured payload.
-   - The **view** receives the `LLMResponse`, converts it to JSON, and sends it back to the browser.
-   - The UI renders the assistant’s answer in the chat.
-
----
+8.  **Logging and Return**
+    The `llmClient` receives this final text. Before sending it back to `QueryService`, it logs the entire interaction, including token usage and any tool calls, for analytics and auditing. The formatted answer is then as a JSON response.
 
 ## 5. Front end
 

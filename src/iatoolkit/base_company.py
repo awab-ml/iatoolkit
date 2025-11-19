@@ -79,7 +79,7 @@ class BaseCompany(ABC):
     def handle_request(self, tag: str, params: dict) -> dict:
         raise NotImplementedError("La subclase debe implementar el método handle_request()")
 
-
+    @abstractmethod
     def register_cli_commands(self, app):
         """
         optional method for a company definition of it's cli commands
