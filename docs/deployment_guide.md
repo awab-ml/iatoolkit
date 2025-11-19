@@ -82,7 +82,30 @@ def create_app():
 
     # Create the IAToolkit instance (which in turn creates the Flask app)
     toolkit = IAToolkit()
-    return toolkit.create_iatoolkit()
+    app = toolkit.create_iatoolkit()
+
+    # --- Production Monitoring (Optional) ---
+    # Configure Elastic APM only in production environments
+    environment = os.environ.get("FLASK_ENV", "development")
+    if environment in ("prod", "production"):
+        try:
+            from elasticapm.contrib.flask import ElasticAPM
+            
+            ElasticAPM(app,
+               server_url=os.getenv("ELASTIC_URL"),
+               service_name=os.getenv("ELASTIC_APP_NAME", "iatoolkit"),
+               environment=os.getenv("ELASTIC_APM_ENVIRONMENT", "production"),
+               secret_token=os.getenv("ELASTIC_TOKEN"),
+               logging=True)
+            
+            logging.warning("Elastic APM configured for the application.")
+        except ImportError:
+            logging.warning("elastic-apm library not found. Skipping APM configuration.")
+        except Exception as e:
+            logging.error(f"Failed to configure Elastic APM: {e}")
+
+    return app
+
 
 
 # Create the app instance so it can be run by a WSGI server like Gunicorn
