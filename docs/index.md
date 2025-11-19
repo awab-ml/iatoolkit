@@ -54,7 +54,7 @@ Understand IAToolkit's internal architecture and learn how to extend the framewo
 ---
 ### For DevOps & Administrators
 
-**[Deployment Guide](./deploy_guide.md)**
+**[Deployment Guide](./deployment_guide.md)**
 Learn how to deploy IAToolkit to a production environment.
 
 *What you'll learn:*
@@ -75,7 +75,7 @@ The IAToolkit database is documented here: **[Database Model](./database_guide.m
 
 Want to contribute or extend? Check out the **[Programming Guide](./programming_guide.md)**.
 
-Ready to go to production? Follow the **[Deployment Guide](./deploy_guide.md)**.
+Ready to go to production? Follow the **[Deployment Guide](./deployment_guide.md)**.
 
 ---
 
