@@ -41,7 +41,7 @@ class SampleCompany(BaseCompany):
 
 
     def register_cli_commands(self, app):
-        @app.cli.command("populate-database")
+        @app.cli.command("populate-sample-db")
         def populate_sample_db():
             # get the handler to the database
             sample_db_manager = self.sql_service.get_database_manager('sample_database')
