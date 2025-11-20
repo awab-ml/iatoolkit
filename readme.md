@@ -1,7 +1,6 @@
 <div align="center">
-  <img src="https://www.iatoolkit.com/static/images/logo.png" alt="IAToolkit Logo" width="150"/>
   <h1>IAToolkit</h1>
-  <p><strong>The Open-Source Framework for Building Enterprise-Grade AI Assistants on Your Private Data</strong></p>
+  <p><strong>The Open-Source Framework for Building AI Assistants on Your Private Data</strong></p>
   <p>
     <a href="https://www.iatoolkit.com">Website</a> |
     <a href="./docs/index.md">Full Documentation</a> |
@@ -78,9 +77,6 @@ IAToolkit is also an excellent learning resource:
 - Perfect for developers, students, and teams exploring enterprise AI
 
 ---
-
-IAToolkit helps you go from *idea* to *production-ready assistant* in minutes —  
-without reinventing the wheel.
 
 ## 🚀 Getting Started in 3 Minutes
 
