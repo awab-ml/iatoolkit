@@ -46,7 +46,7 @@ Ideal for SaaS, agencies, consultancies, or large enterprises.
   - branding + UI theme  
 - Clean separation for multi-client deployments  
 - Perfect for scaling from 1 to 100 customers
-- Configure everything using simple YAML — **no boilerplate needed**
+- Configure everything using simple YAML 
 
 ---
 
@@ -68,7 +68,7 @@ Designed for real-world systems — reliable, maintainable, and scalable.
 - Detailed logging of prompts, tool calls, and token usage  
 - Structured architecture with **90%+ automated test coverage**  
 - Clean separation of UI, business logic, and LLM orchestration  
-- Runs anywhere: local machine, Docker, cloud, serverless  
+- Runs anywhere: local machine, docker, cloud, serverless  
 
 ---
 
