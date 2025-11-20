@@ -14,9 +14,14 @@
 
 ## ✨ Why IAToolkit?
 
-IAToolkit is more than a framework — it's a complete foundation for building **enterprise-grade AI assistants** capable of understanding your proprietary data, automating workflows, and integrating seamlessly with your existing systems.
+IAToolkit is more than a framework — it's a complete foundation for building **enterprise-grade AI assistants** 
+capable of understanding your proprietary data, automating workflows, and integrating seamlessly with 
+your existing systems.
 
-Whether you're building a production chatbot for your company **or learning how real AI applications are architected**, IAToolkit gives you the structure, tooling, and best practices you need.
+Whether you’re building a production chatbot for your company or learning how real AI applications are architected, 
+IAToolkit gives you everything you need to build secure, production-grade assistants — from data access, 
+multi-tenant architecture, and tool execution to prompt orchestration, semantic search, 
+and full UI integration — all powered by a clean, extensible Python API.
 
 ---
 
