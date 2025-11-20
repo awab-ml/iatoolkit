@@ -36,12 +36,18 @@ These sensitive values are managed in a .env file to keep them out of version co
 1.  **Create the `.env` file** in the project's root directory. 
 2. You can copy the provided `.env.example` 
 3. add values for the following variables:
-    - `OPENAI_API_KEY` (see company.yaml)
-    - `DATABASE_URI` like: 'postgresql://postgres:xxxxxxx@127.0.0.1:5432/iatoolkit'
-    - `SAMPLE_DATABASE_URI` like: 'postgresql://postgres:xxxxxxx@127.0.0.1:5432/sample_company'
-    - `REDIS_URL`: "redis://localhost:6379/0"
-    - `IATOOLKIT_SECRET_KEY`: 'jwt-IaTool$%&-739' # "company key for encryption"
-    - `FERNET_KEY`: "define-your-own-tH9Y0PlZcOGIC3Vz"
+    - `OPENAI_API_KEY`      
+      - (see company.yaml)
+    - `DATABASE_URI` 
+      - like: 'postgresql://postgres:xxxxxxx@127.0.0.1:5432/iatoolkit'
+    - `SAMPLE_DATABASE_URI` 
+      - like: 'postgresql://postgres:xxxxxxx@127.0.0.1:5432/sample_company'
+    - `REDIS_URL`: 
+      - like: "redis://localhost:6379/0"
+    - `IATOOLKIT_SECRET_KEY`: 
+      - 'jwt-IaTool$%&-739'                     # company key for encryption
+    - `FERNET_KEY`: 
+      - "define-your-own-tH9Y0PlZcOGIC3Vz"      # encription key
 
 4. Understand the Link Between .env and company.yaml:
 - The .env file stores the secrets themselves: API keys, database passwords, etc.
