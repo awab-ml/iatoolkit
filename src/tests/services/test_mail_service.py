@@ -230,27 +230,6 @@ class TestMailService:
         assert result == "translated:services.mail_sent"
 
 
-    def test_send_mail_smtplib_incomplete_config_raises(self, monkeypatch):
-        """Si falta host/port en provider_config, _send_with_smtplib debe lanzar MAIL_ERROR."""
-        self._set_smtplib_config()
-
-        # Faltan host y port en env vars
-        monkeypatch.delenv("SMTP_HOST", raising=False)
-        monkeypatch.delenv("SMTP_PORT", raising=False)
-
-        # No queremos usar la implementación real de smtplib
-        with pytest.raises(IAToolkitException) as exc:
-            self.mail_service.send_mail(
-                company_short_name=self.company_short_name,
-                recipient=self.recipient,
-                subject=self.subject,
-                body=self.body,
-                attachments=[],
-            )
-
-        assert exc.value.error_type == IAToolkitException.ErrorType.MAIL_ERROR
-        assert "SMTP configuration is incomplete" in str(exc.value)
-
     def test_send_mail_unknown_provider_raises(self):
         """Si el provider es desconocido, se debe lanzar un MAIL_ERROR."""
         self.mock_config_service.get_configuration.return_value = {

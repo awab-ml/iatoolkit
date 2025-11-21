@@ -158,7 +158,7 @@ class MailService:
         if not host or not port:
             raise IAToolkitException(
                 IAToolkitException.ErrorType.MAIL_ERROR,
-                "SMTP configuration is incomplete (host/port missing)"
+                "smtplib configuration is incomplete (host/port missing)"
             )
 
         msg = EmailMessage()

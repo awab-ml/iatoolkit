@@ -247,12 +247,6 @@ class ConfigurationService:
             if not mail_config.get("sender_email"):
                 add_error("mail_provider", "Missing required key: 'sender_email'")
 
-            if provider == "brevo_mail" and not mail_config.get("brevo_mail", {}).get("brevo_api"):
-                add_error("mail_provider.brevo_mail",
-                          "Missing required key: 'brevo_api' for the 'brevo_mail' provider.")
-            elif provider == "smtplib" and not isinstance(mail_config.get("smtplib"), dict):
-                add_error("mail_provider.smtplib", "Missing or invalid 'smtplib' section for the 'smtplib' provider.")
-
         # 10. Help Files
         for key, filename in config.get("help_files", {}).items():
             if not filename:
