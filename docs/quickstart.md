@@ -89,6 +89,10 @@ you will see something like this:
 2025-11-19 13:30:41,229 - IATOOLKIT - werkzeug - INFO - WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
  * Running on http://127.0.0.1:5000
 ```
+Open the application in your browser (`http://127.0.0.1:5000/sample_company/home`), 
+register a new user, and you will see the iatoolkit main page:
+
+![Home](./images/iatoolkit_home_page.png)
 
 ### Step 4: Populate the SampleCompany Database 
 
@@ -138,8 +142,7 @@ register a new user, and try asking the following questions in the chat interfac
 *   `give me a table with the sample employees`
 *   `give me a table with the sales in year 2025 by country`
 
-```text
-```
+![Query](./images/sample_employees.png)
 
 ### Step 5: Load documents into the vector store 
 
