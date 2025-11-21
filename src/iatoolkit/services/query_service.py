@@ -373,7 +373,7 @@ class QueryService:
             """
         for document in files:
             # Support both 'file_id' and 'filename' for robustness
-            filename = document.get('file_id') or document.get('filename')
+            filename = document.get('file_id') or document.get('filename') or document.get('name')
             if not filename:
                 context += "\n<error>Documento adjunto sin nombre ignorado.</error>\n"
                 continue

@@ -276,7 +276,13 @@ Authorization: Bearer <your_api_key>
 
 ### `POST /api/<company_short_name>/init-context`
 
-This endpoint initializes or resets the conversation context for a specific user. It's useful for starting a new conversation from scratch, ensuring that no previous history is carried over.
+This endpoint initializes or resets the conversation context for a specific user. 
+It's useful for starting a new conversation from scratch, 
+ensuring that no previous history is carried over.
+This is a lengthy operation, so it's recommended to use it only when necessary.
+
+When working with openai this operation will send the full company context to the llm,
+and will be cached there.
 
 **Example Call:**
 ```bash
@@ -285,16 +291,17 @@ curl -X POST \
   -H "Authorization: Bearer <your_api_key>" \
   -H "Content-Type: application/json" \
   -d '{
-        "model": "gpt-4"
+        "user_identifier": "johndoe",
+        "model": "gpt-5-mini"
       }'
 ```
 
 **Example Response:**
 ```json
 {
-  "status": "Context initialized",
+  "status": "OK",
+  "message": "Context initialized successfully.",
   "response_id": "chatcmpl-xxxxxxxxxxxxxxxxxxxxxx",
-  "model": "gpt-4"
 }
 ```
 
@@ -302,9 +309,15 @@ curl -X POST \
 
 ### `POST /api/<company_short_name>/llm_query`
 
-This is the primary endpoint for interacting with the assistant. You can send a direct question or invoke a predefined prompt with associated data.
+This is the primary endpoint for interacting with the assistant. 
+It is highly versatile and supports direct questions, invoking predefined prompts with data, 
+and processing file attachments.
 
-**Example Call (direct question):**
+#### Example 1: Direct Question
+
+This is the simplest use case, where you send a plain text question directly to the LLM.
+
+**Example Call:**
 ```bash
 curl -X POST \
   https://your-iatoolkit-instance.com/api/my_company/llm_query \
@@ -315,48 +328,127 @@ curl -X POST \
       }'
 ```
 
-**Example Call (using a prompt):**
+**Example Response:**
+```json
+{
+  "answer": "The total sales for last month were $150,000, based on the data I have available.",
+  "response_id": "chatcmpl-yyyyyyyyyyyyyyyyyyyyyy",
+  "valid_response": true,
+  "additional_data": {}
+}
+```
+---
+#### Example 2: Structured Data Output with a Prompt
+
+You can invoke a predefined prompt to perform complex tasks and return structured data. 
+Imagine you have a prompt named `get_sales_report` that is designed to call an internal tool (`get_sales_data`) 
+and format the output.
+
+**Sample Prompt (`companies/my_company/prompts/get_sales_report.prompt`):**
+```text
+You are an expert sales analyst.
+1. Call the `get_sales_data` function to retrieve sales data for the last 6 months for the region: {{ region }}.
+2. Once you have the data, calculate the total sales across all months.
+3. In the "answer" field, provide a concise, human-readable summary stating the total sales.
+4. In the "additional_data" field, return the raw monthly sales data as a JSON list of objects, where each object has "month" and "sales" keys.
+```
+
+**Example API Call:**
 ```bash
 curl -X POST \
   https://your-iatoolkit-instance.com/api/my_company/llm_query \
   -H "Authorization: Bearer <your_api_key>" \
   -H "Content-Type: application/json" \
   -d '{
-        "prompt_name": "summarize_customer_activity",
+        "prompt_name": "get_sales_report",
         "client_data": {
-          "customer_id": "CUST-12345",
-          "last_purchase_date": "2025-10-15"
+          "region": "North America"
         }
+      }'
+```
+
+**Example Response:**
+The LLM uses the prompt instructions to correctly populate both `answer` and `additional_data`.
+```json
+{
+  "answer": "The total sales for the last 6 months in North America were $1,250,000.",
+  "response_id": "chatcmpl-zzzzzzzzzzzzzzzzzzzzzz",
+  "valid_response": true,
+  "additional_data": [
+    { "month": "May", "sales": 200000 },
+    { "month": "June", "sales": 210000 },
+    { "month": "July", "sales": 190000 },
+    { "month": "August", "sales": 220000 },
+    { "month": "September", "sales": 230000 },
+    { "month": "October", "sales": 200000 }
+  ]
+}
+```
+---
+#### Example 3: Query with a File Attachment
+
+You can ask the assistant a question about a document by encoding its content in Base64 and sending it directly 
+in the `files` array of the JSON payload. 
+This is useful for analyzing documents on-the-fly without permanently adding them to the knowledge base.
+
+**Example API Call:**
+```bash
+curl -X POST \
+  https://your-iatoolkit-instance.com/api/my_company/llm_query \
+  -H "Authorization: Bearer <your_api_key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "question": "Summarize the key findings in the attached quarterly report.",
+        "files": [
+            { "name": "Q3_Report.pdf", "base64": "JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFIvTGFu..." }
+        ]
       }'
 ```
 
 **Example Response:**
 ```json
 {
-  "answer": "The total sales for last month were $150,000.",
-  "response_id": "chatcmpl-yyyyyyyyyyyyyyyyyyyyyy",
-  "valid_response": true
+  "answer": "The Q3 report highlights a 15% increase in revenue, driven primarily by the new product launch in the APAC region. However, it also notes a 5% decrease in profit margin due to rising supply chain costs.",
+  "response_id": "chatcmpl-wwwwwwwwwwwwwwwwwwwwww",
+  "valid_response": true,
+  "additional_data": null
 }
 ```
 
 ---
-### `POST /api/<company_short_name>/file-store`
+#### `POST /api/load-document`
 
-This endpoint uploads a temporary file and returns a token. This token can then be used in a `llm_query` call to provide the file's content as context for a single query. This is useful for analyzing documents on-the-fly without permanently adding them to the knowledge base.
+This endpoint programmatically uploads, processes, and permanently indexes a single 
+document into the vector store, making it immediately available for RAG (Retrieval-Augmented Generation) searches. 
+The service handles OCR (if necessary), text extraction, chunking, and embedding calculation.
 
-**Step 1: Upload the file**
+**Body Parameters:**
+- `company` (string, required): The short name of the company.
+- `filename` (string, required): The name of the document.
+- `content` (string, required): The file content encoded in Base64.
+- `metadata` (object, optional): A JSON object containing metadata to associate with the document (e.g., `{"category": "contracts", "author": "legal_team"}`).
+
+**Example Call:**
 ```bash
 curl -X POST \
-  https://your-iatoolkit-instance.com/api/my_company/file-store \
+  https://your-iatoolkit-instance.com/api/load-document \
   -H "Authorization: Bearer <your_api_key>" \
-  -F "file=@/path/to/your/document.pdf"
+  -H "Content-Type: application/json" \
+  -d '{
+        "company": "my_company",
+        "filename": "service_agreement_v2.pdf",
+        "content": "JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFIvTGFu...",
+        "metadata": {
+          "document_type": "Service Agreement",
+          "client_id": "CLIENT-5678"
+        }
+      }'
 ```
 
-**Response:**
+**Example Success Response:**
 ```json
 {
-  "token": "a-unique-file-token-xxxxxxxx",
-  "filename": "document.pdf"
+  "document_id": 123
 }
 ```
 

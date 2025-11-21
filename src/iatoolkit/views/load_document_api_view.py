@@ -12,7 +12,7 @@ from injector import inject
 import base64
 
 
-class FileStoreApiView(MethodView):
+class LoadDocumentApiView(MethodView):
     @inject
     def __init__(self,
                  auth_service: AuthService,

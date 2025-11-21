@@ -20,7 +20,7 @@ def register_views(injector, app):
     from iatoolkit.views.verify_user_view import VerifyAccountView
     from iatoolkit.views.forgot_password_view import ForgotPasswordView
     from iatoolkit.views.change_password_view import ChangePasswordView
-    from iatoolkit.views.file_store_api_view import FileStoreApiView
+    from iatoolkit.views.load_document_api_view import LoadDocumentApiView
     from iatoolkit.views.user_feedback_api_view import UserFeedbackApiView
     from iatoolkit.views.prompt_api_view import PromptApiView
     from iatoolkit.views.history_api_view import HistoryApiView
@@ -97,7 +97,7 @@ def register_views(injector, app):
     app.add_url_rule('/tasks/review/<int:task_id>', view_func=TaskReviewApiView.as_view('tasks-review'))
 
     # this endpoint is for upload documents into the vector store (api-key)
-    app.add_url_rule('/api/load-document', view_func=FileStoreApiView.as_view('load-document'), methods=['POST'])
+    app.add_url_rule('/api/load-document', view_func=LoadDocumentApiView.as_view('load-document'), methods=['POST'])
 
     # this endpoint is for generating embeddings for a given text
     app.add_url_rule('/<company_short_name>/api/embedding',
