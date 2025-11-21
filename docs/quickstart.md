@@ -8,10 +8,20 @@ We call this the "Hello World" of AI assistants.
 We'll download the toolkit, install its dependencies, 
 and run the local web server.
 
+## Prerequisites
+
+Before you begin, ensure you have the following software installed on your system:
+
+*   **Python**: Version 3.12 or higher.
+*   **Database**: IAToolkit requires a database for its core functionality. You have two options:
+    *   **PostgreSQL (Recommended)**: This is the most robust option and is **required** if you want to use the semantic search (RAG) feature on documents.
+    *   **SQLite**: Can be used for a simpler setup if you **do not** need the semantic search functionality.
+*   **`pgvector` Extension (for PostgreSQL)**: If you choose PostgreSQL and want to use semantic search, the `pgvector` extension must be installed and enabled in your database.
+
+
 ### Step 1: Clone and Install
 
 First, set up your local environment and install the necessary dependencies.
-Python version: 3.12 or superior
 
 1.  **Clone the Repository**:
     ```bash
@@ -33,8 +43,9 @@ Python version: 3.12 or superior
 ### Step 2: Environment Configuration
 
 To function correctly, IAToolkit requires a few secret keys and core settings. 
-These sensitive values are managed in a .env file to keep them out of version control, which is a fundamental security best practice.
-1. **Create the `.env` file** in the project's root directory. You can start with a copy the provided `.env.example`
+These sensitive values are managed in a .env file to keep them out of version control, 
+which is a fundamental security best practice.
+1. **Modify the `.env` file template** in the project's root directory with your own values:
 2. Add values for the following variables:
     - `OPENAI_API_KEY`      
       - (see company.yaml)
