@@ -45,7 +45,7 @@ First, set up your local environment and install the necessary dependencies.
 To function correctly, IAToolkit requires a few secret keys and core settings. 
 These sensitive values are managed in a .env file to keep them out of version control, 
 which is a fundamental security best practice.
-1. **Modify the `.env` file template** in the project's root directory with your own values:
+1. **Create the `.env` file** in the project's root directory. You can start with a copy the provided `.env.example`
 2. Add values for the following variables:
     - `OPENAI_API_KEY`      
       - (see company.yaml)
