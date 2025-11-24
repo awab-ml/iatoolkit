@@ -39,49 +39,26 @@ Build AI assistants that truly understand your business.
 Ideal for SaaS, agencies, consultancies, or large enterprises.
 
 - Isolated **Company Modules**  
-- Each company defines its own:
-  - data sources  
-  - prompts  
-  - custom tools  
-  - branding + UI theme  
+- Each company defines its own: data sources, prompts, tools, and branding
 - Clean separation for multi-client deployments  
+- Add **custom tools** the LLM can call (SQL, API, Python functions)
 - Perfect for scaling from 1 to 100 customers
 - Configure everything using simple YAML 
 
 ---
 
-### 🧩 Extensible & Provider-Agnostic  
-Customize every layer and keep full control.
-
-- Add **custom tools** the LLM can call (SQL, API, Python functions)
-- Swap between **OpenAI (GPT)**, **Google Gemini**, or future models
-- Built on dependency injection for maximum modularity
-- Extend prompts, dispatchers, services, and LLM clients effortlessly
-
----
 
 ### 🛡️ Built for Production  
 Designed for real-world systems — reliable, maintainable, and scalable.
 
+- Swap between **OpenAI (GPT)**, **Google Gemini**, or future models
 - Integrated authentication and session handling  
-- Secure secret management via environment variables  
 - Detailed logging of prompts, tool calls, and token usage  
-- Structured architecture with **90%+ automated test coverage**  
 - Clean separation of UI, business logic, and LLM orchestration  
 - Runs anywhere: local machine, docker, cloud, serverless  
 
 ---
 
-### 🎓 Learn How Real AI Applications Are Built  
-IAToolkit is also an excellent learning resource:
-
-- Understand how to orchestrate multiple LLM calls  
-- Learn how tools, SQL, vector search and prompts interact  
-- Explore a complete architecture for real AI products  
-- Use the Sample Company demo to practice building AI assistants  
-- Perfect for developers, students, and teams exploring enterprise AI
-
----
 
 ## 🚀 Getting Started in 3 Minutes
 
