@@ -55,6 +55,24 @@ class ExcelService:
             raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
                                      self.i18n_service.t('errors.services.cannot_read_excel')) from e
 
+    def read_csv(self, file_content: bytes) -> str:
+        """
+        Reads a CSV file and converts its content to a JSON string.
+        """
+        try:
+            # Use a BytesIO object to allow pandas to read the in-memory byte content
+            file_like_object = io.BytesIO(file_content)
+
+            # Read the CSV into a DataFrame
+            df = pd.read_csv(file_like_object)
+
+            # Return JSON representation
+            return df.to_json(orient='records', indent=4)
+
+        except Exception as e:
+            raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
+                                     self.i18n_service.t('errors.services.cannot_read_csv')) from e
+
     def excel_generator(self, company_short_name: str, **kwargs) -> str:
         """
         Genera un Excel a partir de una lista de diccionarios.

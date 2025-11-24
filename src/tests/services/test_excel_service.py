@@ -111,6 +111,43 @@ class TestExcelService:
         assert excinfo.value.error_type == IAToolkitException.ErrorType.FILE_FORMAT_ERROR
         self.mock_i18n_service.t.assert_called_with('errors.services.cannot_read_excel')
 
+    def test_read_csv_valid_file(self):
+        """
+        GIVEN a valid CSV file content
+        WHEN read_csv is called
+        THEN it should return a JSON string of the records.
+        """
+        # Arrange
+        csv_content = b"col1,col2\n1,A\n2,B"
+        expected_data = [{'col1': 1, 'col2': 'A'}, {'col1': 2, 'col2': 'B'}]
+
+        # Act
+        json_output = self.excel_service.read_csv(csv_content)
+
+        # Assert
+        parsed_data = json.loads(json_output)
+        assert parsed_data == expected_data
+
+    def test_read_csv_invalid_file_raises_exception(self):
+        """
+        GIVEN invalid content that fails CSV parsing (simulated via pandas error)
+        WHEN read_csv is called
+        THEN it should raise an IAToolkitException.
+        """
+        # Arrange
+        # Note: pandas is very forgiving with CSVs, so simpler strings often pass as single columns.
+        # We mock pandas to force an error for a robust test of the exception handling block.
+        invalid_bytes = b"some random bytes"
+        self.mock_i18n_service.t.return_value = "Cannot read CSV file."
+
+        with patch('pandas.read_csv', side_effect=Exception("Pandas error")):
+            # Act & Assert
+            with pytest.raises(IAToolkitException) as excinfo:
+                self.excel_service.read_csv(invalid_bytes)
+
+            assert excinfo.value.error_type == IAToolkitException.ErrorType.FILE_FORMAT_ERROR
+            self.mock_i18n_service.t.assert_called_with('errors.services.cannot_read_csv')
+
     def create_test_file(self, filename, content=b'test content'):
         file_path = os.path.join(self.temp_dir, filename)
         with open(file_path, 'wb') as f:

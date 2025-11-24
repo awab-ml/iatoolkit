@@ -47,6 +47,8 @@ class DocumentService:
                     return self.read_pdf(file_content)
             elif filename.lower().endswith(('.xlsx', '.xls')):
                 return self.excel_service.read_excel(file_content)
+            elif filename.lower().endswith('.csv'):
+                return self.excel_service.read_csv(file_content)
             else:
                 raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
                                    "Formato de archivo desconocido")
