@@ -229,6 +229,7 @@ class llmClient:
                 'aditional_data': decoded_response.get('aditional_data', {}),
                 'response_id': response.id,
                 'query_id': query.id,
+                'model': model,
             }
         except SQLAlchemyError as db_error:
             # rollback
