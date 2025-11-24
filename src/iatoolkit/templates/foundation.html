@@ -161,32 +161,7 @@
       while keeping their logic and knowledge cleanly separated.
     </p>
 
-    <h3>3.2 <code>company.yaml</code>: Declarative Control Over Each Assistant</h3>
-
-    <p>
-      At the heart of each Company lies a single file: <code>company.yaml</code>.
-      This is the declarative blueprint for that assistant. Among other things, it defines:
-    </p>
-
-    <ul>
-      <li><strong>Identity</strong>: company ID, display name, default locale.</li>
-      <li><strong>LLM configuration</strong>: which model to use and which environment variable stores its API key.</li>
-        <li><strong>Data sources</strong>: SQL databases, connection strings (via env vars), table inclusion/exclusion rules, and natural-language descriptions.</li>
-      <li><strong>Knowledge base options</strong>: document connectors (local, S3) and logical document sources for RAG.</li>
-      <li><strong>Tools</strong>: the functions the LLM can call, with OpenAPI-style schemas for parameters.</li>
-      <li><strong>Prompts &amp; categories</strong>: pre-configured prompts with descriptions and custom fields for the UI.</li>
-      <li><strong>Branding</strong>: header colors, primary and secondary brand colors, and visual tweaks.</li>
-        <li><strong>Embedding provider</strong>: model and key for semantic search.</li>
-
-    </ul>
-
-    <p>
-      Instead of hard-coding any of this in Python, you configure it declaratively.
-      That makes it much easier to spin up a new tenant, tweak a single client’s branding,
-      or point a new assistant to a different database without modifying core code.
-    </p>
-
-    <h3>3.3 Per-Company Directories: Context, Schema, Prompts, and Templates</h3>
+    <h3>3.2 Per-Company Directories: Context, Schema, Prompts, and Templates</h3>
 
     <p>
       Around <code>company.yaml</code>, each Company has several dedicated directories:
@@ -224,7 +199,31 @@
       editing some YAML files, and implementing whatever custom tools are needed.
     </p>
 
-      <h3>3.4 The Dispatcher: Connecting the LLM to Your Custom Python Logic</h3>
+        <h3>3.3 <code>company.yaml</code>: Declarative Control Over Each Assistant</h3>
+
+    <p>
+      At the heart of each Company lies a single file: <code>company.yaml</code>.
+      This is the declarative blueprint for that assistant. Among other things, it defines:
+    </p>
+
+    <ul>
+      <li><strong>Identity</strong>: company ID, display name, default locale.</li>
+      <li><strong>LLM configuration</strong>: which model to use and which environment variable stores its API key.</li>
+        <li><strong>Data sources</strong>: SQL databases, connection strings (via env vars), table inclusion/exclusion rules, and natural-language descriptions.</li>
+      <li><strong>Knowledge base options</strong>: document connectors (local, S3) and logical document sources for RAG.</li>
+      <li><strong>Tools</strong>: the functions the LLM can call, with OpenAPI-style schemas for parameters.</li>
+      <li><strong>Prompts &amp; categories</strong>: pre-configured prompts with descriptions and custom fields for the UI.</li>
+      <li><strong>Branding</strong>: header colors, primary and secondary brand colors, and visual tweaks.</li>
+        <li><strong>Embedding provider</strong>: model and key for semantic search.</li>
+
+    </ul>
+
+    <p>
+      Instead of hard-coding any of this in Python, you configure it declaratively.
+      That makes it much easier to spin up a new tenant, tweak a single client’s branding,
+      or point a new assistant to a different database without modifying core code.
+    </p>
+              <h3>3.4 The Dispatcher: Connecting the LLM to Your Custom Python Logic</h3>
 
 <p>
   While <code>company.yaml</code> defines <em>what</em> tools exist, the <strong>Dispatcher</strong> is the
@@ -258,7 +257,10 @@
   For enterprises, each business unit can integrate with its own APIs and processes.
   For developers, it creates a clean and safe extension point that avoids code duplication.
 </p>
+
+
     <hr />
+
 
     <!-- Chapter 4 -->
     <h2>4. From Idea to Production: A Mini Implementation Project</h2>
