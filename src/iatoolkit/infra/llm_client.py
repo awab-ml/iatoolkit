@@ -75,9 +75,12 @@ class llmClient:
         force_tool_name = None
         reasoning = {}
 
-        if 'gpt-5' in model:
+        if model in ('gpt-5', 'gpt-5-mini'):
             text['verbosity'] = "low"
             reasoning = {"effort": 'minimal'}
+        elif model == 'gpt-5.1':
+            text['verbosity'] = "low"
+            reasoning = {"effort": 'low'}
 
         try:
             start_time = time.time()

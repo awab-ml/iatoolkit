@@ -8,16 +8,18 @@ from unittest.mock import patch, MagicMock
 from iatoolkit.services.document_service import DocumentService
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.common.exceptions import IAToolkitException
-
+from iatoolkit.services.excel_service import ExcelService
 
 class TestDocumentService:
 
     @pytest.fixture(autouse=True)
     def setup_method(self):
+        self.mock_excel_service = MagicMock(spec=ExcelService)
         self.mock_i18n_service = MagicMock(spec=I18nService)
         self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
 
-        self.service = DocumentService(i18n_service=self.mock_i18n_service)
+        self.service = DocumentService(excel_service=self.mock_excel_service,
+                                        i18n_service=self.mock_i18n_service)
 
 
     @pytest.fixture(autouse=True)
@@ -42,6 +44,11 @@ class TestDocumentService:
     def test_file_txt_when_txt_content(self):
         result = self.service.file_to_txt("test.txt", "dummy_content")
         assert result == "dummy_content"
+
+    def test_file_excel_when_excel_content(self):
+        self.mock_excel_service.read_excel.return_value = 'json_content'
+        result = self.service.file_to_txt("test.xlsx", "dummy_content")
+        assert result == 'json_content'
 
     @patch("iatoolkit.services.document_service.DocumentService.is_scanned_pdf")
     @patch("iatoolkit.services.document_service.DocumentService.read_scanned_pdf", return_value="Scanned text")

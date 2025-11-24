@@ -129,6 +129,7 @@ errors:
     account_not_verified: "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
     missing_response_id: "No se encontró 'previous_response_id' para '{company_short_name}/{user_identifier}'. Reinicia el contexto."
     context_rebuild_failed: "No se pudo reconstruir el contexto de la empresa."
+    cannot_read_excel: "No se pudo leer el archivo excel"
 
 api_responses:
   context_reloaded_success: "El contexto se ha recargado con éxito."

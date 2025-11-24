@@ -12,6 +12,10 @@ import tempfile
 from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
+import pandas as pd
+import io
+import json
+from iatoolkit.common.exceptions import IAToolkitException
 
 
 class TestExcelService:
@@ -37,6 +41,75 @@ class TestExcelService:
 
         # Cleanup after test
         shutil.rmtree(self.temp_dir_base)
+
+    def _create_excel_bytes(self, sheets_data: dict) -> bytes:
+        """Helper to create an in-memory Excel file with one or more sheets."""
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            for sheet_name, data in sheets_data.items():
+                df = pd.DataFrame(data)
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+        return output.getvalue()
+
+    def test_read_excel_single_sheet(self):
+        """
+        GIVEN a valid Excel file with a single sheet
+        WHEN read_excel is called
+        THEN it should return a JSON string of that sheet's records.
+        """
+        # Arrange
+        sheet_data = [{'col1': 1, 'col2': 'A'}, {'col1': 2, 'col2': 'B'}]
+        excel_bytes = self._create_excel_bytes({'Sheet1': sheet_data})
+
+        # Act
+        json_output = self.excel_service.read_excel(excel_bytes)
+
+        # Assert
+        parsed_data = json.loads(json_output)
+        assert parsed_data == sheet_data
+
+    def test_read_excel_multiple_sheets(self):
+        """
+        GIVEN a valid Excel file with multiple sheets
+        WHEN read_excel is called
+        THEN it should return a JSON string where keys are sheet names.
+        """
+        # Arrange
+        sheet1_data = [{'col1': 1, 'col2': 'A'}]
+        sheet2_data = [{'colA': 3, 'colB': 'C'}]
+        sheets_data = {'MySheet1': sheet1_data, 'MySheet2': sheet2_data}
+        excel_bytes = self._create_excel_bytes(sheets_data)
+
+        # Act
+        json_output = self.excel_service.read_excel(excel_bytes)
+
+        # Assert
+        parsed_data = json.loads(json_output)
+
+        # Check that top-level keys are sheet names
+        assert 'MySheet1' in parsed_data
+        assert 'MySheet2' in parsed_data
+
+        # Check content of each sheet
+        assert json.loads(parsed_data['MySheet1']) == sheet1_data
+        assert json.loads(parsed_data['MySheet2']) == sheet2_data
+
+    def test_read_excel_invalid_file_raises_exception(self):
+        """
+        GIVEN invalid byte content (not an Excel file)
+        WHEN read_excel is called
+        THEN it should raise an IAToolkitException with a specific error type.
+        """
+        # Arrange
+        invalid_bytes = b"this is not an excel file"
+        self.mock_i18n_service.t.return_value = "Cannot read Excel file."
+
+        # Act & Assert
+        with pytest.raises(IAToolkitException) as excinfo:
+            self.excel_service.read_excel(invalid_bytes)
+
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.FILE_FORMAT_ERROR
+        self.mock_i18n_service.t.assert_called_with('errors.services.cannot_read_excel')
 
     def create_test_file(self, filename, content=b'test content'):
         file_path = os.path.join(self.temp_dir, filename)

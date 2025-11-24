@@ -3,6 +3,7 @@
 #
 # IAToolkit is open source software.
 
+from flask import current_app, jsonify
 from iatoolkit.common.util import Utility
 import pandas as pd
 from uuid import uuid4
@@ -11,8 +12,9 @@ from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.i18n_service import I18nService
 from injector import inject
 import os
+import io
 import logging
-from flask import current_app, jsonify
+import json
 
 EXCEL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
@@ -24,6 +26,34 @@ class ExcelService:
                  i18n_service: I18nService):
         self.util = util
         self.i18n_service = i18n_service
+
+    def read_excel(self, file_content: bytes) -> str:
+        """
+        Reads an Excel file and converts its content to a JSON string.
+        - If the Excel file has a single sheet, it returns the JSON of that sheet.
+        - If it has multiple sheets, it returns a JSON object with sheet names as keys.
+        """
+        try:
+            # Use a BytesIO object to allow pandas to read the in-memory byte content
+            file_like_object = io.BytesIO(file_content)
+
+            # Read all sheets into a dictionary of DataFrames
+            xls = pd.read_excel(file_like_object, sheet_name=None)
+
+            if len(xls) == 1:
+                # If only one sheet, return its JSON representation directly
+                sheet_name = list(xls.keys())[0]
+                return xls[sheet_name].to_json(orient='records', indent=4)
+            else:
+                # If multiple sheets, create a dictionary of JSON strings
+                sheets_json = {}
+                for sheet_name, df in xls.items():
+                    sheets_json[sheet_name] = df.to_json(orient='records', indent=4)
+                return json.dumps(sheets_json, indent=4)
+
+        except Exception as e:
+            raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
+                                     self.i18n_service.t('errors.services.cannot_read_excel')) from e
 
     def excel_generator(self, company_short_name: str, **kwargs) -> str:
         """

@@ -12,10 +12,15 @@ import pytesseract
 from injector import inject
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.i18n_service import I18nService
+from iatoolkit.services.excel_service import ExcelService
+
 
 class DocumentService:
     @inject
-    def __init__(self, i18n_service: I18nService):
+    def __init__(self,
+                 excel_service: ExcelService,
+                 i18n_service: I18nService):
+        self.excel_service = excel_service
         self.i18n_service = i18n_service
 
         # max number of pages to load
@@ -40,6 +45,8 @@ class DocumentService:
                     return self.read_scanned_pdf(file_content)
                 else:
                     return self.read_pdf(file_content)
+            elif filename.lower().endswith(('.xlsx', '.xls')):
+                return self.excel_service.read_excel(file_content)
             else:
                 raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
                                    "Formato de archivo desconocido")
