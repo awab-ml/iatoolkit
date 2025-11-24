@@ -102,6 +102,8 @@ Our documentation is designed for users of all levels, from initial setup to adv
 | 💻 **[Programming Guide](./docs/programming_guide.md)** | Understand the internal architecture, services, and design patterns to extend the framework.      |
 | ☁️ **[Deployment Guide](./docs/deployment_guide.md)** | Learn how to deploy your IAToolkit application to a production environment.                             |
 | 🗃️ **[Database Guide](./docs/database_guide.md)** | An overview of the core database schema used by the IAToolkit framework itself.                         |
+| 🏛️ **[Foundation Article](./src/iatoolkit/templates/foundation.html)** | An article explaining the "Why" behind IAToolkit's architecture for enterprise-grade assistants. |
+| 🗓️ **[Implementation Plan](./src/iatoolkit/templates/implementation_plan.html)** | A 3-month mini-project plan to deploy a real AI assistant integrated with corporate data. |
 
 ➡️ **[Explore all documentation](./docs/index.md)**
 
