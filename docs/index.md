@@ -79,7 +79,21 @@ Want to contribute or extend? Check out the **[Programming Guide](./programming_
 Ready to go to production? Follow the **[Deployment Guide](./deployment_guide.md)**.
 
 ---
+### Deep Architecture & Implementation Guides
 
+- 🏛️ **Foundation Article**  
+  A conceptual overview of IAToolkit’s architecture: Core layers, multi-tenant design, 
+  the role of the Company, and the Intelligence Layer.  
+  **https://www.iatoolkit.com/pages/foundation**
+
+- 🗓️ **Mini-Project Implementation Plan**  
+  A 3-month roadmap designed to help teams build their first real-world AI assistant using 
+  SQL data, documents, and tools.  
+  **https://www.iatoolkit.com/pages/implementation_plan**
+
+---
+
+Ready to build your AI assistant? **[Let's get started! →](./quickstart.md)** 🚀
 ## Additional Resources
 
 - **GitHub Repository**: [github.com/flibedinsky/iatoolkit](https://github.com/flibedinsky/iatoolkit)
