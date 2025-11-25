@@ -32,6 +32,7 @@ class LoginView(BaseLoginView):
         branding_data = self.branding_service.get_company_branding(company_short_name)
         email = request.form.get('email')
         password = request.form.get('password')
+        current_lang = request.form.get('lang') or request.args.get('lang') or 'en'
 
         # 1. Authenticate internal user
         auth_response = self.auth_service.login_local_user(
@@ -57,7 +58,8 @@ class LoginView(BaseLoginView):
         # 3. define URL to call when slow path is finished
         target_url = url_for('finalize_no_token',
                              company_short_name=company_short_name,
-                             _external=True)
+                             _external=True,
+                             lang=current_lang)
 
         # 2. Delegate the path decision to the centralized logic.
         try:
@@ -97,6 +99,9 @@ class FinalizeContextView(MethodView):
 
     def get(self, company_short_name: str, token: str = None):
         try:
+            # get the languaje from the query string if it exists
+            current_lang = request.args.get('lang') or 'en'
+
             session_info = self.profile_service.get_current_session_info()
             if session_info:
                 # session exists, internal user
@@ -107,12 +112,12 @@ class FinalizeContextView(MethodView):
                 payload = self.jwt_service.validate_chat_jwt(token)
                 if not payload:
                     logging.warning("Fallo crítico: No se pudo leer el auth token.")
-                    return redirect(url_for('home', company_short_name=company_short_name))
+                    return redirect(url_for('home', company_short_name=company_short_name, lang=current_lang))
 
                 user_identifier = payload.get('user_identifier')
             else:
                 logging.error("missing session information or auth token")
-                return redirect(url_for('home', company_short_name=company_short_name))
+                return redirect(url_for('home', company_short_name=company_short_name, lang=current_lang))
 
             company = self.profile_service.get_company_by_short_name(company_short_name)
             if not company:

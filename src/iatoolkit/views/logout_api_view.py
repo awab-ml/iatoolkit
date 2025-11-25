@@ -4,7 +4,7 @@
 # IAToolkit is open source software.
 
 from flask.views import MethodView
-from flask import redirect, url_for, jsonify
+from flask import redirect, url_for, jsonify, request, g
 from injector import inject
 from iatoolkit.services.auth_service import AuthService
 from iatoolkit.services.profile_service import ProfileService
@@ -33,7 +33,15 @@ class LogoutApiView(MethodView):
             # get URL for redirection
             url_for_redirect = company.parameters.get('external_urls', {}).get('logout_url')
             if not url_for_redirect:
-                url_for_redirect = url_for('home', company_short_name=company_short_name)
+                current_lang = (
+                        request.args.get('lang')
+                        or getattr(g, 'lang', None)
+                        or 'en'
+                )
+
+                url_for_redirect = url_for('home',
+                                           company_short_name=company_short_name,
+                                           lang=current_lang)
 
             # clear de session cookie
             SessionManager.clear()

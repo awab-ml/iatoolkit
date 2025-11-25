@@ -179,7 +179,7 @@ class TestLoginView:
         resp = self.client.get(f"/{self.company_short_name}/login")
 
         assert resp.status_code == 302
-        assert resp.headers["Location"].endswith(f"/{self.company_short_name}/home")
+        assert f"/{self.company_short_name}/home" in resp.headers["Location"]
 
     def test_finalize_exception_renders_error_with_500(self):
         """If finalize fails, it should render error.html with 500."""
@@ -240,6 +240,6 @@ class TestLoginView:
         resp = self.client.get(f"/{self.company_short_name}/finalize/bad")
 
         assert resp.status_code == 302
-        assert resp.headers["Location"].endswith(f"/{self.company_short_name}/home")
+        assert f"/{self.company_short_name}/home" in resp.headers["Location"]
         self.jwt_service.validate_chat_jwt.assert_called_once_with("bad")
         self.query_service.finalize_context_rebuild.assert_not_called()
