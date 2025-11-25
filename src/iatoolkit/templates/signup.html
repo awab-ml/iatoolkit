@@ -59,6 +59,9 @@
                                 <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
                             </div>
 
+                            <!-- language: html -->
+                            <input type="hidden" name="lang" value="{{ lang or 'en' }}">
+
                             <!-- Botón actualizado con la clase de branding -->
                             <button type="submit" class="btn btn-branded-primary w-100 fw-bold py-2 mt-3">{{ t('ui.signup.signup_button') }}</button>
                         </form>

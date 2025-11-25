@@ -33,9 +33,12 @@ class SignupView(MethodView):
                                    message=self.i18n_service.t('errors.templates.company_not_found')), 404
 
         branding_data = self.branding_service.get_company_branding(company_short_name)
+        current_lang = request.args.get("lang") or "en"
+
         return render_template('signup.html',
                                company_short_name=company_short_name,
-                               branding=branding_data)
+                               branding=branding_data,
+                               lang=current_lang)
 
     def post(self, company_short_name: str):
         try:
@@ -51,6 +54,9 @@ class SignupView(MethodView):
             email = request.form.get('email')
             password = request.form.get('password')
             confirm_password = request.form.get('confirm_password')
+
+            # get the language from the form, then query
+            current_lang = request.form.get("lang") or request.args.get("lang")
 
             # create verification token and url for verification
             token = self.serializer.dumps(email, salt='email-confirm')
@@ -71,6 +77,7 @@ class SignupView(MethodView):
                     'signup.html',
                     company_short_name=company_short_name,
                     branding=branding_data,
+                    lang=current_lang,
                     form_data={
                         "first_name": first_name,
                         "last_name": last_name,
@@ -80,7 +87,7 @@ class SignupView(MethodView):
                     }), 400
 
             flash(response["message"], 'success')
-            return redirect(url_for('home', company_short_name=company_short_name))
+            return redirect(url_for('home', company_short_name=company_short_name, lang=current_lang))
 
         except Exception as e:
             message = self.i18n_service.t('errors.templates.processing_error', error=str(e))
@@ -88,5 +95,6 @@ class SignupView(MethodView):
                 "error.html",
                 company_short_name=company_short_name,
                 branding=branding_data,
-                message=message
+                message=message,
+                lang=current_lang
             ), 500

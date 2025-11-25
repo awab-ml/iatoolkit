@@ -88,7 +88,8 @@ class TestSignupView:
         mock_render_template.assert_called_once_with(
             'signup.html',
             company_short_name='test_company',
-            branding=self.branding_service.get_company_branding.return_value
+            branding=self.branding_service.get_company_branding.return_value,
+            lang='en'
         )
 
     @patch("iatoolkit.views.signup_view.render_template")
@@ -108,6 +109,7 @@ class TestSignupView:
             company_short_name='test_company',
             branding=self.branding_service.get_company_branding.return_value,
             form_data=form_data,
+            lang=None
         )
 
     @patch("iatoolkit.views.signup_view.URLSafeTimedSerializer")

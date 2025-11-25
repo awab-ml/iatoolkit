@@ -96,7 +96,8 @@ class TestForgotPasswordView:
         mock_render_template.assert_called_once_with(
             'forgot_password.html',
             company_short_name='test_company',
-            branding=self.branding_service.get_company_branding.return_value
+            branding=self.branding_service.get_company_branding.return_value,
+            lang = 'en'
         )
 
     @patch("iatoolkit.views.forgot_password_view.render_template")
@@ -126,7 +127,7 @@ class TestForgotPasswordView:
         self.profile_service.forgot_password.return_value = {"message": "link sent"}
 
         with self.app.test_request_context():  # Contexto para que url_for funcione
-            expected_redirect_url = url_for('home', company_short_name='test_company')
+            expected_redirect_url = url_for('home', company_short_name='test_company', lang='en')
 
             with self.client:
                 response = self.client.post("/test_company/forgot_password", data={"email": "user@example.com"})

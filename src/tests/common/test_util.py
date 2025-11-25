@@ -11,15 +11,31 @@ from iatoolkit.common.util import Utility
 from datetime import datetime, date
 from decimal import Decimal
 from cryptography.fernet import Fernet
+from flask import Flask
 
 # Generar una clave Fernet de prueba una vez y usarla en el fixture
 ACTUAL_FERNET_KEY_FOR_ENV = Fernet.generate_key().decode('utf-8')
 
 
 class TestUtil:
+    @staticmethod
+    def create_app():
+        app = Flask(__name__)
+        app.testing = True
+        return app
+
     def setup_method(self):
+        """Crea app y cliente por test."""
+        self.app = self.create_app()
+        self.client = self.app.test_client()
+
         self.util = Utility()
 
+        # minimal route to invoke request context and test Utility.get_template_by_language()
+        @self.app.route("/template")
+        def template_endpoint():
+            # call the function under test with template base "index"
+            return self.util.get_template_by_language("index")
 
     @patch("jinja2.Environment.get_template")
     def test_util_when_jinja_error(self, mock_get_template):
@@ -504,3 +520,31 @@ class TestUtil:
             mock_file.assert_called_once_with(expected_path, 'r')
             mock_logging.assert_called_once()
             assert result is None
+
+    def test_returns_es_when_lang_es(self):
+        """Debe devolver index_es.html cuando lang=es."""
+        resp = self.client.get("/template?lang=es")
+        assert resp.status_code == 200
+        assert resp.data.decode("utf-8") == "index_es.html"
+
+    def test_returns_en_by_default_when_no_lang(self):
+        """Debe devolver index_en.html por defecto cuando no se especifica lang."""
+        resp = self.client.get("/template")
+        assert resp.status_code == 200
+        assert resp.data.decode("utf-8") == "index_en.html"
+
+    def test_returns_requested_language_passthrough(self):
+        """Debe propagar cualquier valor de lang (p. ej. 'fr')."""
+        resp = self.client.get("/template?lang=fr")
+        assert resp.status_code == 200
+        assert resp.data.decode("utf-8") == "index_fr.html"
+
+    def test_works_with_another_template_base(self):
+        """Debe respetar el nombre base de template."""
+        @self.app.route("/other")
+        def other_endpoint():
+            return self.util.get_template_by_language("home")
+
+        resp = self.client.get("/other?lang=es")
+        assert resp.status_code == 200
+        assert resp.data.decode("utf-8") == "home_es.html"

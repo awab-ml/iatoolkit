@@ -31,9 +31,11 @@ class ForgotPasswordView(MethodView):
                                    message=self.i18n_service.t('errors.templates.company_not_found')), 404
 
         branding_data = self.branding_service.get_company_branding(company_short_name)
+        current_lang = request.args.get("lang", "en")
         return render_template('forgot_password.html',
                                company_short_name=company_short_name,
-                               branding=branding_data
+                               branding=branding_data,
+                               lang=current_lang
                                )
 
     def post(self, company_short_name: str):
@@ -65,7 +67,8 @@ class ForgotPasswordView(MethodView):
                     form_data={"email": email}), 400
 
             flash(self.i18n_service.t('flash_messages.forgot_password_success'), 'success')
-            return redirect(url_for('home', company_short_name=company_short_name))
+            lang = request.args.get("lang", "en")
+            return redirect(url_for('home', company_short_name=company_short_name, lang=lang))
 
         except Exception as e:
             flash(self.i18n_service.t('errors.general.unexpected_error'), 'error')

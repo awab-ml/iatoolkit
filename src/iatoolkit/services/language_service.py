@@ -48,6 +48,7 @@ class LanguageService:
     def get_current_language(self) -> str:
         """
         Determines and caches the language for the current request using a priority order:
+        0. Query parameter '?lang=<code>' (highest priority; e.g., 'en', 'es').
         1. User's preference (from their profile).
         2. Company's default language.
         3. System-wide fallback language ('es').
@@ -56,6 +57,12 @@ class LanguageService:
             return g.lang
 
         try:
+            # Priority 0: Explicit query parameter (?lang=)
+            lang_arg = request.args.get('lang')
+            if lang_arg:
+                g.lang = lang_arg
+                return g.lang
+
             # Priority 1: User's preferred language
             user_identifier = SessionManager.get('user_identifier')
             if user_identifier:

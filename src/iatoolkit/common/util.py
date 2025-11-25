@@ -6,6 +6,7 @@
 import logging
 from typing import List
 from iatoolkit.common.exceptions import IAToolkitException
+from flask import request
 from injector import inject
 import os
 from jinja2 import Environment, FileSystemLoader
@@ -14,6 +15,7 @@ from decimal import Decimal
 import yaml
 from cryptography.fernet import Fernet
 import base64
+
 
 
 class Utility:
@@ -97,6 +99,10 @@ class Utility:
             logging.exception(e)
             return None
 
+    def get_template_by_language(self, template_name: str) -> str:
+        # english is default
+        lang = request.args.get("lang", "en")
+        return f'{template_name}_{lang}.html'
 
     def serialize(self, obj):
         if isinstance(obj, datetime) or isinstance(obj, date):
