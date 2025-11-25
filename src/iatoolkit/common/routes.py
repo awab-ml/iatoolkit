@@ -134,15 +134,11 @@ def register_views(injector, app):
     app.add_url_rule('/<company_short_name>/login_test',
                      view_func=LoginSimulationView.as_view('login_test'))
 
-    app.add_url_rule(
-        '/about',  # URL de la ruta
-        view_func=lambda: render_template('about.html'))
-
     app.add_url_rule('/version', 'version',
                      lambda: jsonify({"iatoolkit_version": current_app.config.get('VERSION', 'N/A')}))
 
 
-    # hacer que la raíz '/' vaya al home de iatoolkit
+    # make the root '/' goes to index
     @app.route('/')
     def root_redirect():
         return redirect(url_for('index'))
