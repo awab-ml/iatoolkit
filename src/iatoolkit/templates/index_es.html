@@ -25,96 +25,147 @@
 
     <!-- 2. Sección Principal (Hero) -->
     <section class="hero-section">
-        <div class="container">
-            <div class="row align-items-center g-5 py-5">
-                <div class="col-lg-7">
-                    <h1 class="hero-title gradient-text">Framework de IA Open Source</h1>
-                    <ul class="hero-bullets mt-4">
-                      <li><i class="bi bi-hdd-stack"></i>Integra tus bases de datos SQL y documentos para dar contexto real a tus asistentes.</li>
-                    <li><i class="bi bi-code-slash"></i>Crea un repositorio de prompts validados por tu equipo para estandarizar y acelerar las tareas de IA.</li>
-                    <li><i class="bi bi-shield-lock"></i> Monta la plataforma en tu propia infraestructura con control total sobre el LLM, garantizando la privacidad de los datos.</li>                    </ul>
-                </div>
-                <div class="col-lg-5">
-                    <div class="border rounded-3 p-4 p-md-5 shadow-sm bg-light">
-                        <h3 class="fw-bold text-center mb-3">Prueba la Plataforma</h3>
-                        <p class="text-muted mb-4">
-                            Descubre nuestra demo interactiva, configurada con datos de una empresa de muestra. Explora  las funcionalidades de la plataforma en un entorno práctico.<br>
-                        </p>
-                        <div class="d-grid">
-                            {# Este botón usa la clase .btn-primary, que es estilizada por .hero-section .btn-primary en el CSS #}
-                            <a href="{{ url_for('home', company_short_name='sample_company', lang=request.args.get('lang', 'en')) }}"
-                               target="_blank"
-                                rel="noopener noreferrer"
-                               class="btn btn-primary btn-lg fw-bold">
-                                Acceder
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+    <div class="container">
+        <div class="row align-items-center g-5 py-5">
+            <div class="col-lg-7">
+                <h1 class="hero-title gradient-text">
+                    Asistentes de IA reales conectados a tus datos
+                </h1>
 
-    <!-- 3. Sección de Características -->
-    <section class="features-section">
-        <div class="container">
-            <div class="row g-4">
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="opensource-box">
-                        <div>
-                            <div class="opensource-icon"><i class="bi bi-github"></i></div>
-                            <h3>100% Open Source</h3>
-                            <p>Construido en Python, IAToolkit te da control total. Audita el código, adáptalo y contribuye a una comunidad en crecimiento.</p>
-                        </div>
-                        <a href="https://github.com/flibedinsky/iatoolkit" target="_blank" class="btn btn-light mt-auto">
-                            <i class="bi bi-github me-2"></i>Ir a GitHub
-                            {% if iatoolkit_version %}
-                                <span class="badge bg-dark ms-2">{{ iatoolkit_version }}</span>
-                            {% endif %}
+                <p class="lead mt-3">
+                    IAToolkit es un framework open source para construir asistentes de IA que se ejecutan
+                    dentro de tu propio entorno y utilizan los datos de tu empresa de forma segura y fiable.
+                </p>
+
+                <ul class="hero-bullets mt-4">
+                    <li>
+                        <i class="bi bi-hdd-stack"></i>
+                        Integración nativa con tus fuentes de datos corporativas.
+                    </li>
+                    <li>
+                        <i class="bi bi-diagram-3"></i>
+                        Varias Companies definidas por configuración, cada una con su propio dominio y contexto.
+                    </li>
+                    <li>
+                        <i class="bi bi-cpu"></i>
+                        Una Capa de Inteligencia que orquesta prompts, tools y RAG de forma coherente.
+                    </li>
+                </ul>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="border rounded-3 p-4 p-md-5 shadow-sm bg-light">
+                    <h3 class="fw-bold text-center mb-3">Probar la Plataforma</h3>
+                    <p class="text-muted mb-4">
+                        Explora una demo realista configurada para una empresa comercial ficticia,
+                        con datos SQL y documentos internos.
+                    </p>
+                    <div class="d-grid">
+                        <a href="{{ url_for('home', company_short_name='sample_company', lang='es') }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="btn btn-primary btn-lg fw-bold">
+                            Acceder a la demo
                         </a>
                     </div>
                 </div>
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="feature-item">
-                        <div class="feature-icon"><i class="bi bi-hdd-stack"></i></div>
-                        <h3>Conecta tus Datos</h3>
-                        <p>Integra tus bases de datos SQL, documentos (PDFs, TXT) y otros sistemas para que el asistente tenga un contexto real de tu negocio.</p>
+            </div>
+        </div>
+    </div>
+</section>
+    <!-- 3. Sección de Características -->
+    <section class="features-section">
+    <div class="container">
+        <div class="row g-4">
+
+            <!-- 1. 100% Open Source / GitHub -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="opensource-box">
+                    <div>
+                        <div class="opensource-icon"><i class="bi bi-github"></i></div>
+                        <h3>100% Open Source</h3>
+                        <p>
+                            Un framework completamente abierto que puedes auditar, extender y desplegar
+                            en tu propia infraestructura: sin cajas negras ni dependencias propietarias.
+                        </p>
                     </div>
-                </div>
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="feature-item">
-                        <div class="feature-icon"><i class="bi bi-gem"></i></div>
-                        <h3>Multi-LLM</h3>
-                        <p>No te ates a un solo proveedor. IAToolkit está diseñado para funcionar con diferentes modelos, incluyendo Gemini y OpenAI (GPT).</p>
-                    </div>
+                    <a href="https://github.com/flibedinsky/iatoolkit"
+                       target="_blank"
+                       class="btn btn-light mt-auto">
+                        <i class="bi bi-github me-2"></i>Ver en GitHub
+                        {% if iatoolkit_version %}
+                            <span class="badge bg-dark ms-2">{{ iatoolkit_version }}</span>
+                        {% endif %}
+                    </a>
                 </div>
             </div>
-            <div class="row g-4 mt-4">
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="feature-item">
-                        <div class="feature-icon"><i class="bi bi-magic"></i></div>
-                        <h3>Prompt Manager</h3>
-                        <p>Crea, gestiona y comparte una librería de prompts personalizados para tu empresa, optimizando las tareas repetitivas.</p>
-                    </div>
+
+            <!-- 2. Arquitectura Multi-Tenant -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-diagram-3"></i></div>
+                    <h3>Arquitectura Multi-Tenant</h3>
+                    <p>
+                        Atiende a múltiples unidades de negocio o clientes desde una sola instalación.
+                        Cada Company funciona de forma aislada mediante configuración, tools, prompts y contexto.
+                    </p>
                 </div>
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="feature-item">
-                        <div class="feature-icon"><i class="bi bi-palette"></i></div>
-                        <h3>100% Personalizable</h3>
-                        <p>Adapta cada aspecto, desde la apariencia visual hasta las capacidades y herramientas del asistente, para que se alinee con la identidad de tu marca.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="feature-item">
-                        <div class="feature-icon"><i class="bi bi-shield-lock"></i></div>
-                        <h3>Privacidad Primero</h3>
-                        <p>Despliega IAToolkit en tus propios servidores. Tus datos y consultas nunca son compartidos con terceros, garantizando la máxima confidencialidad.</p>
-                    </div>
+            </div>
+
+            <!-- 3. Conecta tus Datos -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-hdd-stack"></i></div>
+                    <h3>Conecta tus Datos</h3>
+                    <p>
+                        Conecta bases SQL, documentos internos y APIs para que el asistente responda
+                        con información real de tu empresa, sin alucinaciones.
+                    </p>
                 </div>
             </div>
         </div>
-    </section>
 
+        <div class="row g-4 mt-4">
+
+            <!-- 4. Capa de Inteligencia -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-cpu"></i></div>
+                    <h3>Capa de Inteligencia</h3>
+                    <p>
+                        Una capa estructurada que interpreta la intención, lee la configuración de cada Company,
+                        orquesta consultas SQL, prompts, tools y RAG, y mantiene las respuestas alineadas con
+                        las reglas del negocio.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 5. Multi-LLM -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-gem"></i></div>
+                    <h3>Multi-LLM</h3>
+                    <p>
+                        Usa diferentes proveedores (OpenAI, Gemini, modelos locales) sin cambiar tu código.
+                        Elige el mejor modelo por Company o por flujo de trabajo.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 6. 100% Personalizable -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-palette"></i></div>
+                    <h3>100% Personalizable</h3>
+                    <p>
+                        Adapta branding, tools, prompts, contexto y flujos para que cada asistente refleje
+                        la identidad de tu empresa y soporte tus procesos internos.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
   <!-- 3.2 Recursos técnicos -->
 <section class="cto-resources-section py-4">
     <div class="container">

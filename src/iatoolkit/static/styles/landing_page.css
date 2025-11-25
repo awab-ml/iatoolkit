@@ -46,7 +46,6 @@ body {
 
 /* --- Sección Principal (Hero) --- */
 .hero-section {
-    padding: 2rem 0 1rem; /* Ajustado: 5rem arriba, 0 a los lados, 2.5rem abajo */
 }
 
 .hero-title {
@@ -62,21 +61,29 @@ body {
     background-clip: text;
     text-fill-color: transparent;
 }
+
 .hero-bullets {
     list-style: none;
     padding-left: 0;
-    font-size: 1.1rem;
+    font-size: 1.25rem;
+    line-height: 1.5;
+    margin-top: 1.5rem;
 }
+
 .hero-bullets li {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
+    align-items: flex-start;   /* necesario para alinear texto superior */
+    gap: 1rem;
+    margin-bottom: 1.4rem;
     color: var(--website-muted-text);
 }
+
 .hero-bullets .bi {
+    font-size: 2rem;
     color: var(--website-primary-color);
-    font-size: 1.5rem;
+    flex-shrink: 0;
+    line-height: 1;            /* evita que el ícono genere espacio extra */
+    margin-top: 0.35rem;       /* ESTE valor alinea perfecto el ícono con el texto */
 }
 
 /* --- Botón de Llamada a la Acción (CTA) --- */
@@ -95,7 +102,7 @@ body {
 }
 
 .features-section {
-    padding: 5rem 0;
+    padding: 2rem 1rem;
     background-color: var(--website-light-bg);
 }
 .feature-item {

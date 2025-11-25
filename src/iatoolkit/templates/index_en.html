@@ -24,100 +24,148 @@
     </header>
 
     <!-- 2. Hero Section -->
-    <section class="hero-section">
-        <div class="container">
-            <div class="row align-items-center g-5 py-5">
-                <div class="col-lg-7">
-                    <h1 class="hero-title gradient-text">Open Source AI Framework</h1>
-                    <ul class="hero-bullets mt-4">
-                        <li><i class="bi bi-hdd-stack"></i>Connect your SQL databases and documents to give real business context to your assistants.</li>
-                        <li><i class="bi bi-code-slash"></i>Build a repository of prompts validated by your team to standardize and accelerate AI tasks.</li>
-                        <li><i class="bi bi-shield-lock"></i>Deploy the platform on your own infrastructure with full control over the LLM, ensuring data privacy.</li>
-                    </ul>
-                </div>
-                <div class="col-lg-5">
-                    <div class="border rounded-3 p-4 p-md-5 shadow-sm bg-light">
-                        <h3 class="fw-bold text-center mb-3">Try the Platform</h3>
-                        <p class="text-muted mb-4">
-                            Explore our interactive demo, configured with data from a sample company. See how the platform behaves in a realistic environment, not just a static mockup.
-                        </p>
-                        <div class="d-grid">
-                            {# This button uses .btn-primary styled under .hero-section .btn-primary in CSS #}
-                            <a href="{{ url_for('home', company_short_name='sample_company', lang=request.args.get('lang', 'en')) }}"
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               class="btn btn-primary btn-lg fw-bold">
-                                Open demo
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center g-5 py-5">
+            <div class="col-lg-7">
+                <h1 class="hero-title gradient-text">
+                    Build real-world AI assistants powered by your own data
+                </h1>
 
-    <!-- 3. Features Section -->
-    <section class="features-section">
-        <div class="container">
-            <div class="row g-4">
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="opensource-box">
-                        <div>
-                            <div class="opensource-icon"><i class="bi bi-github"></i></div>
-                            <h3>100% Open Source</h3>
-                            <p>Built in Python, IAToolkit gives you full control. Audit the code, adapt it to your needs, and contribute to a growing community.</p>
-                        </div>
-                        <a href="https://github.com/flibedinsky/iatoolkit"
+                <p class="lead mt-3">
+                    IAToolkit is an open-source framework for building AI assistants that operate inside your environment and use your company’s data securely and reliably.
+                </p>
+
+                <ul class="hero-bullets mt-4">
+                    <li>
+                        <i class="bi bi-hdd-stack"></i>
+                        Native integration with your corporate data sources.
+                    </li>
+                <li>
+                    <i class="bi bi-diagram-3"></i>
+                    Multiple Companies defined through configuration, each with its own domain.
+                </li>
+                <li>
+                    <i class="bi bi-cpu"></i>
+                    An Intelligence Layer that orchestrates prompts, tools, and RAG coherently.
+                </li>
+            </ul>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="border rounded-3 p-4 p-md-5 shadow-sm bg-light">
+                    <h3 class="fw-bold text-center mb-3">Try the Platform</h3>
+                    <p class="text-muted mb-4">
+                        Explore a realistic demo configured for a sample trading company. Ask questions
+                        over real SQL data and internal documents, and see how a real-world assistant
+                        behaves when it is backed by IAToolkit.
+                    </p>
+                    <div class="d-grid">
+                        <a href="{{ url_for('home', company_short_name='sample_company', lang='en') }}"
                            target="_blank"
-                           class="btn btn-light mt-auto">
-                            <i class="bi bi-github me-2"></i>Go to GitHub
-                            {% if iatoolkit_version %}
-                                <span class="badge bg-dark ms-2">{{ iatoolkit_version }}</span>
-                            {% endif %}
+                           rel="noopener noreferrer"
+                           class="btn btn-primary btn-lg fw-bold">
+                            Open demo
                         </a>
                     </div>
                 </div>
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="feature-item">
-                        <div class="feature-icon"><i class="bi bi-hdd-stack"></i></div>
-                        <h3>Connect Your Data</h3>
-                        <p>Integrate your SQL databases, documents (PDFs, TXT), and other systems so the assistant can answer with real context about your business.</p>
+            </div>
+        </div>
+    </div>
+</section>
+    <!-- 3. Features Section -->
+<section class="features-section">
+    <div class="container">
+        <div class="row g-4">
+
+            <!-- 1. 100% Open Source / GitHub -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="opensource-box">
+                    <div>
+                        <div class="opensource-icon"><i class="bi bi-github"></i></div>
+                        <h3>100% Open Source</h3>
+                        <p>
+                            A fully open framework you can audit, extend, and deploy on your own infrastructure –
+                            no black boxes, no proprietary lock-in.
+                        </p>
                     </div>
-                </div>
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="feature-item">
-                        <div class="feature-icon"><i class="bi bi-gem"></i></div>
-                        <h3>Multi-LLM</h3>
-                        <p>Avoid getting locked into a single provider. IAToolkit is designed to work with different models, including Gemini and OpenAI (GPT).</p>
-                    </div>
+                    <a href="https://github.com/flibedinsky/iatoolkit"
+                       target="_blank"
+                       class="btn btn-light mt-auto">
+                        <i class="bi bi-github me-2"></i>View on GitHub
+                        {% if iatoolkit_version %}
+                            <span class="badge bg-dark ms-2">{{ iatoolkit_version }}</span>
+                        {% endif %}
+                    </a>
                 </div>
             </div>
 
-            <div class="row g-4 mt-4">
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="feature-item">
-                        <div class="feature-icon"><i class="bi bi-magic"></i></div>
-                        <h3>Prompt Manager</h3>
-                        <p>Create, manage, and share a library of company-specific prompts, optimizing repetitive workflows across your teams.</p>
-                    </div>
+            <!-- 2. Multi-Tenant Architecture -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-diagram-3"></i></div>
+                    <h3>Multi-Tenant Architecture</h3>
+                    <p>
+                        Serve multiple business units or clients from a single installation.
+                        Each Company is isolated through configuration, tools, prompts, and context.
+                    </p>
                 </div>
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="feature-item">
-                        <div class="feature-icon"><i class="bi bi-palette"></i></div>
-                        <h3>Fully Customizable</h3>
-                        <p>Customize everything from the UI look and feel to the assistant’s tools and capabilities so it aligns with your brand and processes.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 d-flex align-items-stretch">
-                    <div class="feature-item">
-                        <div class="feature-icon"><i class="bi bi-shield-lock"></i></div>
-                        <h3>Privacy First</h3>
-                        <p>Deploy IAToolkit on your own servers. Your data and queries are never shared with third parties, ensuring maximum confidentiality.</p>
-                    </div>
+            </div>
+
+            <!-- 3. Connect Your Data -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-hdd-stack"></i></div>
+                    <h3>Connect Your Data</h3>
+                    <p>
+                        Connect SQL databases, internal documents, and APIs so your assistant answers
+                        with real corporate information instead of hallucinations.
+                    </p>
                 </div>
             </div>
         </div>
-    </section>
+
+        <div class="row g-4 mt-4">
+
+            <!-- 4. Intelligence Layer -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-cpu"></i></div>
+                    <h3>Intelligence Layer</h3>
+                    <p>
+                        A structured layer that interprets intent, reads each Company’s configuration,
+                        orchestrates queries, prompts, tools, and RAG, and keeps responses aligned
+                        with business rules.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 5. Multi-LLM -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-gem"></i></div>
+                    <h3>Multi-LLM</h3>
+                    <p>
+                        Use different providers (OpenAI, Gemini, local models) without changing your code.
+                        Choose the best model per Company or per workflow.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 6. 100% Customizable -->
+            <div class="col-lg-4 d-flex align-items-stretch">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="bi bi-palette"></i></div>
+                    <h3>100% Customizable</h3>
+                    <p>
+                        Adapt branding, tools, prompts, context, and workflows so each assistant
+                        reflects your identity and supports your internal business processes.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
     <!-- 3.2 CTO Resources / Technical Content -->
     <section class="cto-resources-section py-4">
