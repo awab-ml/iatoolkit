@@ -101,30 +101,52 @@
 <p>
   IAToolkit is designed with a clear, layered architecture that keeps concerns separated and makes the system easy to maintain, extend, and reason about. Each part of the framework plays a specific role, ensuring that your assistant remains robust as it grows in complexity.
 </p>
-
+<div style="text-align: center; margin: 2rem 0;">
+            <img src="{{ url_for('static', filename='images/iatoolkit_core.png') }}"
+                alt="IAToolkit multi-tenant conceptual architecture"
+                style="max-width: 90%; height: auto; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.08);">
+            <p style="color: #6c757d; font-size: 0.9rem; margin-top: 0.5rem;">
+                    Figure: Conceptual architecture of IAToolkit Core and multi-tenant companies.
+            </p>
+        </div>
 <p>
   The framework organizes its logic into well-defined layers:
 </p>
 
 <ul>
-  <li><strong>Views</strong> handle HTTP requests, authentication, sessions, and JSON/HTML responses.</li>
-  <li><strong>Services</strong> orchestrate core workflows—query handling, RAG, prompt rendering, authentication, history, feedback, and configuration.</li>
-  <li><strong>Repositories</strong> provide structured access to the internal database using SQLAlchemy.</li>
-  <li><strong>Infrastructure adapters</strong> connect to external systems such as LLM providers (OpenAI, Gemini), mail services, and file storage like S3.</li>
-  <li><strong>Common utilities</strong> include helpers for encryption, validation, routing, and error handling.</li>
+  <li>
+    <strong>Interfaces &amp; Chat</strong> manage the conversational experience — how users interact
+    with the assistant and how messages flow between the browser, the server, and the LLM.
+  </li>
+
+  <li>
+    <strong>Intelligence Layer</strong> is the core of the framework. It interprets user intent, reads
+    each company’s configuration, orchestrates SQL queries, document retrieval, prompts, and tools, and
+    ensures that responses remain accurate and aligned with each tenant’s business context.
+  </li>
+
+  <li>
+    <strong>Connectors &amp; Tools Layer</strong> links the intelligence with real data and operational
+    capabilities. It provides access to SQL databases, internal documents, APIs, and company-specific
+    tools that allow the assistant to execute workflows—not just answer questions.
+  </li>
+
+  <li>
+    <strong>Data Access Layer</strong> provides structured and predictable access to internal databases
+    using SQLAlchemy, enabling consistent data retrieval across all companies.
+  </li>
 </ul>
 
 <p>
-  Under the hood, IAToolkit is a well-structured Flask application that keeps its components cleanly
-    separated and easily testable through a clear service and module layout.
-    It uses SQLAlchemy as its ORM to provide consistent, predictable data access,
-    and relies on a comprehensive suite of automated tests to ensure reliability as
-    you extend the framework with new companies, tools, and workflows.
+Under the hood, IAToolkit is a cleanly structured Flask application where each component is isolated,
+testable, and easy to extend. The architecture allows new companies, tools, and workflows to be added
+simply by updating configuration and domain-specific logic, without changing the core of the system.
 </p>
     <hr />
 
     <!-- Chapter 3 -->
     <h2>3. Building a Multi-Tenant Assistant</h2>
+
 
     <p>
       One of the most powerful ideas in IAToolkit is the concept of a <strong>Company</strong>.
@@ -135,34 +157,30 @@
 
     <h3>3.1 The Company Module: A Clean Boundary per Tenant</h3>
 
-    <p>
-      Each Company lives in its own directory, for example:
-    </p>
+<p>
+  Each Company is defined not by its folder structure, but by three key elements:
+  a declarative configuration (<code>company.yaml</code>), a set of domain-specific
+  resources (context, prompts, schemas), and a Python class that implements any
+  custom tools or business logic. Together, these elements form a clean boundary
+  around each tenant inside the shared IAToolkit Core.
+</p>
 
-    <pre><code>companies/
-  ├── sample_company/
-  │   ├── config/
-  │   ├── context/
-  │   ├── schema/
-  │   ├── prompts/
-  │   └── sample_company.py
-  └── your_company/
-      ├── config/
-      ├── context/
-      ├── schema/
-      ├── prompts/
-      └── your_company.py
-    </code></pre>
+<p>
+  The diagram below shows how the Dispatcher connects the LLM tool calls to the
+  correct Company, loading its configuration, context, and Python code to execute
+  company-specific behaviors.
+</p>
 
-    <p>
-      This structure gives you a natural, file-system level isolation:
-      each client or business unit gets its own folder with its own configuration and resources.
-      For agencies and SaaS providers, this means you can host many clients in the same deployment,
-      while keeping their logic and knowledge cleanly separated.
-    </p>
+    <div style="text-align: center; margin: 2rem 0;">
+        <img src="{{ url_for('static', filename='images/dispatcher_diagram.png') }}"
+         alt="Company and Dispatcher integration in IAToolkit"
+         style="max-width: 60%; height: auto; border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.10);">
+        <p style="color: #6c757d; font-size: 0.9rem; margin-top: 0.5rem;">
+        Figure: How IAToolkit’s Dispatcher connects LLM tool calls to each Company’s configuration and logic.
+        </p>
+    </div>
 
     <h3>3.2 Per-Company Directories: Config, Context, Schema, Prompts</h3>
-
     <p>
       Each Company has several dedicated directories:
     </p>
