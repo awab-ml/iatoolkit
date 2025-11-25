@@ -2,7 +2,7 @@
 <div class="custom-company-header container d-flex justify-content-between align-items-center">
 
     {% if company_short_name and branding %}
-    <a href="{{ url_for('home', company_short_name=company_short_name) }}"
+    <a href="{{ url_for('home', company_short_name=company_short_name, lang=request.args.get('lang', 'en')) }}"
        class="brand-name"
        style="{{ branding.primary_text_style }}">
         {{ branding.name }} IA
