@@ -94,17 +94,19 @@ class QueryService:
 
         # Initialize prompt_content. It will be an empty string for direct questions.
         main_prompt = ""
+        # We use a local variable for the question to avoid modifying the argument reference if it were mutable,
+        # although strings are immutable, this keeps the logic clean regarding what 'question' means in each context.
+        effective_question = question
 
         if prompt_name:
             question_dict = {'prompt': prompt_name, 'data': final_client_data}
-
-            question = json.dumps(question_dict)
+            effective_question = json.dumps(question_dict)
             prompt_content = self.prompt_service.get_prompt_content(company, prompt_name)
 
             # Render the user requested prompt
             main_prompt = self.util.render_prompt_from_string(
                 template_string=prompt_content,
-                question=question,
+                question=effective_question,
                 client_data=final_client_data,
                 user_identifier=user_identifier,
                 company=company,
@@ -113,11 +115,11 @@ class QueryService:
         # This is the final user-facing prompt for this specific turn
         user_turn_prompt = f"{main_prompt}\n{files_context}"
         if not prompt_name:
-            user_turn_prompt += f"\n### La pregunta que debes responder es: {question}"
+            user_turn_prompt += f"\n### La pregunta que debes responder es: {effective_question}"
         else:
-            user_turn_prompt += f'\n### Contexto Adicional: El usuario ha aportado este contexto puede ayudar: {question}'
+            user_turn_prompt += f'\n### Contexto Adicional: El usuario ha aportado este contexto puede ayudar: {effective_question}'
 
-        return user_turn_prompt
+        return user_turn_prompt, effective_question
 
     def _ensure_valid_history(self, company, user_identifier: str,
                               effective_model: str, user_turn_prompt: str,
@@ -326,7 +328,7 @@ class QueryService:
             effective_model = self._resolve_model(company_short_name, model)
 
             # --- Build User-Facing Prompt ---
-            user_turn_prompt = self._build_user_facing_prompt(
+            user_turn_prompt, effective_question = self._build_user_facing_prompt(
                 company=company,
                 user_identifier=user_identifier,
                 client_data=client_data,
@@ -364,7 +366,7 @@ class QueryService:
                 model=effective_model,
                 previous_response_id=previous_response_id,
                 context_history=context_history,
-                question=question,
+                question=effective_question,
                 context=user_turn_prompt,
                 tools=tools,
                 text=output_schema
