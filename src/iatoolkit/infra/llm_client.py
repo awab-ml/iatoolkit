@@ -89,7 +89,7 @@ class llmClient:
             # get the proxy for the company
             llm_proxy = self.llm_proxy_factory.create_for_company(company)
 
-            # here is the first call to the LLM
+            # this is the first call to the LLM on the iteration
             try:
                 input_messages = [{
                     "role": "user",

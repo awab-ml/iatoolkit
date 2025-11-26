@@ -94,19 +94,17 @@ class QueryService:
 
         # Initialize prompt_content. It will be an empty string for direct questions.
         main_prompt = ""
-        # We use a local variable for the question to avoid modifying the argument reference if it were mutable,
-        # although strings are immutable, this keeps the logic clean regarding what 'question' means in each context.
-        effective_question = question
 
         if prompt_name:
             question_dict = {'prompt': prompt_name, 'data': final_client_data}
-            effective_question = json.dumps(question_dict)
+
+            question = json.dumps(question_dict)
             prompt_content = self.prompt_service.get_prompt_content(company, prompt_name)
 
             # Render the user requested prompt
             main_prompt = self.util.render_prompt_from_string(
                 template_string=prompt_content,
-                question=effective_question,
+                question=question,
                 client_data=final_client_data,
                 user_identifier=user_identifier,
                 company=company,
@@ -115,9 +113,9 @@ class QueryService:
         # This is the final user-facing prompt for this specific turn
         user_turn_prompt = f"{main_prompt}\n{files_context}"
         if not prompt_name:
-            user_turn_prompt += f"\n### La pregunta que debes responder es: {effective_question}"
+            user_turn_prompt += f"\n### La pregunta que debes responder es: {question}"
         else:
-            user_turn_prompt += f'\n### Contexto Adicional: El usuario ha aportado este contexto puede ayudar: {effective_question}'
+            user_turn_prompt += f'\n### Contexto Adicional: El usuario ha aportado este contexto puede ayudar: {question}'
 
         return user_turn_prompt
 
