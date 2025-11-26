@@ -13,6 +13,13 @@ class LLMQueryRepo:
     def __init__(self, db_manager: DatabaseManager):
         self.session = db_manager.get_session()
 
+    def commit(self):
+        # commit changes to the database
+        self.session.commit()
+
+    def rollback(self):
+        self.session.rollback()
+
     def add_query(self, query: LLMQuery):
         self.session.add(query)
         self.session.commit()
@@ -54,6 +61,11 @@ class LLMQueryRepo:
         # commit is handled by the caller
         self.session.query(Prompt).filter_by(company_id=company.id).delete(synchronize_session=False)
         self.session.query(PromptCategory).filter_by(company_id=company.id).delete(synchronize_session=False)
+
+    def delete_system_functions_and_prompts(self):
+        # delete all system functions and prompts
+        self.session.query(Prompt).filter_by(is_system_prompt=True).delete(synchronize_session=False)
+        self.session.query(Function).filter_by(system_function=True).delete(synchronize_session=False)
 
     def get_history(self, company: Company, user_identifier: str) -> list[LLMQuery]:
         return self.session.query(LLMQuery).filter(

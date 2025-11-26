@@ -10,7 +10,6 @@ from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit import BaseCompany
 from iatoolkit.repositories.models import Company, PromptCategory
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
-from iatoolkit.repositories.database_manager import DatabaseManager
 
 # A complete and valid mock configuration, passing all validation rules.
 MOCK_VALID_CONFIG = {
@@ -93,7 +92,6 @@ class TestConfigurationService:
         """
         self.mock_utility = Mock(spec=Utility)
         self.mock_llm_query_repo = Mock(spec=LLMQueryRepo)
-        self.mock_database_manager = Mock(spec=DatabaseManager)
 
         self.mock_company_instance = Mock(spec=BaseCompany)
         self.mock_company = Company(id=1, short_name='ACME')
@@ -102,7 +100,6 @@ class TestConfigurationService:
         self.mock_company_instance.company = self.mock_company
 
         self.service = ConfigurationService(utility=self.mock_utility,
-                                            db_manager=self.mock_database_manager,
                                             llm_query_repo=self.mock_llm_query_repo)
         self.COMPANY_NAME = 'acme'
 
@@ -285,20 +282,12 @@ class TestConfigurationService:
         # Simular error en repo
         self.mock_llm_query_repo.delete_all_prompts.side_effect = Exception("DB Error")
 
-        # Mock session para verificar rollback (asumiendo que self.service.session viene de db_manager)
-        mock_session = Mock()
-        self.mock_database_manager.get_session.return_value = mock_session
-        # Re-instanciar service para que tome el mock session
-        service = ConfigurationService(utility=self.mock_utility,
-                                       db_manager=self.mock_database_manager,
-                                       llm_query_repo=self.mock_llm_query_repo)
-
         with pytest.raises(IAToolkitException) as excinfo:
-            service.load_configuration('acme', self.mock_company_instance)
+            self.service.load_configuration('acme', self.mock_company_instance)
 
         assert excinfo.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
         assert "DB Error" in str(excinfo.value)
-        mock_session.rollback.assert_called_once()
+        self.mock_llm_query_repo.rollback.assert_called_once()
 
     @patch('pathlib.Path.is_file', return_value=True)
     @patch('pathlib.Path.exists', return_value=True)
@@ -317,15 +306,9 @@ class TestConfigurationService:
         # Simular error en repo
         self.mock_llm_query_repo.delete_all_functions.side_effect = Exception("DB Error Tools")
 
-        mock_session = Mock()
-        self.mock_database_manager.get_session.return_value = mock_session
-        service = ConfigurationService(utility=self.mock_utility,
-                                       db_manager=self.mock_database_manager,
-                                       llm_query_repo=self.mock_llm_query_repo)
-
         with pytest.raises(IAToolkitException) as excinfo:
-            service.load_configuration('acme', self.mock_company_instance)
+            self.service.load_configuration('acme', self.mock_company_instance)
 
         assert excinfo.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
         assert "DB Error Tools" in str(excinfo.value)
-        mock_session.rollback.assert_called_once()
+        self.mock_llm_query_repo.rollback.assert_called_once()

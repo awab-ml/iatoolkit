@@ -6,7 +6,6 @@ from pathlib import Path
 from iatoolkit.repositories.models import Company
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
-from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.common.util import Utility
 from injector import inject
@@ -20,10 +19,8 @@ class ConfigurationService:
 
     @inject
     def __init__(self,
-                 db_manager: DatabaseManager,
                  llm_query_repo: LLMQueryRepo,
                  utility: Utility):
-        self.session = db_manager.get_session()
         self.llm_query_repo = llm_query_repo
         self.utility = utility
         self._loaded_configs = {}   # cache for store loaded configurations
@@ -117,9 +114,9 @@ class ConfigurationService:
                 )
 
             # commit the transactions
-            self.session.commit()
+            self.llm_query_repo.commit()
         except Exception as e:
-            self.session.rollback()
+            self.llm_query_repo.rollback()
             raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR, str(e))
 
     def _register_prompts(self, company_instance, config: dict):
@@ -155,9 +152,9 @@ class ConfigurationService:
                     custom_fields=prompt_data.get('custom_fields', [])
                 )
             # commit the transactions
-            self.session.commit()
+            self.llm_query_repo.commit()
         except Exception as e:
-            self.session.rollback()
+            self.llm_query_repo.rollback()
             raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR, str(e))
 
     def _validate_configuration(self, company_short_name: str, config: dict):

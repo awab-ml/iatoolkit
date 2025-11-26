@@ -105,28 +105,37 @@ class Dispatcher:
             self.sql_service.register_database(db_name, db_uri)
 
     def setup_iatoolkit_system(self):
-        # create system functions
-        for function in self.system_functions:
-            self.llmquery_repo.create_function(
-                Function(
-                    company_id=None,
-                    system_function=True,
-                    name=function['function_name'],
-                    description= function['description'],
-                    parameters=function['parameters']
-                )
-            )
+        try:
+            self.llmquery_repo.delete_system_functions_and_prompts()
 
-        # create the system prompts
-        i = 1
-        for prompt in self.system_prompts:
-            self.prompt_service.create_prompt(
-                prompt_name=prompt['name'],
-                description=prompt['description'],
-                order=1,
-                is_system_prompt=True,
-            )
-            i += 1
+            # create system functions
+            for function in self.system_functions:
+                self.llmquery_repo.create_function(
+                    Function(
+                        company_id=None,
+                        system_function=True,
+                        name=function['function_name'],
+                        description= function['description'],
+                        parameters=function['parameters']
+                    )
+                )
+
+            # create the system prompts
+            i = 1
+            for prompt in self.system_prompts:
+                self.prompt_service.create_prompt(
+                    prompt_name=prompt['name'],
+                    description=prompt['description'],
+                    order=1,
+                    is_system_prompt=True,
+                )
+                i += 1
+            self.llmquery_repo.commit()
+        except Exception as e:
+            self.llmquery_repo.rollback()
+            raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR, str(e))
+
+
 
 
     def dispatch(self, company_short_name: str, function_name: str, **kwargs) -> dict:

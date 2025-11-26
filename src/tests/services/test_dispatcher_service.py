@@ -224,3 +224,127 @@ class TestDispatcher:
 
         # Restart the main patch for subsequent tests
         self.get_instance_patcher.start()
+
+    def test_setup_iatoolkit_system_success(self):
+        """Test successful setup of system functions and prompts."""
+        # Configure mocks for successful execution
+        self.mock_llm_query_repo.delete_system_functions_and_prompts = MagicMock()
+        self.mock_llm_query_repo.create_function = MagicMock()
+        self.mock_prompt_manager.create_prompt = MagicMock()
+        self.mock_llm_query_repo.commit = MagicMock()
+
+        # Call the method under test
+        self.dispatcher.setup_iatoolkit_system()
+
+        # Verify deletions were called
+        self.mock_llm_query_repo.delete_system_functions_and_prompts.assert_called_once()
+
+        # Verify system functions creation
+        # Dispatcher defines _FUNCTION_LIST with 3 functions
+        assert self.mock_llm_query_repo.create_function.call_count == 3
+
+        # Verify system prompts creation
+        # Dispatcher defines _SYSTEM_PROMPT with 3 prompts
+        assert self.mock_prompt_manager.create_prompt.call_count == 3
+
+        # Verify transaction commit
+        self.mock_llm_query_repo.commit.assert_called_once()
+
+    def test_setup_iatoolkit_system_exception(self):
+        """Test that setup_iatoolkit_system handles exceptions and rolls back."""
+        # Configure mock to raise an exception
+        self.mock_llm_query_repo.delete_system_functions_and_prompts.side_effect = Exception("DB Error")
+        self.mock_llm_query_repo.rollback = MagicMock()
+
+        # Verify exception is raised and wrapped in IAToolkitException
+        with pytest.raises(IAToolkitException) as excinfo:
+            self.dispatcher.setup_iatoolkit_system()
+
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
+        assert "DB Error" in str(excinfo.value)
+
+        # Verify rollback was called
+        self.mock_llm_query_repo.rollback.assert_called_once()
+
+    # ... existing code ...
+    def test_load_company_configs_success(self):
+        """Test load_company_configs loads configuration for all companies."""
+        # Dispatcher uses self.company_instances which is populated by registry.
+        # We have "sample" registered in setup() via register_company("sample", MockSampleCompany)
+
+        # Mock setup_iatoolkit_system
+        self.dispatcher.setup_iatoolkit_system = MagicMock()
+
+        # Call method under test
+        result = self.dispatcher.load_company_configs()
+
+        # Assertions
+        self.dispatcher.setup_iatoolkit_system.assert_called_once()
+
+        # Verify config_service.load_configuration called for "sample"
+        self.mock_config_service.load_configuration.assert_called_once_with(
+            "sample", self.mock_sample_company_instance
+        )
+
+        # Verify databases registration logic (indirectly tested via side-effect or mocking internal method if preferred)
+        # Here we rely on the fact that _register_company_databases is called internally.
+        # Since it's internal, we can check its effects: calling sql_service.register_database
+        # But first we need config_service to return something for data_sources
+        # In this basic success test, we assume no DBs to register if we didn't mock config_service response
+
+        assert result is True
+
+    def test_load_company_configs_handles_exception(self):
+        """Test load_company_configs raises exception on failure."""
+        self.dispatcher.setup_iatoolkit_system = MagicMock()
+
+        # Simulate error during configuration loading
+        self.mock_config_service.load_configuration.side_effect = Exception("Config Error")
+
+        with pytest.raises(Exception) as excinfo:
+            self.dispatcher.load_company_configs()
+
+        assert "Config Error" in str(excinfo.value)
+
+    def test_register_company_databases_success(self):
+        """Test _register_company_databases registers databases correctly."""
+        company_name = "test_company"
+
+        # Mock configuration with databases
+        self.mock_config_service.get_configuration.return_value = {
+            "sql": [
+                {"database": "db1", "connection_string_env": "DB1_URI"},
+                {"database": "db2", "connection_string_env": "DB2_URI"}
+            ]
+        }
+
+        # Mock environment variables
+        with patch.dict("os.environ", {"DB1_URI": "sqlite:///db1.db", "DB2_URI": "sqlite:///db2.db"}):
+            self.dispatcher._register_company_databases(company_name)
+
+        # Verify SqlService calls
+        assert self.mock_sql_service.register_database.call_count == 2
+        self.mock_sql_service.register_database.assert_any_call("db1", "sqlite:///db1.db")
+        self.mock_sql_service.register_database.assert_any_call("db2", "sqlite:///db2.db")
+
+    def test_register_company_databases_no_config(self):
+        """Test _register_company_databases does nothing if no config."""
+        self.mock_config_service.get_configuration.return_value = None
+
+        self.dispatcher._register_company_databases("test_company")
+
+        self.mock_sql_service.register_database.assert_not_called()
+
+    def test_register_company_databases_missing_env_var(self):
+        """Test _register_company_databases skips if env var is missing."""
+        company_name = "test_company"
+
+        self.mock_config_service.get_configuration.return_value = {
+            "sql": [{"database": "db1", "connection_string_env": "MISSING_ENV_VAR"}]
+        }
+
+        # Ensure env var is not set
+        with patch.dict("os.environ", {}, clear=True):
+            self.dispatcher._register_company_databases(company_name)
+
+        self.mock_sql_service.register_database.assert_not_called()
