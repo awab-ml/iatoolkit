@@ -89,12 +89,12 @@ Everything orchestrated through the Intelligence Layer.
 ## 🏢 Multi-Tenant Architecture
 
 A single installation of IAToolkit can power assistants for multiple companies, departments, or customers.
-
+```text
 companies/
     company_a
     company_b
     company_c
-
+```
 Each Company is fully isolated:
 
 - prompts  
