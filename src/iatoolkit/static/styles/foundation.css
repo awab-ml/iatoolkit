@@ -1,0 +1,215 @@
+/* Dispatcher Diagram container */
+.dispatcher-diagram {
+    max-width: 420px;
+    margin: 2rem auto;
+    padding: 1.5rem 1.75rem;
+    border-radius: 18px;
+    background: #f8fafc;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+    font-family: inherit;
+    color: #1f2933;
+    font-size: 0.9rem;
+    position: relative;
+    text-align: center;
+}
+
+/* Generic box */
+.disp-box {
+    border-radius: 14px;
+    border: 1px solid rgba(0,0,0,0.06);
+    background: #ffffff;
+    padding: 0.75rem 1.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Dispatcher main box */
+.disp-main {
+    background: #4A55A2;
+    border-color: #4A55A2;
+    color: #ffffff;
+    margin: 0 auto;
+    min-width: 220px;
+    justify-content: flex-start;
+}
+
+.disp-main-text {
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+/* Document icon */
+.disp-icon-doc {
+    width: 18px;
+    height: 22px;
+    border-radius: 4px;
+    border: 2px solid currentColor;
+    display: inline-block;
+    position: relative;
+}
+
+.disp-icon-doc::before,
+.disp-icon-doc::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    height: 2px;
+    background: currentColor;
+}
+
+.disp-icon-doc::before {
+    top: 4px;
+}
+
+.disp-icon-doc::after {
+    top: 9px;
+}
+
+/* Filled doc for resources */
+.disp-icon-doc.filled {
+    background: #4A55A2;
+    border-color: #4A55A2;
+    color: #ffffff;
+}
+
+/* Vertical arrows */
+.disp-arrow-vertical {
+    width: 100%;
+    height: 24px;
+    position: relative;
+    margin: 0.4rem 0 0.2rem;
+}
+
+.disp-arrow-vertical::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: 16px;
+    border-left: 1px solid #9ca3af;
+    transform: translateX(-50%);
+}
+
+.disp-arrow-vertical::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    border-width: 5px 4px 0 4px;
+    border-style: solid;
+    border-color: #9ca3af transparent transparent transparent;
+    transform: translateX(-50%);
+}
+
+.disp-arrow-small {
+    height: 20px;
+    margin-top: 0.2rem;
+}
+
+/* Branch row from Dispatcher to both columns */
+.disp-branch-row {
+    position: relative;
+    height: 20px;
+    margin-bottom: 0.3rem;
+}
+
+.disp-branch-line {
+    position: absolute;
+    top: 10px;
+    left: 18%;
+    right: 18%;
+    border-top: 1px solid #9ca3af;
+}
+
+.disp-branch-node {
+    position: absolute;
+    top: 10px;
+    width: 0;
+    height: 10px;
+    border-left: 1px solid #9ca3af;
+}
+
+.disp-branch-node.left {
+    left: 30%;
+}
+
+.disp-branch-node.right {
+    right: 30%;
+}
+
+/* Columns: company + resource */
+.disp-companies-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.9rem;
+    margin-top: 0.2rem;
+}
+
+.disp-column {
+    flex: 1;
+}
+
+/* Company boxes */
+.disp-company {
+    background: #f3f4f6;
+    border-radius: 14px;
+    border-color: rgba(0,0,0,0.04);
+    flex-direction: column;
+    padding: 0.75rem 0.9rem;
+}
+
+/* “Building” icon */
+.disp-company-icon {
+    width: 26px;
+    height: 18px;
+    border-radius: 2px;
+    border: 2px solid #4b5563;
+    border-bottom-width: 4px;
+    margin: 0 auto 0.25rem;
+    position: relative;
+}
+
+.disp-company-icon::before,
+.disp-company-icon::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    width: 6px;
+    height: 4px;
+    background: #4b5563;
+}
+
+.disp-company-icon::before {
+    left: 3px;
+}
+
+.disp-company-icon::after {
+    right: 3px;
+}
+
+.disp-company-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Resource boxes */
+.disp-resource {
+    margin-top: 0.1rem;
+    justify-content: flex-start;
+}
+
+.disp-resource-text {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* Responsive tweak */
+@media (max-width: 480px) {
+    .dispatcher-diagram {
+        padding: 1.3rem 1.1rem;
+        font-size: 0.85rem;
+    }
+}

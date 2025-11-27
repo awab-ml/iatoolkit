@@ -4,6 +4,7 @@
 
 {% block styles %}
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/landing_page.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/foundation.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -134,11 +135,11 @@
   <div class="core-companies-row">
     <div class="core-box core-company">
       <div class="core-title">Company A</div>
-      <div class="core-sub">company.yaml · data · tools</div>
+      <div class="core-sub">company.yaml<br>data - tools</div>
     </div>
     <div class="core-box core-company">
       <div class="core-title">Company B</div>
-      <div class="core-sub">company.yaml · data · tools</div>
+      <div class="core-sub">company.yaml<br>data - tools</div>
     </div>
   </div>
 
@@ -237,16 +238,59 @@ simply by updating configuration and domain-specific logic, without changing the
   correct Company, loading its configuration, context, and Python code to execute
   company-specific behaviors.
 </p>
+<!-- Dispatcher Diagram (HTML/CSS version) -->
+<div class="dispatcher-diagram">
 
-    <div style="text-align: center; margin: 2rem 0;">
-        <img src="{{ url_for('static', filename='images/dispatcher_diagram.png') }}"
-         alt="Company and Dispatcher integration in IAToolkit"
-         style="max-width: 60%; height: auto; border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.10);">
-        <p style="color: #6c757d; font-size: 0.9rem; margin-top: 0.5rem;">
-        Figure: How IAToolkit’s Dispatcher connects LLM tool calls to each Company’s configuration and logic.
-        </p>
+  <!-- Dispatcher -->
+  <div class="disp-box disp-main">
+    <span class="disp-icon-doc"></span>
+    <span class="disp-main-text">Dispatcher</span>
+  </div>
+
+  <!-- Arrow from Dispatcher -->
+  <div class="disp-arrow-vertical"></div>
+
+  <!-- Branch to both companies -->
+  <div class="disp-branch-row">
+    <div class="disp-branch-line"></div>
+    <div class="disp-branch-node left"></div>
+    <div class="disp-branch-node right"></div>
+  </div>
+
+  <!-- Companies + resources columns -->
+  <div class="disp-companies-row">
+    <!-- Column: Company A -->
+    <div class="disp-column">
+      <div class="disp-box disp-company">
+        <div class="disp-company-icon"></div>
+        <div class="disp-company-text">Company A</div>
+      </div>
+
+      <div class="disp-arrow-vertical disp-arrow-small"></div>
+
+      <div class="disp-box disp-resource">
+        <span class="disp-icon-doc filled"></span>
+        <span class="disp-resource-text">Config &amp; schema</span>
+      </div>
     </div>
 
+    <!-- Column: Company B -->
+    <div class="disp-column">
+      <div class="disp-box disp-company">
+        <div class="disp-company-icon"></div>
+        <div class="disp-company-text">Company B</div>
+      </div>
+
+      <div class="disp-arrow-vertical disp-arrow-small"></div>
+
+      <div class="disp-box disp-resource">
+        <span class="disp-icon-doc filled"></span>
+        <span class="disp-resource-text">Docs &amp; tools</span>
+      </div>
+    </div>
+  </div>
+
+</div>
 
     <h3>3.2 Per-Company Directories: Context, Schema, Prompts</h3>
     <p>
