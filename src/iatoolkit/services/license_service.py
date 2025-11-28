@@ -8,14 +8,16 @@ import os
 import logging
 from pathlib import Path
 from iatoolkit.common.exceptions import IAToolkitException
+from injector import inject, singleton
 
 
+@singleton
 class LicenseService:
     """
     Manages system restrictions and features based on a license (JWT).
     If no license or an invalid license is provided, Community Edition limits apply.
     """
-
+    @inject
     def __init__(self):
         self.public_key = self._load_public_key()
         self.limits = self._load_limits()
