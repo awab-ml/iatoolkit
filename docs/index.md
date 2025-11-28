@@ -89,7 +89,7 @@ Ready to go to production? Follow the **[Deployment Guide](./deployment_guide.md
 - 🗓️ **Mini-Project Implementation Plan**  
   A 3-month roadmap designed to help teams build their first real-world AI assistant using 
   SQL data, documents, and tools.  
-  **https://www.iatoolkit.com/pages/implementation_plan**
+  **https://www.iatoolkit.com/pages/mini_project**
 
 ---
 

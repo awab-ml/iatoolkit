@@ -169,7 +169,7 @@ IAToolkit stands apart from frameworks like LangChain or LlamaIndex because it:
 - 🧠 **[Programming Guide](docs/programming_guide.md)** – services, intelligence layer, dispatching
 - 🗃️ **[Database Guide](docs/database_guide.md)** – internal schema overview
 - 🌱 **[Foundation Article](https://iatoolkit.com/pages/foundation)** – the “Why” behind the architecture
-- 📘 **[Mini-Project (3 months)](https://iatoolkit.com/pages/implementation_plan)** – how to deploy a corporate AI assistant
+- 📘 **[Mini-Project (3 months)](https://iatoolkit.com/pages/mini_project)** – how to deploy a corporate AI assistant
 
 
 ---
