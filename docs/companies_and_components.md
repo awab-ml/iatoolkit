@@ -664,4 +664,11 @@ The key benefits of this architecture are:
 - **Maintainability**: Clear separation between core framework and company-specific code
 - **Flexibility**: Mix and match different LLM providers, databases, and storage solutions per company
 
-Start by exploring the `sample_company` implementation, then create your own company following the steps outlined above. The configuration file is your primary tool for customization, while the Python module gives you the flexibility to implement custom business logic when needed.
+Start by exploring the `sample_company` implementation, then create your own company following the steps outlined above. 
+The configuration file is your primary tool for customization, while the Python module gives you the flexibility to 
+implement custom business logic when needed.
+
+IAToolkit’s multi-tenant design works consistently across Community (COMM) and Enterprise (ENT)
+editions. The difference between editions is enforced by the LicenseService and does not affect
+the structure or configuration of a Company: all Companies follow the same module layout,
+YAML configuration model, and integration patterns.

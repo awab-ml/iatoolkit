@@ -18,7 +18,7 @@ class BaseCompany(ABC):
         self.profile_repo: ProfileRepo = injector.get(ProfileRepo)
         self.llm_query_repo: LLMQueryRepo = injector.get(LLMQueryRepo)
         self.company: Company | None = None
-        self.company_short_name: str
+        self.company_short_name = ''
 
     def _create_company(self,
                         short_name: str,

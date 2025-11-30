@@ -18,11 +18,43 @@ class CompanyRegistry:
         self._company_classes: Dict[str, Type[BaseCompany]] = {}
         self._company_instances: Dict[str, BaseCompany] = {}
 
+    def register(self, name: str, company_class: Type[BaseCompany]) -> None:
+        """
+        Registers a company in the registry.
+
+        COMMUNITY EDITION LIMITATION:
+        This base implementation enforces a strict single-tenant limit.
+        It raises a RuntimeError if a second company is registered.
+        """
+        if not issubclass(company_class, BaseCompany):
+            raise ValueError(f"The class {company_class.__name__} must be a subclass of BaseCompany")
+
+        company_key = name.lower()
+
+        # --- STRICT SINGLE-TENANT ENFORCEMENT ---
+        # If a company is already registered (and it's not an update to the same key)
+        if len(self._company_classes) > 0 and company_key not in self._company_classes:
+            logging.error(f"❌ Community Edition Restriction: Cannot register '{name}'. Limit reached (1).")
+            raise RuntimeError(
+                "IAToolkit Community Edition allows only one company instance. "
+                "Upgrade to IAToolkit Enterprise to enable multi-tenancy."
+            )
+
+        self._company_classes[company_key] = company_class
+        logging.info(f"Example Company registered: {name}")
 
     def instantiate_companies(self, injector) -> Dict[str, BaseCompany]:
         """
         intantiate all registered companies using the toolkit injector
         """
+
+        # Double-check enforcement at instantiation time for robustness
+        if len(self._company_classes) > 1:
+             logging.warning("⚠️ Multiple companies detected in Community Edition. Enforcing single-tenant mode.")
+             # Just in case someone bypassed the register() method via direct dict access
+             first_key = next(iter(self._company_classes))
+             self._company_classes = {first_key: self._company_classes[first_key]}
+
         for company_key, company_class in self._company_classes.items():
             if company_key not in self._company_instances:
                 try:
@@ -50,9 +82,28 @@ class CompanyRegistry:
         self._company_classes.clear()
         self._company_instances.clear()
 
+# --- Singleton Management ---
 
-# global instance of the company registry
+# Global instance (Default: Community Edition)
 _company_registry = CompanyRegistry()
+
+
+def get_company_registry() -> CompanyRegistry:
+    """Get the global company registry instance."""
+    return _company_registry
+
+
+def set_company_registry(registry: CompanyRegistry) -> None:
+    """
+    Sets the global company registry instance.
+    Use this to inject an Enterprise-compatible registry implementation.
+    """
+    global _company_registry
+    if not isinstance(registry, CompanyRegistry):
+        raise ValueError("Registry must inherit from CompanyRegistry")
+
+    _company_registry = registry
+    logging.info(f"✅ Company Registry implementation swapped: {type(registry).__name__}")
 
 
 def register_company(name: str, company_class: Type[BaseCompany]) -> None:
@@ -63,13 +114,5 @@ def register_company(name: str, company_class: Type[BaseCompany]) -> None:
         name: Name of the company
         company_class: Class that inherits from BaseCompany
     """
-    if not issubclass(company_class, BaseCompany):
-        raise ValueError(f"La clase {company_class.__name__} debe heredar de BaseCompany")
+    _company_registry.register(name, company_class)
 
-    company_key = name.lower()
-    _company_registry._company_classes[company_key] = company_class
-
-
-def get_company_registry() -> CompanyRegistry:
-    """get the global company registry instance"""
-    return _company_registry

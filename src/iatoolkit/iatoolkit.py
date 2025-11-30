@@ -20,7 +20,7 @@ import logging
 import os
 
 
-IATOOLKIT_VERSION = "0.85.0"
+IATOOLKIT_VERSION = "0.86.0"
 
 # global variable for the unique instance of IAToolkit
 _iatoolkit_instance: Optional['IAToolkit'] = None
@@ -109,7 +109,7 @@ class IAToolkit:
         # Step 9: get the license
         self._setup_license()
 
-        logging.info(f"🎉 IAToolkit {self.license} ver. {self.version} correctly initialized.")
+        logging.info(f"🎉 IAToolkit {self.license} version {self.version} correctly initialized.")
         self._initialized = True
         return self.app
 
@@ -373,7 +373,7 @@ class IAToolkit:
 
         # 1. Register core commands
         register_core_commands(self.app)
-        logging.info("✅ Comandos CLI del núcleo registrados.")
+        logging.info("✅ Core CLI commands registered.")
 
         # 2. Register company-specific commands
         try:
@@ -383,7 +383,7 @@ class IAToolkit:
                 company_instance.register_cli_commands(self.app)
 
         except Exception as e:
-            logging.error(f"❌ Error durante el registro de comandos de compañías: {e}")
+            logging.error(f"❌ error while registering company commands: {e}")
 
     def _setup_context_processors(self):
         # Configura context processors para templates
@@ -447,7 +447,7 @@ class IAToolkit:
         if not self._injector:
             raise IAToolkitException(
                 IAToolkitException.ErrorType.CONFIG_ERROR,
-                "App no inicializada. Llame a create_app() primero"
+                "App no initialized. Call create_app() first"
             )
         return self._injector.get(Dispatcher)
 
@@ -455,7 +455,7 @@ class IAToolkit:
         if not self.db_manager:
             raise IAToolkitException(
                 IAToolkitException.ErrorType.CONFIG_ERROR,
-                "Database manager no inicializado"
+                "Database manager not initialized."
             )
         return self.db_manager
 

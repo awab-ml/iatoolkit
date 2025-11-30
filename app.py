@@ -23,6 +23,7 @@ def create_app():
     # IMPORTANT: companies must be registered before creating the IAToolkit
     register_company('sample_company', SampleCompany)
 
+
     # create the IAToolkit and Flask instance
     toolkit = IAToolkit()
     return toolkit.create_iatoolkit()

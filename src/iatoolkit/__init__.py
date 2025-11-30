@@ -8,7 +8,7 @@ IAToolkit Package
 from .iatoolkit import IAToolkit, create_app, current_iatoolkit
 
 # for registering the client companies
-from .company_registry import register_company
+from .company_registry import register_company, set_company_registry
 from .base_company import BaseCompany
 
 # --- Services ---
@@ -24,6 +24,7 @@ __all__ = [
     'create_app',
     'current_iatoolkit',
     'register_company',
+    'set_company_registry',
     'BaseCompany',
     'QueryService',
     'SqlService',
