@@ -156,7 +156,7 @@ IAToolkit stands apart from frameworks like LangChain or LlamaIndex because it:
 - integrates **SQL, RAG, and tools** into a single intelligence layer  
 - keeps **business logic isolated** inside Company modules  
 - runs entirely **on your own infrastructure**  
-- ships with a **full web chat**, API, and admin interface  
+- ships with a **full web chat**, and API por prompt executions.  
 - is built for **production**, not prototypes  
 
 ---

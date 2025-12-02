@@ -259,9 +259,9 @@ You should **not** configure this variable in the IAToolkit server environment i
 
 This key should be treated with the same confidentiality as a password.
 
-## 10. External Login
+## 10. Single Sign-On (SSO)
 
-IAToolkit offers an "external login" feature designed to smoothly integrate the chat platform into a company portal or 
+IAToolkit Enterprise offers an SSO feature designed to smoothly integrate the chat platform into a company portal or 
 intranet where users are already authenticated.
 
 This allows a user to navigate from the internal portal to IAToolkit and be logged in automatically, 
