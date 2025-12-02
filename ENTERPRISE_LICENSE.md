@@ -41,5 +41,5 @@ Upon expiration or termination of the Enterprise Contract, all Enterprise Featur
 
 ## Contact
 
-For commercial licensing, please contact:  
-**support@iatoolkit.com**
+For commercial licensing, please contact:
+**fernando.libedinsky@gmail.com**
