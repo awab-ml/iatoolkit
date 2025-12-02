@@ -149,14 +149,12 @@ Perfect for developers, small teams, single-business use cases, and experimentat
 
 ## ⭐ Key Differentiators
 
-IAToolkit stands apart from frameworks like LangChain or LlamaIndex because it:
-
 - prioritizes **architecture-first design**, not chains or wrappers  
 - supports **multi-company** out of the box  
 - integrates **SQL, RAG, and tools** into a single intelligence layer  
 - keeps **business logic isolated** inside Company modules  
 - runs entirely **on your own infrastructure**  
-- ships with a **full web chat**, and API por prompt executions.  
+- ships with a **full web chat**, and API.  
 - is built for **production**, not prototypes  
 
 ---
