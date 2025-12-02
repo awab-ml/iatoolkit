@@ -8,8 +8,8 @@ IAToolkit is not a demo wrapper or a prompt playground — it is a **full archit
 
 ## 🚀 Why IAToolkit?
 
-Modern AI development is fragmented:  
-LangChain handles chains, LlamaIndex handles documents, your backend handles SQL, your frontend handles chats, and your devs glue everything together.
+Modern AI development is fragmented: LangChain handles chains, LlamaIndex handles documents, 
+your backend handles SQL, your frontend handles chats, and your devs glue everything together.
 
 **IAToolkit brings all of this into one unified, production-ready framework.**
 
