@@ -44,6 +44,7 @@ ui:
     welcome_message: "Hello! How can I help you today?"
     input_placeholder: "Type your query here..."
     prompts_available: "Available prompts"
+    init_context: "Initializing the AI context ..."
 
   tooltips:
     history: "History of my queries"

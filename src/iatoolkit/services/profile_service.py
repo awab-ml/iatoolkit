@@ -9,6 +9,7 @@ from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.models import User, Company, ApiKey
 from flask_bcrypt import check_password_hash
 from iatoolkit.common.session_manager import SessionManager
+from iatoolkit.services.language_service import LanguageService
 from iatoolkit.services.user_session_context_service import UserSessionContextService
 from iatoolkit.services.configuration_service import ConfigurationService
 from flask_bcrypt import Bcrypt
@@ -28,6 +29,7 @@ class ProfileService:
                  profile_repo: ProfileRepo,
                  session_context_service: UserSessionContextService,
                  config_service: ConfigurationService,
+                 lang_service: LanguageService,
                  dispatcher: Dispatcher,
                  mail_service: MailService):
         self.i18n_service = i18n_service
@@ -35,6 +37,7 @@ class ProfileService:
         self.dispatcher = dispatcher
         self.session_context = session_context_service
         self.config_service = config_service
+        self.lang_service = lang_service
         self.mail_service = mail_service
         self.bcrypt = Bcrypt()
 
@@ -92,6 +95,7 @@ class ProfileService:
         user_profile['id'] = user_identifier
         user_profile['company_id'] = company.id
         user_profile['company'] = company.name
+        user_profile['language'] = self.lang_service.get_current_language()
 
         # save user_profile in Redis session
         self.session_context.save_profile_data(company.short_name, user_identifier, user_profile)

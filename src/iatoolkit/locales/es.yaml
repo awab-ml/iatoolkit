@@ -43,6 +43,8 @@ ui:
     welcome_message: "¡Hola! ¿En qué te puedo ayudar hoy?"
     input_placeholder: "Escribe tu consulta aquí..."
     prompts_available: "Prompts disponibles"
+    init_context: "Inicializando el contexto de la IA ..."
+
 
   tooltips:
     history: "Historial con mis consultas"
