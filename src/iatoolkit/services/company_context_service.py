@@ -129,21 +129,21 @@ class CompanyContextService:
                     # 4. get the table specific configuration.
                     table_config = table_overrides.get(table_name, {})
 
-                    # 5. define the schema name, using the override if it exists.
+                    # 5. define the schema object name, using the override if it exists.
                     # Priority 1: Explicit override from the 'tables' map.
-                    schema_name = table_config.get('schema_name')
+                    schema_object_name = table_config.get('schema_object_name')
 
                     # Priority 2: Global schema defined in the source.
-                    if not schema_name and global_schema_name:
-                        schema_name = global_schema_name
+                    if not schema_object_name and global_schema_name:
+                        schema_object_name = global_schema_name
 
-                    if not schema_name:
+                    if not schema_object_name:
                         # Priority 3: Automatic prefix stripping.
                         if table_prefix and table_name.startswith(table_prefix):
-                            schema_name = table_name[len(table_prefix):]
+                            schema_object_name = table_name[len(table_prefix):]
                         else:
                             # Priority 4: Default to the table name itself.
-                            schema_name = table_name
+                            schema_object_name = table_name
 
                     # 6. define the list of columns to exclude, (local vs. global).
                     local_exclude_columns = table_config.get('exclude_columns')
@@ -153,7 +153,7 @@ class CompanyContextService:
                     table_definition = db_manager.get_table_schema(
                         table_name=table_name,
                         db_schema=db_manager.schema,
-                        schema_name=schema_name,
+                        schema_object_name=schema_object_name,
                         exclude_columns=final_exclude_columns
                     )
                     sql_context += table_definition

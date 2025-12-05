@@ -12,6 +12,8 @@ from iatoolkit.repositories.models import User, Company
 from flask_bcrypt import generate_password_hash
 from iatoolkit.services.dispatcher_service import Dispatcher
 from iatoolkit.services.i18n_service import I18nService
+from iatoolkit.services.language_service import LanguageService
+
 
 # The SessionManager is used inside the 'profile_service' module.
 @patch('iatoolkit.services.profile_service.SessionManager')
@@ -26,6 +28,7 @@ class TestProfileService:
         self.mock_dispatcher = MagicMock(spec=Dispatcher)
         self.mock_i18n = MagicMock(spec=I18nService)
         self.mock_config_service = MagicMock(spec=ConfigurationService)
+        self.mock_language_service = MagicMock(spec=LanguageService)
 
         self.service = ProfileService(
             profile_repo=self.mock_repo,
@@ -34,6 +37,7 @@ class TestProfileService:
             dispatcher=self.mock_dispatcher,
             i18n_service=self.mock_i18n,
             config_service=self.mock_config_service,
+            lang_service=self.mock_language_service
         )
 
         self.mock_user = User(id=1, email='test@email.com', first_name='Test', last_name='User',

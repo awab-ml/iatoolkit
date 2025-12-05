@@ -42,7 +42,7 @@ MOCK_CONFIG_COMPLEX = {
                 'exclude_columns': ['password_hash']  # Local override
             },
             'user_profiles': {
-                'schema_name': 'profiles'  # Schema override
+                'schema_object_name': 'profiles'  # Schema override
             }
         }
     }]
@@ -63,6 +63,7 @@ class TestCompanyContextService:
 
         # Setup a default mock for the DatabaseManager
         self.mock_db_manager = MagicMock(spec=DatabaseManager)
+        self.mock_db_manager.schema = 'public'
         self.mock_sql_service.get_database_manager.return_value = self.mock_db_manager
 
         self.context_service = CompanyContextService(
@@ -83,6 +84,7 @@ class TestCompanyContextService:
         # Arrange
         self.mock_config_service.get_configuration.return_value = MOCK_CONFIG_INCLUDE_ALL
         self.mock_db_manager.get_all_table_names.return_value = ['users', 'products']
+        self.mock_db_manager.schema = 'public'
 
         # Act
         self.context_service._get_sql_schema_context(self.COMPANY_NAME)
@@ -90,8 +92,8 @@ class TestCompanyContextService:
         # Assert
         self.mock_db_manager.get_all_table_names.assert_called_once()
         expected_calls = [
-            call(table_name='users', schema_name='users', exclude_columns=[]),
-            call(table_name='products', schema_name='products', exclude_columns=[])
+            call(table_name='users', db_schema='public', schema_object_name='users', exclude_columns=[]),
+            call(table_name='products', db_schema='public', schema_object_name='products', exclude_columns=[])
         ]
         self.mock_db_manager.get_table_schema.assert_has_calls(expected_calls, any_order=True)
 
@@ -111,8 +113,8 @@ class TestCompanyContextService:
         self.mock_db_manager.get_all_table_names.assert_not_called()
         assert self.mock_db_manager.get_table_schema.call_count == 2
         expected_calls = [
-            call(table_name='products', schema_name='products', exclude_columns=[]),
-            call(table_name='customers', schema_name='customers', exclude_columns=[])
+            call(table_name='products', db_schema='public', schema_object_name='products', exclude_columns=[]),
+            call(table_name='customers', db_schema='public', schema_object_name='customers', exclude_columns=[])
         ]
         self.mock_db_manager.get_table_schema.assert_has_calls(expected_calls, any_order=True)
 
@@ -137,9 +139,9 @@ class TestCompanyContextService:
         # Check calls with correct, final parameters
         expected_calls = [
             # 'users' table should use its local exclude_columns override
-            call(table_name='users', schema_name='users', exclude_columns=['password_hash']),
-            # 'user_profiles' should use the global exclude_columns and its local schema_name override
-            call(table_name='user_profiles', schema_name='profiles', exclude_columns=['id', 'created_at'])
+            call(table_name='users', db_schema='public',  schema_object_name='users', exclude_columns=['password_hash']),
+            # 'user_profiles' should use the global exclude_columns and its local schema_object_name override
+            call(table_name='user_profiles', db_schema='public', schema_object_name='profiles', exclude_columns=['id', 'created_at'])
         ]
         self.mock_db_manager.get_table_schema.assert_has_calls(expected_calls, any_order=True)
 

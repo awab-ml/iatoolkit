@@ -68,15 +68,15 @@ class TestDatabaseManager:
             {"name": "name", "type": "VARCHAR"}
         ]
 
-        result = self.db_manager.get_table_schema('test_table')
+        result = self.db_manager.get_table_schema('test_table', db_schema='public')
 
-        assert "{'table': 'test_table', 'description': 'Definición de la tabla test_table.', 'fields': [{'name': 'id', 'type': 'INTEGER'}, {'name': 'name', 'type': 'VARCHAR'}]}" == result.strip()
+        assert "{'table': 'test_table', 'description': 'Definición de la tabla test_table.Pertenece al esquema **`public`**.', 'fields': [{'name': 'id', 'type': 'INTEGER'}, {'name': 'name', 'type': 'VARCHAR'}], 'schema': 'public'}" == result.strip()
 
     def test_get_table_schema_table_not_exists(self):
         """Prueba get_table_schema cuando la tabla no existe"""
         self.mock_inspect.return_value.get_table_names.return_value = []
 
         with pytest.raises(RuntimeError) as exc_info:
-            self.db_manager.get_table_schema('non_existent_table')
+            self.db_manager.get_table_schema('non_existent_table', db_schema='public')
 
         assert "Table 'non_existent_table' does not exist" in str(exc_info.value)

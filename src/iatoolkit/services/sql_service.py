@@ -8,6 +8,7 @@ from iatoolkit.common.util import Utility
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.common.exceptions import IAToolkitException
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from injector import inject, singleton
 import json
 import logging
@@ -99,3 +100,22 @@ class SqlService:
             logging.error(f"Error executing SQL statement: {error_message}")
             raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
                                      error_message) from e
+
+    def commit(self, database: str):
+        """
+        Commits the current transaction for a registered database.
+        """
+
+        # Get the database manager from the cache
+        db_manager = self.get_database_manager(database)
+        try:
+            db_manager.get_session().commit()
+        except SQLAlchemyError as db_error:
+            db_manager.get_session().rollback()
+            logging.error(f"Error de base de datos: {str(db_error)}")
+            raise db_error
+        except Exception as e:
+            logging.error(f"error while commiting sql: '{str(e)}'")
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.DATABASE_ERROR, str(e)
+            )

@@ -117,7 +117,7 @@ class DatabaseManager:
     def get_table_schema(self,
                          table_name: str,
                          db_schema: str,
-                         schema_name: str | None = None,
+                         schema_object_name: str | None = None,
                          exclude_columns: list[str] | None = None) -> str:
         inspector = inspect(self._engine)
 
@@ -137,12 +137,12 @@ class DatabaseManager:
             "description": f"Definición de la tabla {table_name}.",
             "fields": []
         }
-        if schema_name:
-            json_dict["description"] += f"Los detalles de cada campo están en el objeto **`{schema_name}`**."
+        if schema_object_name:
+            json_dict["description"] += f"Los detalles de cada campo están en el objeto **`{schema_object_name}`**."
 
         if db_schema:
             json_dict["schema"] = db_schema
-            json_dict["description"] += f" Pertenece al esquema **`{db_schema}`**."
+            json_dict["description"] += f"Pertenece al esquema **`{db_schema}`**."
 
         # now add every column to the json dictionary
         for col in columns:
