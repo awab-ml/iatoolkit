@@ -3,7 +3,7 @@
 #
 # IAToolkit is open source software.
 
-__version__ = "0.90.3"
+__version__ = "0.91.0"
 
 # Expose main classes and functions at the top level of the package
 
@@ -23,6 +23,7 @@ from iatoolkit.services.load_documents_service import LoadDocumentsService
 from iatoolkit.infra.call_service import CallServiceClient
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.mail_service import MailService
+from iatoolkit.repositories.models import Base as OrmModel
 
 __all__ = [
     'IAToolkit',
@@ -38,5 +39,6 @@ __all__ = [
     'LoadDocumentsService',
     'CallServiceClient',
     'ProfileService',
-    'MailService'
+    'MailService',
+    'OrmModel'
 ]

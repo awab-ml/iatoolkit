@@ -120,7 +120,6 @@ const handleChatMessage = async function () {
         }
     } catch (error) {
         if (error.name === 'AbortError') {
-            console.log('Petición abortada por el usuario.');
 
             // Usando jQuery estándar para construir el elemento ---
             const icon = $('<i>').addClass('bi bi-stop-circle me-2'); // Icono sin "fill" para un look más ligero

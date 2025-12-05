@@ -61,29 +61,50 @@ class SqlService:
     def exec_sql(self, company_short_name: str,
                  database: str,
                  query: str,
-                 commit: bool = False,
-                 format: str ='json'):
+                 format: str = 'json',
+                 commit: bool = False):
         """
-        Executes a raw SQL statement against a registered database and returns the result as a JSON string.
+        Executes a raw SQL statement against a registered database.
+
+        Args:
+            company_short_name: The company identifier (for logging/context).
+            database: The logical name of the database to query.
+            query: The SQL statement to execute.
+            format: The output format ('json' or 'dict'). Only relevant for SELECT queries.
+            commit: Whether to commit the transaction immediately after execution.
+                    Use True for INSERT/UPDATE/DELETE statements.
+
+        Returns:
+            - A JSON string or list of dicts for SELECT queries.
+            - A dictionary {'rowcount': N} for non-returning statements (INSERT/UPDATE) if not using RETURNING.
         """
         try:
             # 1. Get the database manager from the cache
             db_manager = self.get_database_manager(database)
+            session = db_manager.get_session()
 
             # 2. Execute the SQL statement
-            result = db_manager.get_session().execute(text(query))
+            result = session.execute(text(query))
+
+            # 3. Handle Commit
             if commit:
-                db_manager.get_session().commit()
+                session.commit()
 
-            cols = result.keys()
-            rows_context = [dict(zip(cols, row)) for row in result.fetchall()]
-            if format == 'dict':
-                return rows_context
+            # 4. Process Results
+            # Check if the query returns rows (e.g., SELECT or INSERT ... RETURNING)
+            if result.returns_rows:
+                cols = result.keys()
+                rows_context = [dict(zip(cols, row)) for row in result.fetchall()]
 
-            # serialize the result
-            sql_result_json = json.dumps(rows_context, default=self.util.serialize)
+                if format == 'dict':
+                    return rows_context
 
-            return sql_result_json
+                # serialize the result
+                return json.dumps(rows_context, default=self.util.serialize)
+
+            # For statements that don't return rows (standard UPDATE/DELETE)
+            return {'rowcount': result.rowcount}
+
         except IAToolkitException:
             # Re-raise exceptions from get_database_manager to preserve the specific error
             raise
@@ -104,6 +125,7 @@ class SqlService:
     def commit(self, database: str):
         """
         Commits the current transaction for a registered database.
+        Useful when multiple exec_sql calls are part of a single transaction.
         """
 
         # Get the database manager from the cache

@@ -168,4 +168,5 @@ js_messages:
   loading: "Cargando..."
   reload_init: "Iniciando recarga de contexto en segundo plano..."
   no_history_found: "No existe historial de consultas."
+  example: "Ejemplo:"
 
