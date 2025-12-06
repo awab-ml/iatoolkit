@@ -52,6 +52,7 @@ ui:
     feedback: "Tu feedback es muy importante"
     usage_guide: "Guía de Uso"
     onboarding: "Cómo preguntar mejor"
+    preferences: "Preferencias"
     logout: "Cerrar sesión"
     use_prompt_assistant: "Usar Asistente de Prompts"
     attach_files: "Adjuntar archivos"
