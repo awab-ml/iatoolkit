@@ -42,9 +42,9 @@ ui:
 
   chat:
     welcome_message: "Hello! How can I help you today?"
-    input_placeholder: "Type your query here..."
+    input_placeholder: "Type here..."
     prompts_available: "Available prompts"
-    init_context: "Initializing the AI context ..."
+    init_context: "Initializing the context ..."
 
   tooltips:
     history: "History of my queries"
