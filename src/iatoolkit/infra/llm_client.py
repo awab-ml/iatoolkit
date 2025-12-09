@@ -205,7 +205,6 @@ class llmClient:
 
             # save the query and response
             query = LLMQuery(user_identifier=user_identifier,
-                             task_id=0,
                              company_id=company.id,
                              query=question,
                              output=decoded_response.get('answer', ''),
@@ -244,7 +243,6 @@ class llmClient:
 
             # log the error in the llm_query table
             query = LLMQuery(user_identifier=user_identifier,
-                             task_id=0,
                              company_id=company.id,
                              query=question,
                              output=error_message,

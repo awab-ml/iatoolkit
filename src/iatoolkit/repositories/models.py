@@ -169,7 +169,6 @@ class LLMQuery(Base):
     company_id = Column(Integer, ForeignKey('iat_companies.id',
                             ondelete='CASCADE'), nullable=False)
     user_identifier = Column(String, nullable=False)
-    task_id = Column(Integer, default=0, nullable=True)
     query = Column(Text, nullable=False)
     output = Column(Text, nullable=False)
     response = Column(JSON, nullable=True, default={})
