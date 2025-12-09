@@ -44,17 +44,5 @@ def register_core_commands(app):
             logging.exception(e)
             click.echo(f"Error: {str(e)}")
 
-    @app.cli.command("exec-tasks")
-    @click.argument("company_short_name")
-    def exec_pending_tasks(company_short_name: str):
-        from iatoolkit.services.tasks_service import TaskService
-        task_service = IAToolkit.get_instance().get_injector().get(TaskService)
-
-        try:
-            result = task_service.trigger_pending_tasks(company_short_name)
-            click.echo(result['message'])
-        except Exception as e:
-            logging.exception(e)
-            click.echo(f"Error: {str(e)}")
 
 
