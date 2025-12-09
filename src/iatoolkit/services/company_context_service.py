@@ -100,9 +100,17 @@ class CompanyContextService:
                 continue
 
             db_description = source.get('description', '')
-            sql_context = f'***Base de datos (database_name)***: {db_name}\n'
-            sql_context += f"**Descripción:**: {db_description}\n" if db_description else ""
-            sql_context += "Para consultar esta base de datos debes utilizar el servicio ***iat_sql_query***.\n"
+            sql_context = f"""
+                ### CONTEXTO DE BASE DE DATOS
+                    - Nombre (database_key): {db_name}
+                    - Descripción: {db_description}
+
+                ### REGRA CRÍTICA (IMPORTANTE)
+                MUST: Para cualquier consulta SQL relacionada con esta base de datos **debes usar exclusivamente** el tool `iat_sql_query` con 
+                el valor `{db_name}` en el parametro `database_key`.
+                
+                ### A continuación se describe cada una de las tablas de la base de datos.
+                """
 
             # 1. get the list of tables to process.
             tables_to_process = []
@@ -118,8 +126,8 @@ class CompanyContextService:
             global_exclude_columns = source.get('exclude_columns', [])
             table_prefix = source.get('table_prefix')
 
-            # get the global schema definition, for this source.
-            global_schema_name = source.get('schema')
+            # get database schema definition, for this source.
+            database_schema_name = source.get('schema')
 
             table_overrides = source.get('tables', {})
 
@@ -131,11 +139,7 @@ class CompanyContextService:
 
                     # 5. define the schema object name, using the override if it exists.
                     # Priority 1: Explicit override from the 'tables' map.
-                    schema_object_name = table_config.get('schema_object_name')
-
-                    # Priority 2: Global schema defined in the source.
-                    if not schema_object_name and global_schema_name:
-                        schema_object_name = global_schema_name
+                    schema_object_name = table_config.get('schema_name')
 
                     if not schema_object_name:
                         # Priority 3: Automatic prefix stripping.

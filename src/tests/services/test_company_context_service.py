@@ -42,7 +42,7 @@ MOCK_CONFIG_COMPLEX = {
                 'exclude_columns': ['password_hash']  # Local override
             },
             'user_profiles': {
-                'schema_object_name': 'profiles'  # Schema override
+                'schema_name': 'profiles'  # Schema override
             }
         }
     }]

@@ -58,11 +58,7 @@ class SqlService:
                 f"Database '{db_name}' is not registered with the SqlService."
             )
 
-    def exec_sql(self, company_short_name: str,
-                 database: str,
-                 query: str,
-                 format: str = 'json',
-                 commit: bool = False):
+    def exec_sql(self, company_short_name: str, **kwargs):
         """
         Executes a raw SQL statement against a registered database.
 
@@ -78,9 +74,19 @@ class SqlService:
             - A JSON string or list of dicts for SELECT queries.
             - A dictionary {'rowcount': N} for non-returning statements (INSERT/UPDATE) if not using RETURNING.
         """
+        database_name = kwargs.get('database_key')
+        query = kwargs.get('query')
+        format = kwargs.get('format', 'json')
+        commit = kwargs.get('commit')
+
+        if not database_name:
+            raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
+                                     'missing database_name in call to exec_sql')
+
+
         try:
             # 1. Get the database manager from the cache
-            db_manager = self.get_database_manager(database)
+            db_manager = self.get_database_manager(database_name)
             session = db_manager.get_session()
 
             # 2. Execute the SQL statement
@@ -110,7 +116,7 @@ class SqlService:
             raise
         except Exception as e:
             # Attempt to rollback if a session was active
-            db_manager = self._db_connections.get(database)
+            db_manager = self.get_database_manager(database_name)
             if db_manager:
                 db_manager.get_session().rollback()
 
@@ -122,14 +128,14 @@ class SqlService:
             raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
                                      error_message) from e
 
-    def commit(self, database: str):
+    def commit(self, database_name: str):
         """
         Commits the current transaction for a registered database.
         Useful when multiple exec_sql calls are part of a single transaction.
         """
 
         # Get the database manager from the cache
-        db_manager = self.get_database_manager(database)
+        db_manager = self.get_database_manager(database_name)
         try:
             db_manager.get_session().commit()
         except SQLAlchemyError as db_error:

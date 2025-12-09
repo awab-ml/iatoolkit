@@ -246,7 +246,7 @@ class Prompt(Base):
     filename = Column(String, nullable=False)
     active = Column(Boolean, default=True)
     is_system_prompt = Column(Boolean, default=False)
-    order = Column(Integer, nullable=False, default=0)  # Nuevo campo para el orden
+    order = Column(Integer, nullable=True, default=0)
     category_id = Column(Integer, ForeignKey('iat_prompt_categories.id'), nullable=True)
     custom_fields = Column(JSON, nullable=False, default=[])
 

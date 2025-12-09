@@ -98,20 +98,20 @@ _SYSTEM_TOOLS = [
     },
     {
         "function_name": "iat_sql_query",
-        "description": "Servicio SQL de IAToolkit: debes utilizar este servicio para todas las consultas a base de datos.",
+        "description": "Servicio SQL de IAToolkit: debes utilizar este servicio para todas las consultas SQL a bases de datos.",
         "parameters": {
             "type": "object",
             "properties": {
-                "database": {
+                "database_key": {
                     "type": "string",
-                    "description": "nombre de la base de datos a consultar: `database_name`"
+                    "description": "IMPORTANT: nombre de la base de datos a consultar."
                 },
                 "query": {
                     "type": "string",
                     "description": "string con la consulta en sql"
                 },
             },
-            "required": ["database", "query"]
+            "required": ["database_key", "query"]
         }
     }
 ]
@@ -206,11 +206,12 @@ class ToolService:
         Returns the list of tools (System + Company) formatted for the LLM (OpenAI Schema).
         """
         tools = []
-        # Obtiene tanto las de la empresa como las del sistema (la query del repo debería soportar esto con OR)
-        functions = self.llm_query_repo.get_company_tools(company)
 
-        for function in functions:
-            # Clonamos para no modificar el objeto de la sesión SQLAlchemy
+        # get all the tools for the company and system
+        company_tools = self.llm_query_repo.get_company_tools(company)
+
+        for function in company_tools:
+            # clone for no modify the SQLAlchemy session object
             params = function.parameters.copy() if function.parameters else {}
             params["additionalProperties"] = False
 

@@ -309,12 +309,13 @@ class QueryService:
     def llm_query(self,
                   company_short_name: str,
                   user_identifier: str,
+                  model: Optional[str] = None,
                   prompt_name: str = None,
                   question: str = '',
                   client_data: dict = {},
                   ignore_history: bool = False,
-                  files: list = [],
-                  model: Optional[str] = None) -> dict:
+                  files: list = []
+                  ) -> dict:
         try:
             company = self.profile_repo.get_company_by_short_name(short_name=company_short_name)
             if not company:

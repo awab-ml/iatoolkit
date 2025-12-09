@@ -100,7 +100,9 @@ class TestSqlService:
 
         # Act
         sql_statement = "SELECT id, name FROM users"
-        result_json = self.service.exec_sql('temp_company', DB_NAME_SUCCESS, sql_statement)
+        result_json = self.service.exec_sql(company_short_name='temp_company',
+                                            database_key=DB_NAME_SUCCESS,
+                                            query=sql_statement)
 
         # Assert
         mock_db_manager.get_session.assert_called_once()
@@ -130,7 +132,9 @@ class TestSqlService:
         self.service.register_database(DUMMY_URI, DB_NAME_SUCCESS )
 
         # Act
-        result_json = self.service.exec_sql('temp_company', DB_NAME_SUCCESS, "SELECT event_time FROM events")
+        result_json = self.service.exec_sql(company_short_name='temp_company',
+                                            database_key=DB_NAME_SUCCESS,
+                                            query="SELECT event_time FROM events")
 
         # Assert
         self.util_mock.serialize.assert_called_once_with(original_datetime)
@@ -144,7 +148,9 @@ class TestSqlService:
         THEN it should raise an IAToolkitException.
         """
         with pytest.raises(IAToolkitException) as exc_info:
-            self.service.exec_sql('temp_company', DB_NAME_UNREGISTERED, "SELECT 1")
+            self.service.exec_sql(company_short_name='temp_company',
+                                  database_key=DB_NAME_UNREGISTERED,
+                                  query="SELECT 1")
 
         assert f"Database '{DB_NAME_UNREGISTERED}' is not registered" in str(exc_info.value)
 
@@ -165,7 +171,9 @@ class TestSqlService:
 
         # Act & Assert
         with pytest.raises(IAToolkitException) as exc_info:
-            self.service.exec_sql('temp_company', DB_NAME_SUCCESS, "SELECT * FROM non_existent_table")
+            self.service.exec_sql(company_short_name='temp_company',
+                                  database_key=DB_NAME_SUCCESS,
+                                  query="SELECT * from non_existing_table")
 
         assert exc_info.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
         assert str(db_error) in str(exc_info.value)

@@ -71,8 +71,8 @@ class PromptService:
                 new_prompt = Prompt(
                     company_id=company_instance.company.id,
                     name=prompt_name,
-                    description=prompt_data['description'],
-                    order=prompt_data['order'],
+                    description=prompt_data.get('description'),
+                    order=prompt_data.get('order'),
                     category_id=category_obj.id,
                     active=prompt_data.get('active', True),
                     is_system_prompt=False,
