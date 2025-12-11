@@ -51,9 +51,22 @@ class ConfigurationService:
         Kept separate from get_configuration() to avoid coupling tests that
         assert the number of calls to get_configuration().
         """
+        default_llm_model = None
+        available_llm_models = []
         self._ensure_config_loaded(company_short_name)
         llm_config = self._loaded_configs[company_short_name].get("llm")
-        return llm_config if isinstance(llm_config, dict) else None
+        if llm_config:
+            default_llm_model = llm_config.get("model")
+            available_llm_models = llm_config.get('available_models') or []
+
+        # fallback: if no explicit list of models is provided, use the default model
+        if not available_llm_models and default_llm_model:
+            available_llm_models = [{
+                "id": default_llm_model,
+                "label": default_llm_model,
+                "description": "Modelo por defecto configurado para esta compañía."
+            }]
+        return default_llm_model, available_llm_models
 
     def load_configuration(self, company_short_name: str, company_instance):
         """

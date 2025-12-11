@@ -133,16 +133,7 @@ class FinalizeContextView(MethodView):
                             message="Empresa no encontrada"), 404
             branding_data = self.branding_service.get_company_branding(company_short_name)
 
-            # --- LLM configuration: modelo por defecto y modelos disponibles ---
-            llm_config = self.config_service.get_llm_configuration(company_short_name) or {}
-            default_llm_model = llm_config.get('model')
-            available_llm_models = llm_config.get('available_models') or []
-            if not available_llm_models and default_llm_model:
-                available_llm_models = [{
-                    "id": default_llm_model,
-                    "label": default_llm_model,
-                    "description": "Modelo por defecto configurado para esta compañía."
-                }]
+            default_llm_model, available_llm_models = self.config_service.get_llm_configuration(company_short_name)
 
             # 2. Finalize the context rebuild (the heavy task).
             self.query_service.set_context_for_llm(
