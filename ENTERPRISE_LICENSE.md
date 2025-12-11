@@ -5,11 +5,9 @@ The open-source portions of IAToolkit (the "IAToolkit Open Core") are licensed u
 The following "IAToolkit Enterprise Features" are licensed under this Enterprise License:
 
 - Multi-Company (multi-tenant) capabilities  
-- Advanced RAG pipelines and extended retrieval logic  
-- Payment services integration 
-- External connectors (S3, SMTP, external APIs, file storage)  
-- SSO integrations (Google, Microsoft, Okta, etc.)  
-- Auditing, access control, and operational analytics  
+- Payment services integration
+- Enterprise Agent Workflows
+- SSO integrations 
 - Priority support and continuous updates  
 - Any feature or module that requires activation via the Enterprise License Key
 

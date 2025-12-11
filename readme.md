@@ -124,9 +124,8 @@ Perfect for developers, small teams, single-business use cases, and experimentat
 ### 🟥 Enterprise Edition (Commercial License)
 - Unlimited Companies (multi-tenant)  
 - Payment services integration 
-- Advanced RAG pipelines  
-- External connectors (S3, APIs, email)  
-- SSO, auditing, access controls  
+- Enterprise Agent Workflows
+- SSO integration
 - Priority support & continuous updates  
 - Activation via **License Key**  
 
