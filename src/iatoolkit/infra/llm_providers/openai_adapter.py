@@ -53,10 +53,6 @@ class OpenAIAdapter:
             error_message = f"Error calling OpenAI API: {str(e)}"
             logging.error(error_message)
 
-            # En caso de error de contexto
-            if "context_length_exceeded" in str(e):
-                error_message = 'Tu consulta supera el limite de contexto. Reinicia el contexto con el boton de la barra superior.'
-
             raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
 
     def _map_openai_response(self, openai_response) -> LLMResponse:

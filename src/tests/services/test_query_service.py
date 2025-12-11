@@ -2,8 +2,7 @@
 # Product: IAToolkit
 
 import pytest
-from unittest.mock import MagicMock, patch, ANY
-import os
+from unittest.mock import MagicMock, patch
 import base64
 from iatoolkit.services.query_service import QueryService, HistoryHandle
 from iatoolkit.services.prompt_service import PromptService
@@ -16,7 +15,7 @@ from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.history_manager_service import HistoryManagerService
 from iatoolkit.repositories.models import Company
 from iatoolkit.common.util import Utility
-from iatoolkit.infra.llm_client import llmClient
+from iatoolkit.services.llm_client_service import llmClient
 from iatoolkit.services.dispatcher_service import Dispatcher
 from iatoolkit.services.tool_service import ToolService
 

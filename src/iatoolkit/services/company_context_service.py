@@ -35,7 +35,7 @@ class CompanyContextService:
         """
         context_parts = []
 
-        # 1. Context from Markdown (context/*.md) and yaml (schema/*.yaml) files
+        # 1. Context from Markdown (context/*.md)  files
         try:
             md_context = self._get_static_file_context(company_short_name)
             if md_context:
@@ -43,13 +43,21 @@ class CompanyContextService:
         except Exception as e:
             logging.warning(f"Could not load Markdown context for '{company_short_name}': {e}")
 
-        # 2. Context from company-specific database schemas (schema/*.yaml files)
+        # 2. Context from company-specific SQL databases
         try:
             sql_context = self._get_sql_schema_context(company_short_name)
             if sql_context:
                 context_parts.append(sql_context)
         except Exception as e:
             logging.warning(f"Could not generate SQL context for '{company_short_name}': {e}")
+
+        # 3. Context from yaml (schema/*.yaml) files
+        try:
+            yaml_schema_context = self._get_yaml_schema_context(company_short_name)
+            if yaml_schema_context:
+                context_parts.append(yaml_schema_context)
+        except Exception as e:
+            logging.warning(f"Could not load Yaml context for '{company_short_name}': {e}")
 
         # Join all parts with a clear separator
         return "\n\n---\n\n".join(context_parts)
@@ -58,7 +66,7 @@ class CompanyContextService:
         # Get context from .md and .yaml schema files.
         static_context = ''
 
-        # Part 1: Markdown context files
+        # Markdown context files
         context_dir = f'companies/{company_short_name}/context'
         if os.path.exists(context_dir):
             context_files = self.utility.get_files_by_extension(context_dir, '.md', return_extension=True)
@@ -66,16 +74,22 @@ class CompanyContextService:
                 filepath = os.path.join(context_dir, file)
                 static_context += self.utility.load_markdown_context(filepath)
 
-        # Part 2: YAML schema files
+        return static_context
+
+    def _get_yaml_schema_context(self, company_short_name: str) -> str:
+        # Get context from .md and .yaml schema files.
+        yaml_schema_context = ''
+
+        # YAML schema files
         schema_dir = f'companies/{company_short_name}/schema'
         if os.path.exists(schema_dir):
             schema_files = self.utility.get_files_by_extension(schema_dir, '.yaml', return_extension=True)
             for file in schema_files:
                 schema_name = file.split('.')[0]  # Use full filename as entity name
                 filepath = os.path.join(schema_dir, file)
-                static_context += self.utility.generate_context_for_schema(schema_name, filepath)
+                yaml_schema_context += self.utility.generate_context_for_schema(schema_name, filepath)
 
-        return static_context
+        return yaml_schema_context
 
     def _get_sql_schema_context(self, company_short_name: str) -> str:
         """
@@ -100,17 +114,23 @@ class CompanyContextService:
                 continue
 
             db_description = source.get('description', '')
-            sql_context = f"""
-                ### CONTEXTO DE BASE DE DATOS
-                    - Nombre (database_key): {db_name}
-                    - Descripción: {db_description}
+            sql_context = f"***Database (`database_key`)***: {db_name}\n"
 
-                ### REGRA CRÍTICA (IMPORTANTE)
-                MUST: Para cualquier consulta SQL relacionada con esta base de datos **debes usar exclusivamente** el tool `iat_sql_query` con 
-                el valor `{db_name}` en el parametro `database_key`.
-                
-                ### A continuación se describe cada una de las tablas de la base de datos.
-                """
+            if db_description:
+                sql_context += (
+                    f"**Description:** : {db_description}\n"
+                )
+
+            sql_context += (
+                f"IMPORTANT: To query this database you MUST use the service/tool "
+                f"**iat_sql_query**, with `database_key={db_name}`.\n"
+            )
+
+            sql_context += (
+                f"IMPORTANT: The value of **database_key** is ALWAYS the literal string "
+                f"'{db_name}'. Do not invent or infer alternative names. "
+                f"Use exactly: `database_key='{db_name}'`.\n"
+            )
 
             # 1. get the list of tables to process.
             tables_to_process = []
@@ -164,4 +184,6 @@ class CompanyContextService:
                 except (KeyError, RuntimeError) as e:
                     logging.warning(f"Could not generate schema for table '{table_name}': {e}")
 
+        if sql_context:
+            sql_context = "These are the SQL databases you can query using the **`iat_sql_service`**: \n" + sql_context
         return sql_context

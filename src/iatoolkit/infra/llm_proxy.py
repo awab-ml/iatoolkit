@@ -3,165 +3,232 @@
 #
 # IAToolkit is open source software.
 
-from typing import Dict, List, Any
-from abc import ABC, abstractmethod
+
+from iatoolkit.services.configuration_service import ConfigurationService
+from iatoolkit.infra.llm_providers.openai_adapter import OpenAIAdapter
+from iatoolkit.infra.llm_providers.gemini_adapter import GeminiAdapter
+from iatoolkit.infra.llm_providers.deepseek_adapter import DeepseekAdapter
+# from iatoolkit.infra.llm_providers.anthropic_adapter import AnthropicAdapter
+from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.common.util import Utility
 from iatoolkit.infra.llm_response import LLMResponse
-from iatoolkit.services.configuration_service import ConfigurationService
-from iatoolkit.infra.openai_adapter import OpenAIAdapter
-from iatoolkit.infra.gemini_adapter import GeminiAdapter
-from iatoolkit.common.exceptions import IAToolkitException
-from iatoolkit.repositories.models import Company
-from openai import OpenAI
-import google.generativeai as genai
+
+from openai import OpenAI         # For OpenAI and xAI (OpenAI-compatible)
+# from anthropic import Anthropic  # For Claude (Anthropic)
+
+from typing import Dict, List, Any, Tuple
 import os
 import threading
-from enum import Enum
 from injector import inject
-
-
-class LLMProvider(Enum):
-    OPENAI = "openai"
-    GEMINI = "gemini"
-
-
-class LLMAdapter(ABC):
-    """common interface for LLM adapters"""
-
-    @abstractmethod
-    def create_response(self, *args, **kwargs) -> LLMResponse:
-        pass
 
 
 class LLMProxy:
     """
-    Proxy que enruta las llamadas al adaptador correcto y gestiona la creación
-    de los clientes de los proveedores de LLM.
+    Proxy for routing calls to the correct LLM adapter and managing the creation of LLM clients.
     """
-    _clients_cache = {}
+
+    # Class-level cache for low-level clients (per provider + API key)
+    _clients_cache: Dict[Tuple[str, str], Any] = {}
     _clients_cache_lock = threading.Lock()
 
+    # Provider identifiers
+    PROVIDER_OPENAI = "openai"
+    PROVIDER_GEMINI = "gemini"
+    PROVIDER_DEEPSEEK = "deepseek"
+    PROVIDER_XAI = "xai"
+    PROVIDER_ANTHROPIC = "anthropic"
+
     @inject
-    def __init__(self, util: Utility,
-                 configuration_service: ConfigurationService,
-                 openai_client = None,
-                 gemini_client = None):
+    def __init__(
+        self,
+        util: Utility,
+        configuration_service: ConfigurationService,
+    ):
         """
-        Inicializa una instancia del proxy. Puede ser una instancia "base" (fábrica)
-        o una instancia de "trabajo" con clientes configurados.
+        Init a new instance of the proxy. It can be a base factory or a working instance with configured clients.
+        Pre-built clients can be injected for tests or special environments.
         """
         self.util = util
         self.configuration_service = configuration_service
-        self.openai_adapter = OpenAIAdapter(openai_client) if openai_client else None
-        self.gemini_adapter = GeminiAdapter(gemini_client) if gemini_client else None
 
-    def create_for_company(self, company: Company) -> 'LLMProxy':
+        # adapter cache por provider
+        self.adapters: Dict[str, Any] = {}
+
+    # -------------------------------------------------------------------------
+    # Public API
+    # -------------------------------------------------------------------------
+
+    def create_response(self, company_short_name: str, model: str, input: List[Dict], **kwargs) -> LLMResponse:
         """
-        Crea y configura una nueva instancia de LLMProxy para una empresa específica.
+        Route the call to the correct adapter based on the model name.
+        This method is the single entry point used by the rest of the application.
         """
-        try:
-            openai_client = self._get_llm_connection(company, LLMProvider.OPENAI)
-        except IAToolkitException:
-            openai_client = None
-
-        try:
-            gemini_client = self._get_llm_connection(company, LLMProvider.GEMINI)
-        except IAToolkitException:
-            gemini_client = None
-
-        if not openai_client and not gemini_client:
+        if not company_short_name:
             raise IAToolkitException(
                 IAToolkitException.ErrorType.API_KEY,
-                f"La empresa '{company.name}' no tiene configuradas API keys para ningún proveedor LLM."
+                "company_short_name is required in kwargs to resolve LLM credentials."
             )
 
-        # Devuelve una NUEVA instancia con los clientes configurados
-        return LLMProxy(
-                    util=self.util,
-                    configuration_service=self.configuration_service,
-                    openai_client=openai_client,
-                    gemini_client=gemini_client)
+        # Determine the provider based on the model name
+        provider = self._resolve_provider_from_model(model)
 
-    def create_response(self, model: str, input: List[Dict], **kwargs) -> LLMResponse:
-        """Enruta la llamada al adaptador correcto basado en el modelo."""
-        # Se asume que esta instancia ya tiene los clientes configurados por `create_for_company`
+        adapter = self._get_or_create_adapter(
+            provider=provider,
+            company_short_name=company_short_name,
+        )
+
+        # Delegate to the adapter (OpenAI, Gemini, DeepSeek, xAI, Anthropic, etc.)
+        return adapter.create_response(model=model, input=input, **kwargs)
+
+    # -------------------------------------------------------------------------
+    # Provider resolution
+    # -------------------------------------------------------------------------
+
+    def _resolve_provider_from_model(self, model: str) -> str:
+        """
+        Determine which provider must be used for a given model name.
+        This uses Utility helper methods, so you can keep all naming logic in one place.
+        """
         if self.util.is_openai_model(model):
-            if not self.openai_adapter:
-                raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
-                                   f"No se configuró cliente OpenAI, pero se solicitó modelo OpenAI: {model}")
-            return self.openai_adapter.create_response(model=model, input=input, **kwargs)
-        elif self.util.is_gemini_model(model):
-            if not self.gemini_adapter:
-                raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
-                                   f"No se configuró cliente Gemini, pero se solicitó modelo Gemini: {model}")
-            return self.gemini_adapter.create_response(model=model, input=input, **kwargs)
+            return self.PROVIDER_OPENAI
+        if self.util.is_gemini_model(model):
+            return self.PROVIDER_GEMINI
+        if self.util.is_deepseek_model(model):
+            return self.PROVIDER_DEEPSEEK
+        if hasattr(self.util, "is_xai_model") and self.util.is_xai_model(model):
+            return self.PROVIDER_XAI
+        if hasattr(self.util, "is_anthropic_model") and self.util.is_anthropic_model(model):
+            return self.PROVIDER_ANTHROPIC
+
+        raise IAToolkitException(
+            IAToolkitException.ErrorType.MODEL,
+            f"Unknown or unsupported model: {model}"
+        )
+
+    # -------------------------------------------------------------------------
+    # Adapter management
+    # -------------------------------------------------------------------------
+
+    def _get_or_create_adapter(self, provider: str, company_short_name: str) -> Any:
+        """
+        Return an adapter instance for the given provider.
+        If none exists yet, create it using a cached or new low-level client.
+        """
+        # If already created, just return it
+        if provider in self.adapters and self.adapters[provider] is not None:
+            return self.adapters[provider]
+
+        # Otherwise, create a low-level client from configuration
+        api_key = self._get_api_key_from_config(company_short_name)
+        client = self._get_or_create_client(provider, api_key)
+
+        # Wrap client with the correct adapter
+        if provider == self.PROVIDER_OPENAI:
+            adapter = OpenAIAdapter(client)
+        elif provider == self.PROVIDER_GEMINI:
+            adapter = GeminiAdapter(client)
+        elif provider == self.PROVIDER_DEEPSEEK:
+            adapter = DeepseekAdapter(client)
         else:
-            raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, f"Modelo no soportado: {model}")
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.MODEL,
+                f"Provider not supported in _get_or_create_adapter: {provider}"
+            )
 
-    def _get_llm_connection(self, company: Company, provider: LLMProvider) -> Any:
-        """Obtiene una conexión de cliente para un proveedor, usando un caché para reutilizarla."""
-        cache_key = f"{company.short_name}_{provider.value}"
-        client = LLMProxy._clients_cache.get(cache_key)
+        '''
+        elif provider == self.PROVIDER_XAI:
+            adapter = XAIAdapter(client)
+        elif provider == self.PROVIDER_ANTHROPIC:
+            adapter = AnthropicAdapter(client)
+        '''
+        self.adapters[provider] = adapter
+        return adapter
 
-        if not client:
-            with LLMProxy._clients_cache_lock:
-                client = LLMProxy._clients_cache.get(cache_key)
-                if not client:
-                    if provider == LLMProvider.OPENAI:
-                        client = self._create_openai_client(company)
-                    elif provider == LLMProvider.GEMINI:
-                        client = self._create_gemini_client(company)
-                    else:
-                        raise IAToolkitException(f"provider not supported: {provider.value}")
+    # -------------------------------------------------------------------------
+    # Client cache
+    # -------------------------------------------------------------------------
 
-                    if client:
-                        LLMProxy._clients_cache[cache_key] = client
+    def _get_or_create_client(self, provider: str, api_key: str) -> Any:
+        """
+        Return a low-level client for the given provider and API key.
+        Uses a class-level cache to avoid recreating clients.
+        """
+        cache_key = (provider, api_key or "")
 
-        if not client:
-            raise IAToolkitException(IAToolkitException.ErrorType.API_KEY, f"No se pudo crear el cliente para {provider.value}")
+        with self._clients_cache_lock:
+            if cache_key in self._clients_cache:
+                return self._clients_cache[cache_key]
 
-        return client
+            client = self._create_client_for_provider(provider, api_key)
+            self._clients_cache[cache_key] = client
+            return client
 
-    def _create_openai_client(self, company: Company) -> OpenAI:
-        """Crea un cliente de OpenAI con la API key."""
-        decrypted_api_key = ''
-        llm_config = self.configuration_service.get_configuration(company.short_name, 'llm')
+    def _create_client_for_provider(self, provider: str, api_key: str) -> Any:
+        """
+        Actually create the low-level client for a provider.
+        This is the only place where provider-specific client construction lives.
+        """
+        if provider == self.PROVIDER_OPENAI:
+            # Standard OpenAI client for GPT models
+            return OpenAI(api_key=api_key)
 
-        # Try to get API key name from config first
-        if llm_config and llm_config.get('api-key'):
-            api_key_env_var = llm_config['api-key']
-            decrypted_api_key = os.getenv(api_key_env_var, '')
-        else:
-            # Fallback to old logic
-            if company.openai_api_key:
-                decrypted_api_key = self.util.decrypt_key(company.openai_api_key)
-            else:
-                decrypted_api_key = os.getenv("OPENAI_API_KEY", '')
+        if provider == self.PROVIDER_XAI:
+            # xAI Grok is OpenAI-compatible; we can use the OpenAI client with a different base_url.
+            return OpenAI(
+                api_key=api_key,
+                base_url="https://api.x.ai/v1",
+            )
 
-        if not decrypted_api_key:
-            raise IAToolkitException(IAToolkitException.ErrorType.API_KEY,
-                                     f"La empresa '{company.name}' no tiene API key de OpenAI.")
-        return OpenAI(api_key=decrypted_api_key)
+        if provider == self.PROVIDER_DEEPSEEK:
+            # Example: if you use the official deepseek client or OpenAI-compatible wrapper
+            # return DeepSeekAPI(api_key=api_key)
 
-    def _create_gemini_client(self, company: Company) -> Any:
-        """Configura y devuelve el cliente de Gemini."""
+            # We use OpenAI client with a DeepSeek base_url:
+            return OpenAI(
+                api_key=api_key,
+                base_url="https://api.deepseek.com",
+            )
 
-        decrypted_api_key = ''
-        llm_config = self.configuration_service.get_configuration(company.short_name, 'llm')
+        if provider == self.PROVIDER_GEMINI:
+            # Example placeholder: you may already have a Gemini client factory elsewhere.
+            # Here you could create and configure the Gemini client (e.g. google.generativeai).
+            #
+            import google.generativeai as genai
 
-        # Try to get API key name from config first
-        if llm_config and llm_config.get('api-key'):
-            api_key_env_var = llm_config['api-key']
-            decrypted_api_key = os.getenv(api_key_env_var, '')
-        else:
-            # Fallback to old logic
-            if company.gemini_api_key:
-                decrypted_api_key = self.util.decrypt_key(company.gemini_api_key)
-            else:
-                decrypted_api_key = os.getenv("GEMINI_API_KEY", '')
+            genai.configure(api_key=api_key)
+            return genai
+        if provider == self.PROVIDER_ANTHROPIC:
+            # Example using Anthropic official client:
+            #
+            # from anthropic import Anthropic
+            # return Anthropic(api_key=api_key)
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.API_KEY,
+                "Anthropic client creation must be implemented in _create_client_for_provider."
+            )
 
-        if not decrypted_api_key:
-            return None
-        genai.configure(api_key=decrypted_api_key)
-        return genai
+        raise IAToolkitException(
+            IAToolkitException.ErrorType.MODEL,
+            f"Provider not supported in _create_client_for_provider: {provider}"
+        )
 
+    # -------------------------------------------------------------------------
+    # Configuration helpers
+    # -------------------------------------------------------------------------
+
+    def _get_api_key_from_config(self, company_short_name: str) -> str:
+        """
+        Read the LLM API key from company configuration and environment variables.
+        """
+        llm_config = self.configuration_service.get_configuration(company_short_name, "llm")
+
+        # get API key name from config (company.yaml)
+        if llm_config and llm_config.get("api-key"):
+            api_key_env_var = llm_config["api-key"]
+            decrypted_api_key = os.getenv(api_key_env_var, "")
+            return decrypted_api_key
+
+        raise IAToolkitException(
+            IAToolkitException.ErrorType.API_KEY,
+            f"Company '{company_short_name}' doesn't have an API key configured."
+        )

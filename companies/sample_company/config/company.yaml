@@ -11,8 +11,8 @@ locale: "en_ES"
 # Default Language Model and api-key for provider
 # Can be overridden in the API call: llm_query_api_view and init_context_api_view
 llm:
-  model: "gpt-5"
-  api-key: "OPENAI_API_KEY"     # the name of the api-key in the .env file
+  model: "deepseek-chat"
+  api-key: "DEEP_SEEK_API_KEY"     # the name of the api-key in the .env file
 
   # Example configuration for Gemini
   # model: "gemini-2.5-pro"
@@ -27,8 +27,8 @@ data_sources:
       schema: "sample_db"
       connection_string_env: "DATABASE_URI"
       description: |
-        This is Sample Company’s main database.
-        It contains all of the company’s commercial and operational information.
+        This database contains all of the
+        company’s commercial and operational information.
         It is the primary source for answering questions about sales, shipments, purchase orders, employees, countries, and territories.
       # Loads all the databases tables automatically
       include_all_tables: true
@@ -62,6 +62,7 @@ data_sources:
 tools:
   - function_name: "document_search"
     description: "Busquedas sobre documentos: manuales, contratos de trabajo de empleados, manuales de procedimientos, y documentos legales."
+
     params:
       type: "object"
       properties:

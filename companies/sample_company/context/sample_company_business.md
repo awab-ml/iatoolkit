@@ -1,25 +1,34 @@
-# Descripción del Negocio: Sample Company
+# **Business Description: Sample Company**
 
-## 1. Introducción
+## **1. Introduction**
 
-**Sample Company** , tambien conocida como Sample, es una empresa ficticia  creada como demostración para la plataforma **IAToolkit**. 
-Su propósito principal es ilustrar cómo un asistente de IA puede conectarse a una base de datos externa 
-para responder preguntas de inteligencia de negocio (Business Intelligence) y realizar análisis de datos en tiempo real.
+**Sample Company**, also known simply as *Sample*, is a fictional business created as a demonstration asset for the **IAToolkit** platform.  
+Its primary purpose is to illustrate how an AI assistant can connect to an external database in order to answer business-intelligence questions and perform real-time data analysis.
 
-## 2. Modelo de Negocio
+---
 
-El modelo de negocio de Sample Company es directo y se centra en la venta de productos.
-Se dispone de información de sus clientes, proveedores, ordenes de ventas.
-Además de empleados,  sus territorios y paises.
+## **2. Business Model**
 
-## 3. Fuentes de Datos
+Sample Company operates under a straightforward business model focused on product sales.  
+Its dataset contains information about customers, suppliers, sales orders, employees, territories, and countries.
 
-La inteligencia de la compañía reside en su **base de datos transaccional**. 
-El asistente de IA tiene acceso directo a esta base de datos para realizar consultas SQL.
+---
 
-## 4. Rol del Asistente de IA
+## **3. Data Sources**
 
-Para Sample Company, el asistente de IA actúa como un **Analista de Datos o de Business Intelligence**. 
-Su función principal es entender preguntas complejas en lenguaje natural, traducirlas a consultas SQL, 
-ejecutar esas consultas en la base de datos de la compañía y presentar los resultados de forma clara y concisa.
+The company’s intelligence layer is built upon its **transactional database**.  
+The AI assistant has direct access to this database and can execute SQL queries to retrieve operational and analytical insights.
 
+---
+
+## **4. Role of the AI Assistant**
+
+Within Sample Company, the AI assistant acts as a **Data Analyst / Business Intelligence Analyst**.  
+Its core responsibilities include:
+
+- Understanding complex questions asked in natural language  
+- Translating those questions into valid SQL queries  
+- Executing these queries against the company’s database  
+- Presenting results clearly and concisely in business-friendly terms
+
+---

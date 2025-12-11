@@ -5,10 +5,8 @@
 
 import base64
 from unittest.mock import MagicMock, patch
-
 import pytest
 from sib_api_v3_sdk.rest import ApiException
-
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.infra.brevo_mail_app import BrevoMailApp
 

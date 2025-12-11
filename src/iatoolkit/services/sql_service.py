@@ -45,6 +45,12 @@ class SqlService:
         db_manager = DatabaseManager(db_uri, schema=schema, register_pgvector=False)
         self._db_connections[db_name] = db_manager
 
+    def get_db_names(self):
+        db_names = []
+        for key in self._db_connections:
+            db_names.append(key)
+        return db_names
+
     def get_database_manager(self, db_name: str) -> DatabaseManager:
         """
         Retrieves a registered DatabaseManager instance from the cache.
@@ -52,7 +58,11 @@ class SqlService:
         try:
             return self._db_connections[db_name]
         except KeyError:
-            logging.error(f"Attempted to access unregistered database: '{db_name}'")
+            logging.error(
+                f"Attempted to access unregistered database: '{db_name}'"
+                f"Registered databases: {list(self._db_connections.keys())}"
+            )
+
             raise IAToolkitException(
                 IAToolkitException.ErrorType.DATABASE_ERROR,
                 f"Database '{db_name}' is not registered with the SqlService."

@@ -1,104 +1,165 @@
+import os
 import pytest
 from unittest.mock import patch, MagicMock
-from iatoolkit.infra.llm_proxy import LLMProxy, LLMProvider
+
+from iatoolkit.infra.llm_proxy import LLMProxy
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.configuration_service import ConfigurationService
 
 
 class TestLLMProxy:
-
     def setup_method(self):
         """Configuración común para las pruebas de LLMProxy."""
+        # Utility y configuration_service mockeados
         self.util_mock = MagicMock()
-        self.mock_config_service = MagicMock(spec=ConfigurationService)
-        self.util_mock.decrypt_key.side_effect = lambda x: f"decrypted_{x}"
+        self.config_service_mock = MagicMock(spec=ConfigurationService)
 
-        # Mocks para los clientes de los proveedores
-        self.openai_patcher = patch('iatoolkit.infra.llm_proxy.OpenAI')
-        self.gemini_patcher = patch('iatoolkit.infra.llm_proxy.genai')
+        # Empresa base
+        self.company_short_name = "test_company"
+
+        # Parches para los clientes de los proveedores
+        self.openai_patcher = patch("iatoolkit.infra.llm_proxy.OpenAI")
+
         self.mock_openai_class = self.openai_patcher.start()
-        self.mock_gemini_module = self.gemini_patcher.start()
 
-        # Mocks para los adaptadores
-        self.openai_adapter_patcher = patch('iatoolkit.infra.llm_proxy.OpenAIAdapter')
-        self.gemini_adapter_patcher = patch('iatoolkit.infra.llm_proxy.GeminiAdapter')
+        # Parches para los adaptadores
+        self.openai_adapter_patcher = patch("iatoolkit.infra.llm_proxy.OpenAIAdapter")
+        self.gemini_adapter_patcher = patch("iatoolkit.infra.llm_proxy.GeminiAdapter")
+        self.deepseek_adapter_patcher = patch("iatoolkit.infra.llm_proxy.DeepseekAdapter")
+
         self.mock_openai_adapter_class = self.openai_adapter_patcher.start()
         self.mock_gemini_adapter_class = self.gemini_adapter_patcher.start()
+        self.mock_deepseek_adapter_class = self.deepseek_adapter_patcher.start()
+
+        # Instancias mock de adaptadores
         self.mock_openai_adapter_instance = MagicMock()
         self.mock_gemini_adapter_instance = MagicMock()
+        self.mock_deepseek_adapter_instance = MagicMock()
+
         self.mock_openai_adapter_class.return_value = self.mock_openai_adapter_instance
         self.mock_gemini_adapter_class.return_value = self.mock_gemini_adapter_instance
+        self.mock_deepseek_adapter_class.return_value = self.mock_deepseek_adapter_instance
 
-        # Mock de Compañía base
-        self.company = MagicMock()
-        self.company.short_name = 'test_company'
-        self.company.name = 'Test Company'
-        self.company.openai_api_key = None  # Asegurar que los atributos existen
-        self.company.gemini_api_key = None  # aunque sean None
+        # Instancia de LLMProxy bajo prueba
+        self.proxy = LLMProxy(
+            util=self.util_mock,
+            configuration_service=self.config_service_mock,
+        )
 
-        # Instancia "fábrica" bajo prueba
-        self.proxy_factory = LLMProxy(util=self.util_mock, configuration_service=self.mock_config_service)
+        # Aseguramos que el cache global esté limpio para cada test
+        LLMProxy._clients_cache.clear()
 
     def teardown_method(self):
         patch.stopall()
         LLMProxy._clients_cache.clear()
 
     def test_create_openai_client_from_config(self):
-        """Prueba que el cliente de OpenAI se crea usando la API key de la configuración."""
-        self.mock_config_service.get_configuration.return_value = {'api-key': 'COMPANY_SPECIFIC_OPENAI_KEY'}
-        with patch.dict('os.environ', {'COMPANY_SPECIFIC_OPENAI_KEY': 'key_from_config_env'}):
-            self.proxy_factory._create_openai_client(self.company)
-        self.mock_openai_class.assert_called_once_with(api_key='key_from_config_env')
+        """El cliente OpenAI se crea usando la API key leída desde configuration_service + os.environ."""
+        # Configuración de company.yaml simulada
+        self.config_service_mock.get_configuration.return_value = {"api-key": "COMPANY_OPENAI_KEY"}
 
-    def test_create_openai_client_fallback_to_db_key(self):
-        """Prueba que si no hay config, se usa la clave de la base de datos."""
-        self.mock_config_service.get_configuration.return_value = None
-        self.company.openai_api_key = 'db_key'
-        self.proxy_factory._create_openai_client(self.company)
-        self.util_mock.decrypt_key.assert_called_once_with('db_key')
-        self.mock_openai_class.assert_called_once_with(api_key='decrypted_db_key')
+        with patch.dict(os.environ, {"COMPANY_OPENAI_KEY": "key_from_env"}, clear=True):
+            api_key = self.proxy._get_api_key_from_config(self.company_short_name)
+            client = self.proxy._get_or_create_client(LLMProxy.PROVIDER_OPENAI, api_key)
 
-    def test_create_openai_client_fallback_to_global_env(self):
-        """Prueba que si no hay config ni clave en BD, se usa la variable de entorno global."""
-        self.mock_config_service.get_configuration.return_value = None
-        self.company.openai_api_key = None
-        with patch.dict('os.environ', {'OPENAI_API_KEY': 'global_key'}):
-            self.proxy_factory._create_openai_client(self.company)
-        self.mock_openai_class.assert_called_once_with(api_key='global_key')
+        # Debe haberse construido el cliente OpenAI con la API key tomada del env
+        self.mock_openai_class.assert_called_once_with(api_key="key_from_env")
+        # Y el cliente retornado debe ser el mismo objeto devuelto por la clase OpenAI mockeada
+        assert client is self.mock_openai_class.return_value
 
-    def test_create_for_company_raises_error_if_no_keys(self):
-        """Prueba que el factory method lanza una excepción si no hay ninguna clave disponible por ningún medio."""
-        self.mock_config_service.get_configuration.return_value = None
-        self.company.openai_api_key = None
-        self.company.gemini_api_key = None
-        with patch.dict('os.environ', {}, clear=True):
-            with pytest.raises(IAToolkitException, match="no tiene configuradas API keys"):
-                self.proxy_factory.create_for_company(self.company)
+    def test_create_deepseek_client_from_config(self):
+        """El cliente DeepSeek se crea usando la API key leída desde configuration_service + os.environ."""
+        self.config_service_mock.get_configuration.return_value = {"api-key": "COMPANY_DEEPSEEK_KEY"}
 
-    def test_client_caching_works(self):
-        """Prueba que los clientes se cachean y reutilizan entre llamadas."""
-        self.mock_config_service.get_configuration.return_value = None
-        self.company.openai_api_key = 'some_key'
-        self.company.gemini_api_key = None
+        with patch.dict(os.environ, {"COMPANY_DEEPSEEK_KEY": "deepseek_key"}, clear=True):
+            api_key = self.proxy._get_api_key_from_config(self.company_short_name)
+            client = self.proxy._get_or_create_client(LLMProxy.PROVIDER_DEEPSEEK, api_key)
 
-        with patch.dict('os.environ', {'GEMINI_API_KEY': ''}):  # Asegurar no fallback para gemini
-            self.proxy_factory.create_for_company(self.company)
-            self.proxy_factory.create_for_company(self.company)
+        # DeepSeek usa el cliente OpenAI con un base_url distinto
+        self.mock_openai_class.assert_called_once_with(
+            api_key="deepseek_key",
+            base_url="https://api.deepseek.com",
+        )
+        assert client is self.mock_openai_class.return_value
 
-        self.mock_openai_class.assert_called_once()
+    def test_create_response_raises_if_no_api_key_configured(self):
+        """
+        Si ninguna API key está configurada (get_configuration devuelve None o no tiene 'api-key'),
+        create_response debe lanzar una IAToolkitException indicando que no hay API configurada.
+        """
+        self.config_service_mock.get_configuration.return_value = None
+        # Forzamos que el modelo se resuelva como OpenAI para que llegue a leer la config
+        self.util_mock.is_openai_model.return_value = True
+
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(IAToolkitException, match="doesn't have an API key configured"):
+                self.proxy.create_response(
+                    company_short_name=self.company_short_name,
+                    model="gpt-4",
+                    input=[],
+                )
+
+    def test_client_caching_works_for_same_provider_and_api_key(self):
+        """_get_or_create_client debe cachear el cliente para (provider, api_key) y reutilizarlo."""
+        self.config_service_mock.get_configuration.return_value = {"api-key": "KEY"}
+
+        with patch.dict(os.environ, {"KEY": "val"}, clear=True):
+            api_key = self.proxy._get_api_key_from_config(self.company_short_name)
+            client1 = self.proxy._get_or_create_client(LLMProxy.PROVIDER_OPENAI, api_key)
+            client2 = self.proxy._get_or_create_client(LLMProxy.PROVIDER_OPENAI, api_key)
+
+        # La clase OpenAI solo debe haberse instanciado una vez
+        self.mock_openai_class.assert_called_once_with(api_key="val")
+        # Y ambas llamadas deben devolver el mismo cliente
+        assert client1 is client2
 
     def test_routing_to_correct_adapter(self):
-        """Prueba el enrutamiento correcto hacia el adaptador adecuado."""
-        self.util_mock.is_openai_model.return_value = True
-        self.util_mock.is_gemini_model.return_value = False
-        self.mock_config_service.get_configuration.return_value = None
-        self.company.openai_api_key = 'some_key'  # Darle una clave para que pueda crear el cliente
+        """create_response debe rutear al adaptador correcto según el modelo."""
+        # Configuramos los helpers de Utility
+        self.util_mock.is_openai_model.side_effect = lambda m: "gpt" in m
+        self.util_mock.is_gemini_model.side_effect = lambda m: "gemini" in m
+        self.util_mock.is_deepseek_model.side_effect = lambda m: "deepseek" in m
 
-        # Crear una instancia de proxy que tenga los adaptadores configurados
-        work_proxy = self.proxy_factory.create_for_company(self.company)
+        # Config común para que _get_api_key_from_config funcione
+        self.config_service_mock.get_configuration.return_value = {"api-key": "LLM_KEY"}
 
-        # Llamar a create_response en la instancia de trabajo
-        work_proxy.create_response(model='gpt-4', input=[])
+        with patch.dict(os.environ, {"LLM_KEY": "dummy"}, clear=True):
+            # 1) Modelo OpenAI
+            self.proxy.create_response(
+                company_short_name=self.company_short_name,
+                model="gpt-4",
+                input=[],
+            )
+            self.mock_openai_adapter_instance.create_response.assert_called_once()
+            self.mock_gemini_adapter_instance.create_response.assert_not_called()
+            self.mock_deepseek_adapter_instance.create_response.assert_not_called()
 
-        self.mock_openai_adapter_instance.create_response.assert_called_once()
-        self.mock_gemini_adapter_instance.create_response.assert_not_called()
+            # Reset de llamadas de los adapters (no del cache de adapters)
+            self.mock_openai_adapter_instance.reset_mock()
+            self.mock_gemini_adapter_instance.reset_mock()
+            self.mock_deepseek_adapter_instance.reset_mock()
+
+            # 2) Modelo Gemini
+            self.proxy.create_response(
+                company_short_name=self.company_short_name,
+                model="gemini-pro",
+                input=[],
+            )
+            self.mock_gemini_adapter_instance.create_response.assert_called_once()
+            self.mock_openai_adapter_instance.create_response.assert_not_called()
+            self.mock_deepseek_adapter_instance.create_response.assert_not_called()
+
+            # Reset de llamadas
+            self.mock_openai_adapter_instance.reset_mock()
+            self.mock_gemini_adapter_instance.reset_mock()
+            self.mock_deepseek_adapter_instance.reset_mock()
+
+            # 3) Modelo DeepSeek
+            self.proxy.create_response(
+                company_short_name=self.company_short_name,
+                model="deepseek-chat",
+                input=[],
+            )
+            self.mock_deepseek_adapter_instance.create_response.assert_called_once()
+            self.mock_openai_adapter_instance.create_response.assert_not_called()
+            self.mock_gemini_adapter_instance.create_response.assert_not_called()

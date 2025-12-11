@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 import uuid
 import json
 
-from iatoolkit.infra.gemini_adapter import GeminiAdapter
+from iatoolkit.infra.llm_providers.gemini_adapter import GeminiAdapter
 from iatoolkit.infra.llm_response import LLMResponse, ToolCall
 from iatoolkit.common.exceptions import IAToolkitException
 
@@ -18,9 +18,9 @@ class TestGeminiAdapter:
         self.mock_gemini_client.GenerativeModel.return_value = self.mock_generative_model
         self.adapter = GeminiAdapter(gemini_client=self.mock_gemini_client)
 
-        patch('iatoolkit.infra.gemini_adapter.uuid.uuid4', return_value=uuid.UUID('12345678-1234-5678-1234-567812345678')).start()
+        patch('iatoolkit.infra.llm_providers.gemini_adapter.uuid.uuid4', return_value=uuid.UUID('12345678-1234-5678-1234-567812345678')).start()
 
-        self.message_to_dict_patcher = patch('iatoolkit.infra.gemini_adapter.MessageToDict')
+        self.message_to_dict_patcher = patch('iatoolkit.infra.llm_providers.gemini_adapter.MessageToDict')
         self.mock_message_to_dict = self.message_to_dict_patcher.start()
 
     def teardown_method(self):

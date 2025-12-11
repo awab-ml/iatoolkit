@@ -134,15 +134,18 @@ class DatabaseManager:
         # construct a json dictionary with the table definition
         json_dict = {
             "table": table_name,
-            "description": f"Tabla {table_name}.",
+            "description": "",
             "fields": []
         }
-        if db_schema:
-            json_dict["schema"] = db_schema
-            json_dict["description"] += f"Pertenece al schema **`{db_schema}`**."
 
         if schema_object_name:
-            json_dict["description"] += f"El significado de cada uno de los fields de la tabla esta detallado en el objeto **`{schema_object_name}`**."
+            json_dict["description"] += (
+                f"The meaning of each field in this table is detailed in the **`{schema_object_name}`** object."
+            )
+
+        if db_schema:
+            json_dict["schema"] = db_schema
+            json_dict["description"] += f"It belongs to the **`{db_schema}`** schema."
 
         # now add every column to the json dictionary
         for col in columns:

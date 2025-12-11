@@ -1,9 +1,9 @@
 import logging
 import json
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Optional
 from iatoolkit.services.user_session_context_service import UserSessionContextService
 from iatoolkit.services.i18n_service import I18nService
-from iatoolkit.infra.llm_client import llmClient
+from iatoolkit.services.llm_client_service import llmClient
 from iatoolkit.repositories.models import Company
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.repositories.profile_repo import ProfileRepo
@@ -19,7 +19,7 @@ class HistoryManagerService:
     3. Database persistence retrieval (full chat history).
     """
     TYPE_SERVER_SIDE = 'server_side'  # For models like OpenAI
-    TYPE_CLIENT_SIDE = 'client_side'  # For models like Gemini
+    TYPE_CLIENT_SIDE = 'client_side'  # For models like Gemini and Deepseek
 
     GEMINI_MAX_TOKENS_CONTEXT_HISTORY = 200000
 
@@ -142,8 +142,8 @@ class HistoryManagerService:
             if last_content != user_turn_prompt:
                 context_history.append({"role": "user", "content": user_turn_prompt})
 
-            if response.get('output'):
-                context_history.append({"role": "model", "content": response['output']})
+            if response.get('answer'):
+                context_history.append({"role": "model", "content": response['answer']})
 
             self.session_context.save_context_history(company_short_name, user_identifier, context_history)
 

@@ -352,3 +352,9 @@ class Utility:
             'gemini', 'gemini-2.5-pro', 'gemini-3'
         ]
         return any(gemini_model in model.lower() for gemini_model in gemini_models)
+
+    def is_deepseek_model(self, model: str) -> bool:
+        deepsek_models = [
+            'deepseek',
+        ]
+        return any(deepsek_models in model.lower() for deepsek_models in deepsek_models)

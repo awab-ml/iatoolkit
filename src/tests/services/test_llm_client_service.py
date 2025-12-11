@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import patch, MagicMock
-from iatoolkit.infra.llm_client import llmClient
+from iatoolkit.services.llm_client_service import llmClient
 from iatoolkit.infra.llm_response import LLMResponse, ToolCall, Usage
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.repositories.models import Company
@@ -16,12 +16,8 @@ class TestLLMClient:
         self.dispatcher_mock = MagicMock()
         self.llmquery_repo = MagicMock()
         self.util_mock = MagicMock()
-        self.llm_proxy_factory = MagicMock()
-        self.injector_mock = MagicMock()
-
-        # Mock del LLMProxy que será devuelto por la fábrica
         self.mock_proxy = MagicMock()
-        self.llm_proxy_factory.create_for_company.return_value = self.mock_proxy
+        self.injector_mock = MagicMock()
 
         # Mock company
         self.company = Company(id=1, name='Test Company', short_name='test_company')
@@ -31,7 +27,7 @@ class TestLLMClient:
         self.env_patcher.start()
 
         # Mock tiktoken
-        self.tiktoken_patcher = patch('iatoolkit.infra.llm_client.tiktoken')
+        self.tiktoken_patcher = patch('iatoolkit.services.llm_client_service.tiktoken')
         self.mock_tiktoken = self.tiktoken_patcher.start()
         self.mock_tiktoken.encoding_for_model.return_value = MagicMock()
 
@@ -39,7 +35,7 @@ class TestLLMClient:
         self.client = llmClient(
             llmquery_repo=self.llmquery_repo,
             util=self.util_mock,
-            llm_proxy_factory=self.llm_proxy_factory
+            llm_proxy=self.mock_proxy
         )
 
         # Respuesta mock estándar del LLM
@@ -62,7 +58,6 @@ class TestLLMClient:
             model='gpt-5',question='q', context='c', tools=[], text={}
         )
 
-        self.llm_proxy_factory.create_for_company.assert_called_once_with(self.company)
         self.mock_proxy.create_response.assert_called_once()
         assert result['valid_response'] is True
         assert 'Test response' in result['answer']
@@ -136,7 +131,6 @@ class TestLLMClient:
         )
 
         assert response_id == 'ctx1'
-        self.llm_proxy_factory.create_for_company.assert_called_once_with(self.company)
         self.mock_proxy.create_response.assert_called_once()
         call_args = self.mock_proxy.create_response.call_args.kwargs['input'][0]
         assert call_args['role'] == 'system'

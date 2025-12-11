@@ -30,11 +30,11 @@ class llmClient:
     @inject
     def __init__(self,
                  llmquery_repo: LLMQueryRepo,
-                 llm_proxy_factory: LLMProxy,
+                 llm_proxy: LLMProxy,
                  util: Utility
                  ):
         self.llmquery_repo = llmquery_repo
-        self.llm_proxy_factory = llm_proxy_factory
+        self.llm_proxy = llm_proxy
         self.util = util
         self._dispatcher = None # Cache for the lazy-loaded dispatcher
 
@@ -86,9 +86,6 @@ class llmClient:
             start_time = time.time()
             logging.info(f"calling llm model '{model}' with {self.count_tokens(context)} tokens...")
 
-            # get the proxy for the company
-            llm_proxy = self.llm_proxy_factory.create_for_company(company)
-
             # this is the first call to the LLM on the iteration
             try:
                 input_messages = [{
@@ -96,11 +93,12 @@ class llmClient:
                     "content": context
                 }]
 
-                response = llm_proxy.create_response(
+                response = self.llm_proxy.create_response(
+                    company_short_name=company.short_name,
                     model=model,
+                    input=input_messages,
                     previous_response_id=previous_response_id,
                     context_history=context_history,
-                    input=input_messages,
                     tools=tools,
                     text=text,
                     reasoning=reasoning,
@@ -130,7 +128,14 @@ class llmClient:
                     # execute the function call through the dispatcher
                     fcall_time = time.time()
                     function_name = tool_call.name
-                    args = json.loads(tool_call.arguments)
+
+                    try:
+                        args = json.loads(tool_call.arguments)
+                    except Exception as e:
+                        logging.error(f"[Dispatcher] json.loads failed: {e}")
+                        raise
+                    logging.debug(f"[Dispatcher] Parsed args = {args}")
+
                     logging.info(f"start execution fcall: {function_name}")
                     try:
                         result = self.dispatcher.dispatch(
@@ -163,6 +168,7 @@ class llmClient:
                     input_messages.append({
                         "type": "function_call_output",
                         "call_id": tool_call.call_id,
+                        "status": "completed",
                         "output": str(result)
                     })
                     function_calls = True
@@ -183,7 +189,8 @@ class llmClient:
                 if force_tool_name:
                     tool_choice_value = "required"
 
-                response = llm_proxy.create_response(
+                response = self.llm_proxy.create_response(
+                    company_short_name=company.short_name,
                     model=model,
                     input=input_messages,
                     previous_response_id=response.id,
@@ -246,7 +253,7 @@ class llmClient:
                              company_id=company.id,
                              query=question,
                              output=error_message,
-                             response=response.output_text if response else {},
+                             response={},
                              valid_response=False,
                              function_calls=f_calls,
                              )
@@ -267,14 +274,15 @@ class llmClient:
 
         logging.info(f"initializing model '{model}' with company context: {self.count_tokens(company_base_context)} tokens...")
 
-        llm_proxy = self.llm_proxy_factory.create_for_company(company)
         try:
-            response = llm_proxy.create_response(
+            response = self.llm_proxy.create_response(
+                company_short_name=company.short_name,
                 model=model,
                 input=[{
                     "role": "system",
                     "content": company_base_context
-                }]
+                }],
+
             )
 
         except Exception as e:

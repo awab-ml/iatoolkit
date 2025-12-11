@@ -3,7 +3,7 @@
 #
 # IAToolkit is open source software.
 
-from iatoolkit.infra.llm_client import llmClient
+from iatoolkit.services.llm_client_service import llmClient
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.services.tool_service import ToolService
@@ -376,7 +376,7 @@ class QueryService:
 
             if not response.get('valid_response'):
                 response['error'] = True
-
+            else:
                 # save history using the manager passing the handle
                 self.history_manager.update_history(
                     history_handle, user_turn_prompt, response

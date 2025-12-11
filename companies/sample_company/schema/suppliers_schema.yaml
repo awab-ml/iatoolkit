@@ -1,4 +1,4 @@
-supplier:
+suppliers:
   description: "Tabla de Proveedores: Contiene información sobre los proveedores de productos."
   SupplierID:
     description: "Identificador único para cada proveedor. Es la clave primaria."

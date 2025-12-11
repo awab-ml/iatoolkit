@@ -13,13 +13,11 @@ import json
 import uuid
 
 class GeminiAdapter:
-    """Adaptador para la API de Gemini"""
 
     def __init__(self, gemini_client):
-        """Inicializar con cliente Gemini ya configurado"""
         self.client = gemini_client
 
-        # Configuración de seguridad - permitir contenido que podría ser bloqueado por defecto
+        # security configuration - allow content that might be blocked by default
         self.safety_settings = {
             HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
@@ -37,38 +35,36 @@ class GeminiAdapter:
                         reasoning: Optional[Dict] = None,
                         tool_choice: str = "auto",
                         ) -> LLMResponse:
-        """Llamada a la API de Gemini y mapeo a estructura común"""
         try:
-            # Inicializar el modelo de Gemini usando el cliente configurado
+            # init the model with the configured client
             gemini_model = self.client.GenerativeModel(
                 model_name=self._map_model_name(model),
                 safety_settings=self.safety_settings
             )
 
-            # Preparar el contenido para Gemini
+            # prepare the content for gemini
             if context_history:
-                # Concatenar el historial de conversación con el input actual
+                # concat the history with the current input
                 contents = self._prepare_gemini_contents(context_history + input)
             else:
-                # Usar solo el input actual si no hay historial
                 contents = self._prepare_gemini_contents(input)
 
-            # Preparar herramientas si están disponibles
+            # prepare tools
             gemini_tools = self._prepare_gemini_tools(tools) if tools else None
 
-            # Configurar generación
+            # config generation
             generation_config = self._prepare_generation_config(text, tool_choice)
 
-            # Llamar a Gemini
+            # call gemini
             if gemini_tools:
-                # Con herramientas
+                # with tools
                 response = gemini_model.generate_content(
                     contents,
                     tools=gemini_tools,
                     generation_config=generation_config
                 )
             else:
-                # Sin herramientas
+                # without tools
                 response = gemini_model.generate_content(
                     contents,
                     generation_config=generation_config
@@ -102,9 +98,7 @@ class GeminiAdapter:
 
             raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
 
-    # ... rest of the methods keep the same ...
     def _map_model_name(self, model: str) -> str:
-        """Mapear nombre del modelo a formato de Gemini"""
         model_mapping = {
             "gemini-pro": "gemini-2.5-pro",
             "gemini": "gemini-2.5-pro",
@@ -115,7 +109,7 @@ class GeminiAdapter:
         return model_mapping.get(model.lower(), model)
 
     def _prepare_gemini_contents(self, input: List[Dict]) -> List[Dict]:
-        """Convertir mensajes de formato OpenAI a formato Gemini"""
+        # convert input messages to Gemini format
         gemini_contents = []
 
         for message in input:
@@ -143,7 +137,7 @@ class GeminiAdapter:
         return gemini_contents
 
     def _prepare_gemini_tools(self, tools: List[Dict]) -> List[Dict]:
-        """Convertir herramientas de formato OpenAI a formato Gemini"""
+        # convert tools to Gemini format
         if not tools:
             return None
 

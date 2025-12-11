@@ -306,6 +306,8 @@ class IAToolkit:
         from iatoolkit.services.embedding_service import EmbeddingService
         from iatoolkit.services.history_manager_service import HistoryManagerService
         from iatoolkit.services.tool_service import ToolService
+        from iatoolkit.services.llm_client_service import llmClient
+
 
         binder.bind(QueryService, to=QueryService)
         binder.bind(BenchmarkService, to=BenchmarkService)
@@ -324,9 +326,10 @@ class IAToolkit:
         binder.bind(EmbeddingService, to=EmbeddingService)
         binder.bind(HistoryManagerService, to=HistoryManagerService)
         binder.bind(ToolService, to=ToolService)
+        binder.bind(llmClient, to=llmClient)
+
 
     def _bind_infrastructure(self, binder: Binder):
-        from iatoolkit.infra.llm_client import llmClient
         from iatoolkit.infra.llm_proxy import LLMProxy
         from iatoolkit.infra.google_chat_app import GoogleChatApp
         from iatoolkit.infra.brevo_mail_app import BrevoMailApp
@@ -334,7 +337,6 @@ class IAToolkit:
         from iatoolkit.common.util import Utility
 
         binder.bind(LLMProxy, to=LLMProxy)
-        binder.bind(llmClient, to=llmClient)
         binder.bind(GoogleChatApp, to=GoogleChatApp)
         binder.bind(BrevoMailApp, to=BrevoMailApp)
         binder.bind(AuthService, to=AuthService)

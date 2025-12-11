@@ -70,7 +70,7 @@ class TestDatabaseManager:
 
         result = self.db_manager.get_table_schema('test_table', db_schema='public')
 
-        assert "{'table': 'test_table', 'description': 'Tabla test_table.Pertenece al schema **`public`**.', 'fields': [{'name': 'id', 'type': 'INTEGER'}, {'name': 'name', 'type': 'VARCHAR'}], 'schema': 'public'}" == result.strip()
+        assert "{'table': 'test_table', 'description': 'It belongs to the **`public`** schema.', 'fields': [{'name': 'id', 'type': 'INTEGER'}, {'name': 'name', 'type': 'VARCHAR'}], 'schema': 'public'}" == result.strip()
 
     def test_get_table_schema_table_not_exists(self):
         """Prueba get_table_schema cuando la tabla no existe"""

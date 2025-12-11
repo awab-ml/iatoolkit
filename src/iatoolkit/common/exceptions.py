@@ -38,6 +38,7 @@ class IAToolkitException(Exception):
         INVALID_USER = 26
         VECTOR_STORE_ERROR = 27
         EMBEDDING_ERROR = 28
+        MODEL = 29
 
 
 

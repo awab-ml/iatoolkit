@@ -1,11 +1,11 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from iatoolkit.services.history_manager_service import HistoryManagerService as HistoryManager, HistoryManagerService
 from iatoolkit.services.user_session_context_service import UserSessionContextService
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.repositories.profile_repo import ProfileRepo
-from iatoolkit.infra.llm_client import llmClient
+from iatoolkit.services.llm_client_service import llmClient
 from iatoolkit.repositories.models import Company, LLMQuery
 
 # Mocking HistoryHandle dynamically to avoid importing QueryService (which has many deps)
@@ -194,13 +194,13 @@ class TestHistoryManager(unittest.TestCase):
         self.mock_session_context.get_context_history.return_value = initial_history.copy()
 
         user_turn = "User Question"
-        response = {"output": "Model Answer"}
+        response = {"answer": "Model Answer"}
 
         self.manager.update_history(handle, user_turn, response)
 
         expected_saved_history = [
             {"role": "user", "content": "System"},
-            {"role": "user", "content": user_turn},  # Should be appended now because content differs from System
+            {"role": "user", "content": user_turn},
             {"role": "model", "content": "Model Answer"}
         ]
 
