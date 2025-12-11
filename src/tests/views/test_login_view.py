@@ -105,6 +105,10 @@ class TestLoginView:
         # Company lookup returns a dummy object (truthy) by default
         self.profile_service.get_company_by_short_name.return_value = MagicMock()
 
+        self.config_service.get_llm_configuration.return_value = (
+            "test-model",
+            [{"id": "test-model", "label": "Test model", "description": "desc"}],
+        )
     def test_login_failure_renders_index_with_400(self):
         """When login fails, it should render index.html with 400."""
         self.auth_service.login_local_user.return_value = {

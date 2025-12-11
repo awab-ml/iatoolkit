@@ -69,6 +69,10 @@ class TestBaseLoginView:
         self.mock_services["branding_service"].get_company_branding.return_value = {"theme": "dark"}
         self.mock_services["prompt_service"].get_user_prompts.return_value = [{"id": "p1"}]
         self.mock_services["config_service"].get_configuration.return_value = []
+        self.mock_services["config_service"].get_llm_configuration.return_value = (
+            "test-model",
+            [{"id": "test-model", "label": "Test model", "description": "desc"}],
+        )
 
         app = Flask(__name__)
         with app.test_request_context():
@@ -100,6 +104,10 @@ class TestBaseLoginView:
         self.mock_services["branding_service"].get_company_branding.return_value = {}
         self.mock_services["prompt_service"].get_user_prompts.return_value = []
         self.mock_services["config_service"].get_onboarding_cards.return_value = []
+        self.mock_services["config_service"].get_llm_configuration.return_value = (
+            "test-model",
+            [{"id": "test-model", "label": "Test model", "description": "desc"}],
+        )
         test_token = "test-token-123"
 
         app = Flask(__name__)
