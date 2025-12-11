@@ -500,12 +500,14 @@ li {
 }
 
    /* Popup de selección de modelo LLM, usando colores de brand */
-    .llm-model-popup {
-        background-color: var(--brand-secondary-color, #ffffff);
-        border-radius: 0.5rem;
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        color: var(--brand-text-on-secondary, #000000);
-    }
+     .llm-model-popup {
+            /* Usamos el color de cabecera de la marca como fondo */
+            background-color: var(--brand-header-bg);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            /* Texto siguiendo el color de cabecera (normalmente blanco) */
+            color: var(--brand-header-text, #ffffff);
+        }
 
     .llm-model-popup .card-body {
         padding-left: 0.9rem;
@@ -513,7 +515,7 @@ li {
     }
 
     .llm-model-popup .llm-model-subtitle {
-        color: rgba(255, 255, 255, 0.85);
+        color: var(--brand-header-text, #ffffff);
     }
 
     .llm-model-popup .list-group-item {
@@ -522,22 +524,32 @@ li {
         padding-bottom: 0.4rem;
         background-color: transparent;
         color: inherit;
+        transition: background-color 0.15s ease-in-out, transform 0.1s ease-in-out;
     }
 
-    .llm-model-popup .list-group-item:hover {
-        background-color: rgba(0, 0, 0, 0.08);
-    }
+    .llm-model-popup .list-group-item .text-muted {
+            color: currentColor !important;
+            opacity: 0.85;
+        }
 
-    .llm-model-popup .list-group-item.active {
-        background-color: var(--brand-primary-color, #4C6A8D);
-        color: var(--brand-text-on-primary, #ffffff);
-        border-color: transparent;
-    }
+    /* Hover más marcado dentro del popup */
+        .llm-model-popup .list-group-item:hover {
+            background-color: rgba(255, 255, 255, 0.16);
+            transform: translateX(2px);
+        }
 
-    .llm-model-popup .list-group-item.active .text-muted {
-        color: rgba(255, 255, 255, 0.85) !important;
-    }
+        /* Nuevo estilo del modelo seleccionado:
+           "pastilla" clara sobre fondo de marca */
+        .llm-model-popup .list-group-item.active {
+            background-color: #ffffff;
+            color: var(--brand-primary-color, #4C6A8D);
+            border-radius: 0.4rem;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+        }
 
-
+        .llm-model-popup .list-group-item.active .text-muted {
+            color: currentColor !important;
+            opacity: 0.9;
+        }
 
 
