@@ -209,7 +209,12 @@ const toggleSendStopButtons = function (showStop) {
  * @returns {Promise<object|null>} The response data or null on error.
  */
 const callToolkit = async function(apiPath, data, method, timeoutMs = 500000) {
-    const url = `${window.iatoolkit_base_url}/${window.companyShortName}${apiPath}`;
+    // normalize the url for avoiding double //
+    const base = (window.iatoolkit_base_url || '').replace(/\/+$/, '');
+    const company = (window.companyShortName || '').replace(/^\/+|\/+$/g, '');
+    const path = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
+    const url = `${base}/${company}${path}`;
+
 
     abortController = new AbortController();
     const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
