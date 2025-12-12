@@ -45,7 +45,7 @@ class ConfigurationService:
         self._ensure_config_loaded(company_short_name)
         return self._loaded_configs[company_short_name].get(content_key)
 
-    def get_llm_configuration(self, company_short_name: str) -> dict | None:
+    def get_llm_configuration(self, company_short_name: str):
         """
         Convenience helper to obtain the 'llm' configuration block for a company.
         Kept separate from get_configuration() to avoid coupling tests that
@@ -227,8 +227,8 @@ class ConfigurationService:
         else:
             if not config.get("llm", {}).get("model"):
                 add_error("llm", "Missing required key: 'model'")
-            if not config.get("llm", {}).get("api-key"):
-                add_error("llm", "Missing required key: 'api-key'")
+            if not config.get("llm", {}).get("provider_api_keys"):
+                add_error("llm", "Missing required key: 'provider_api_keys'")
 
         # 3. Embedding Provider
         if isinstance(config.get("embedding_provider"), dict):
