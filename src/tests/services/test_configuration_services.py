@@ -18,8 +18,8 @@ MOCK_VALID_CONFIG = {
     'name': 'ACME Corp',
     'locale': 'en_US',
     'llm': {
-        'model': 'gpt-5-test',
-        'api-key': 'TEST_OPENAI_API_KEY'
+        'model': 'gpt-5',
+        'provider_api_keys': [{'openai': 'TEST_OPENAI_API_KEY'}]
     },
     'embedding_provider': {
         'provider': 'openai',
@@ -219,7 +219,7 @@ class TestConfigurationService:
         minimal_config = {
             'id': 'minimal_co',
             'name': 'Minimal Co',
-            'llm': {'model': 'test', 'api-key': 'TEST'},
+            'llm': {'model': 'test', 'provider_api_keys': [{'dummy': 'key'}]},
             'embedding_provider': {'provider': 'test', 'model': 'test', 'api_key_name': 'TEST'}
         }
         self.mock_utility.load_schema_from_yaml.return_value = minimal_config
