@@ -85,6 +85,9 @@ def get_company_registry() -> CompanyRegistry:
     """Get the global company registry instance."""
     return _company_registry
 
+def get_registered_companies() -> Dict[str, Type[BaseCompany]]:
+    return _company_registry.get_registered_companies()
+
 
 def set_company_registry(registry: CompanyRegistry) -> None:
     """
