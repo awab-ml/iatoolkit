@@ -41,7 +41,6 @@ class ProfileService:
         self.mail_service = mail_service
         self.bcrypt = Bcrypt()
 
-
     def login(self, company_short_name: str, email: str, password: str) -> dict:
         try:
             # check if user exists
@@ -65,6 +64,8 @@ class ProfileService:
                 return {'success': False,
                         "message": self.i18n_service.t('errors.services.account_not_verified')}
 
+            user_role = self.profile_repo.get_user_role_in_company(company.id, user.id)
+
             # 1. Build the local user profile dictionary here.
             # the user_profile variables are used on the LLM templates also (see in query_main.prompt)
             user_identifier = user.email
@@ -73,6 +74,7 @@ class ProfileService:
                 "user_fullname": f'{user.first_name} {user.last_name}',
                 "user_is_local": True,
                 "user_id": user.id,
+                "user_role": user_role,
                 "extras": {}
             }
 

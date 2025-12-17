@@ -71,7 +71,7 @@ class ConfigurationService:
             }]
         return default_llm_model, available_llm_models
 
-    def load_configuration(self, company_short_name: str, company_instance):
+    def load_configuration(self, company_short_name: str):
         """
         Main entry point for configuring a company instance.
         This method is invoked by the dispatcher for each registered company.
@@ -81,27 +81,23 @@ class ConfigurationService:
         # 1. Load the main configuration file and supplementary content files
         config = self._load_and_merge_configs(company_short_name)
 
-        # 2. Register core company details and get the database object
-        self._register_core_details(company_instance, config)
+        # 2. create/update company in database
+        self._register_company_database(config)
 
-        # 3. Register databases
+        # 3. Register config databases with db manager
         self._register_data_sources(company_short_name, config)
 
         # 4. Register tools
-        self._register_tools(company_instance, config)
+        self._register_tools(company_short_name, config)
 
         # 5. Register prompt categories and prompts
-        self._register_prompts(company_instance, config)
-
-        # 6. Link the persisted Company object back to the running instance
-        company_instance.company_short_name = company_short_name
-        company_instance.id = company_instance.company.id if company_instance.company else None
+        self._register_prompts(company_short_name, config)
 
         # Final step: validate the configuration against platform
-        self._validate_configuration(company_short_name, config)
+        errors = self._validate_configuration(company_short_name, config)
 
         logging.info(f"✅ Company '{company_short_name}' configured successfully.")
-        return config
+        return config, errors
 
     def _load_and_merge_configs(self, company_short_name: str) -> dict:
         """
@@ -140,18 +136,20 @@ class ConfigurationService:
 
         return config
 
-    def _register_core_details(self, company_instance, config: dict) -> Company:
+    def _register_company_database(self, config: dict) -> Company:
         # register the company in the database: create_or_update logic
         if not config:
             return None
 
+        # create or update the company in database
         company_obj = Company(short_name=config.get('id'),
                               name=config.get('name'),
                               parameters=config.get('parameters', {}))
         company = self.profile_repo.create_company(company_obj)
 
-        # save company object with the instance
-        company_instance.company = company
+        # save company object with the configuration
+        config['company'] = company
+
         return company
 
     def _register_data_sources(self, company_short_name: str, config: dict):
@@ -188,7 +186,7 @@ class ConfigurationService:
             # Register with the SQL service
             sql_service.register_database(company_short_name, db_uri, db_name, db_schema)
 
-    def _register_tools(self, company_instance, config: dict):
+    def _register_tools(self, company_short_name: str, config: dict):
         """creates in the database each tool defined in the YAML."""
         # Lazy import and resolve ToolService locally
         from iatoolkit import current_iatoolkit
@@ -196,9 +194,9 @@ class ConfigurationService:
         tool_service = current_iatoolkit().get_injector().get(ToolService)
 
         tools_config = config.get('tools', [])
-        tool_service.sync_company_tools(company_instance, tools_config)
+        tool_service.sync_company_tools(company_short_name, tools_config)
 
-    def _register_prompts(self, company_instance, config: dict):
+    def _register_prompts(self, company_short_name: str, config: dict):
         """
          Delegates prompt synchronization to PromptService.
          """
@@ -211,7 +209,7 @@ class ConfigurationService:
         categories_config = config.get('prompt_categories', [])
 
         prompt_service.sync_company_prompts(
-            company_instance=company_instance,
+            company_short_name=company_short_name,
             prompts_config=prompts_config,
             categories_config=categories_config
         )
@@ -338,8 +336,5 @@ class ConfigurationService:
                 f" - {e}" for e in errors)
             logging.error(error_summary)
 
-            raise IAToolkitException(
-                IAToolkitException.ErrorType.CONFIG_ERROR,
-                'company.yaml validation errors'
-            )
+        return errors
 

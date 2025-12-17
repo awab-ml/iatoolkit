@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import MagicMock, ANY
 from iatoolkit.services.tool_service import ToolService, _SYSTEM_TOOLS
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
+from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.repositories.models import Company, Tool
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.sql_service import SqlService
@@ -18,9 +19,11 @@ class TestToolService:
         self.mock_sql_service = MagicMock(spec=SqlService)
         self.mock_excel_service = MagicMock(spec=ExcelService)
         self.mock_mail_service = MagicMock(spec=MailService)
+        self.mock_profile_repo = MagicMock(spec=ProfileRepo)
 
         self.service = ToolService(
             llm_query_repo=self.mock_llm_query_repo,
+            profile_repo=self.mock_profile_repo,
             sql_service=self.mock_sql_service,
             excel_service=self.mock_excel_service,
             mail_service=self.mock_mail_service
@@ -31,8 +34,7 @@ class TestToolService:
         self.mock_company_model.id = 1
 
         # Mock de la instancia de negocio (Company Instance) que tiene .company
-        self.mock_company_instance = MagicMock()
-        self.mock_company_instance.company = self.mock_company_model
+        self.company_short_name = 'my_company'
 
 
     def test_register_system_tools_success(self):
@@ -93,11 +95,11 @@ class TestToolService:
             {'function_name': 'new_tool', 'description': 'New Desc', 'params': {'p': 2}}
         ]
 
-        # Act: Pasamos mock_company_instance, no el modelo directamente
-        self.service.sync_company_tools(self.mock_company_instance, tools_config)
+        # Act: Pasamos company_short_name, no el modelo directamente
+        self.service.sync_company_tools(self.company_short_name, tools_config)
 
         # Verificar que se llamó a get_company_tools con el modelo correcto
-        self.mock_llm_query_repo.get_company_tools.assert_called_once_with(self.mock_company_model)
+        self.mock_llm_query_repo.get_company_tools.assert_called_once()
 
         assert self.mock_llm_query_repo.create_or_update_tool.call_count == 2
 
@@ -135,7 +137,7 @@ class TestToolService:
         ]
 
         with pytest.raises(IAToolkitException) as excinfo:
-            self.service.sync_company_tools(self.mock_company_instance, tools_config)
+            self.service.sync_company_tools(self.company_short_name, tools_config)
 
         assert excinfo.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
         self.mock_llm_query_repo.rollback.assert_called_once()
@@ -155,7 +157,7 @@ class TestToolService:
         self.mock_llm_query_repo.get_company_tools.return_value = [tool1]
 
         # Act
-        result = self.service.get_tools_for_llm(self.mock_company_instance)
+        result = self.service.get_tools_for_llm(self.company_short_name)
 
         # Assert
         assert len(result) == 1

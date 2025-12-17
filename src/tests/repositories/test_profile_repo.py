@@ -4,7 +4,7 @@
 # IAToolkit is open source software.
 
 from iatoolkit.repositories.database_manager import DatabaseManager
-from iatoolkit.repositories.models import User, Company, UserFeedback
+from iatoolkit.repositories.models import User, Company, UserFeedback, user_company
 from iatoolkit.repositories.profile_repo import ProfileRepo
 
 
@@ -138,6 +138,31 @@ class TestProfileRepo:
 
         assert result.id is not None
         assert result.name == 'NewCompany'
+
+    def test_get_user_role_in_company_when_relation_exists(self):
+        # arrange
+        self.session.add(self.user)
+        self.session.add(self.company)
+        self.session.commit()
+
+        # insertar relación en la tabla de asociación con rol "admin"
+        self.session.execute(
+            user_company.insert().values(
+                user_id=self.user.id,
+                company_id=self.company.id,
+                role='admin'
+            )
+        )
+        self.session.commit()
+
+    def test_get_user_role_in_company_when_no_relation(self):
+        # arrange
+        self.session.add(self.user)
+        self.session.add(self.company)
+        self.session.commit()
+        role = self.repo.get_user_role_in_company(self.user.id, self.company.id)
+
+        assert role is None
 
     def test_save_feedback_when_ok(self):
         company = self.repo.create_company(Company(name='my_company', short_name='my_company'))

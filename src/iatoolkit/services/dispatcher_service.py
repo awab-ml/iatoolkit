@@ -59,13 +59,23 @@ class Dispatcher:
         self.setup_iatoolkit_system()
 
         # Loads the configuration of every company: company.yaml file
-        for company_name, company_instance in self.company_instances.items():
+        for company_short_name, company_instance in self.company_instances.items():
             try:
                 # read company configuration from company.yaml
-                self.config_service.load_configuration(company_name, company_instance)
+                config, errors = self.config_service.load_configuration(company_short_name)
+
+                if errors:
+                    raise IAToolkitException(
+                        IAToolkitException.ErrorType.CONFIG_ERROR,
+                        'company.yaml validation errors'
+                    )
+
+                # complement the instance self data
+                company_instance.company_short_name = company_short_name
+                company_instance.company = config.get('company')
 
             except Exception as e:
-                logging.error(f"❌ Failed to register configuration for '{company_name}': {e}")
+                logging.error(f"❌ Failed to register configuration for '{company_short_name}': {e}")
                 raise e
 
         return True

@@ -92,9 +92,9 @@ class ModelRegistry:
 
             # Fine-grained per-model tuning.
             if model_lower in ("gpt-5", "gpt-5-mini"):
-                defaults["reasoning"] = {"effort": "minimal"}
+                defaults["reasoning"] = {"effort": "minimal", "summary": "auto"}
             elif model_lower == "gpt-5.1":
-                defaults["reasoning"] = {"effort": "low"}
+                defaults["reasoning"] = {"effort": "low", "summary": "auto"}
 
         # Gemini/DeepSeek/unknown: keep defaults empty to avoid sending unsupported parameters.
         return defaults

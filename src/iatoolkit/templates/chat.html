@@ -104,15 +104,16 @@
                        style="color: {{ branding.header_text_color }};">
                         <i class="bi bi-question-circle-fill"></i>
                 </a>
-                <!-- toolbar de preferencia
-                <a href="javascript:void(0);"
-                       id="preferences-button"
-                       class="ms-3 action-icon-style"
-                        title="{{ t('ui.tooltips.preferences') }}"
-                       style="color: {{ branding.header_text_color }};">
-                        <i class="bi bi-gear"></i>
-                </a>
-                -->
+                {% if user_role == "admin" and license == 'enterprise' %}
+                    <a href="/{{ company_short_name }}/admin"
+                       target="_blank"
+                           id="preferences-button"
+                           class="ms-3 action-icon-style"
+                            title="{{ t('ui.tooltips.preferences') }}"
+                           style="color: {{ branding.header_text_color }};">
+                            <i class="bi bi-gear"></i>
+                    </a>
+                {% endif %}
                 <a href="javascript:void(0);"
                    id="logout-button"
                    class="ms-3 action-icon-style"

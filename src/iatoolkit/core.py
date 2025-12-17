@@ -417,6 +417,7 @@ class IAToolkit:
                 'app_name': 'IAToolkit',
                 'user_identifier': SessionManager.get('user_identifier'),
                 'company_short_name': SessionManager.get('company_short_name'),
+                'user_role': user_profile.get('user_role'),
                 'user_is_local': user_profile.get('user_is_local'),
                 'user_email': user_profile.get('user_email'),
                 'iatoolkit_base_url': request.url_root,

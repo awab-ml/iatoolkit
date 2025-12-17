@@ -34,7 +34,7 @@ class PromptService:
         self.profile_repo = profile_repo
         self.i18n_service = i18n_service
 
-    def sync_company_prompts(self, company_instance, prompts_config: list, categories_config: list):
+    def sync_company_prompts(self, company_short_name: str, prompts_config: list, categories_config: list):
         """
         Synchronizes prompt categories and prompts from YAML config to Database.
         Strategies:
@@ -44,13 +44,18 @@ class PromptService:
         if not prompts_config:
             return
 
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
+                                     f'Company {company_short_name} not found')
+
         try:
             # 1. Sync Categories
             category_map = {}
 
             for i, category_name in enumerate(categories_config):
                 category_obj = PromptCategory(
-                    company_id=company_instance.company.id,
+                    company_id=company.id,
                     name=category_name,
                     order=i + 1
                 )
@@ -75,7 +80,7 @@ class PromptService:
                 filename = f"{prompt_name}.prompt"
 
                 new_prompt = Prompt(
-                    company_id=company_instance.company.id,
+                    company_id=company.id,
                     name=prompt_name,
                     description=prompt_data.get('description'),
                     order=prompt_data.get('order'),
@@ -89,7 +94,7 @@ class PromptService:
                 self.llm_query_repo.create_or_update_prompt(new_prompt)
 
             # 3. Cleanup: Delete prompts present in DB but not in Config
-            existing_prompts = self.llm_query_repo.get_prompts(company_instance.company)
+            existing_prompts = self.llm_query_repo.get_prompts(company)
             for p in existing_prompts:
                 if p.name not in defined_prompt_names:
                     # Using hard delete to keep consistent with previous "refresh" behavior

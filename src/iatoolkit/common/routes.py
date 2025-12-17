@@ -24,6 +24,7 @@ def register_views(app):
     from iatoolkit.views.profile_api_view import UserLanguageApiView
     from iatoolkit.views.embedding_api_view import EmbeddingApiView
     from iatoolkit.views.login_view import LoginView, FinalizeContextView
+    from iatoolkit.views.load_company_configuration_api_view import LoadCompanyConfigurationApiView
     from iatoolkit.views.logout_api_view import LogoutApiView
     from iatoolkit.views.home_view import HomeView
     from iatoolkit.views.chat_view import ChatView
@@ -92,6 +93,10 @@ def register_views(app):
     # this endpoint is for generating embeddings for a given text
     app.add_url_rule('/<company_short_name>/api/embedding',
                      view_func=EmbeddingApiView.as_view('embedding_api'))
+
+    # company configuration
+    app.add_url_rule('/<company_short_name>/api/load_configuration',
+                     view_func=LoadCompanyConfigurationApiView.as_view('load-configuration'))
 
     # static pages
     # url: /pages/foundation o /pages/implementation_plan

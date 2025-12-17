@@ -5,6 +5,7 @@
 
 from injector import inject
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
+from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.repositories.models import Company, Tool
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.sql_service import SqlService
@@ -121,10 +122,12 @@ class ToolService:
     @inject
     def __init__(self,
                  llm_query_repo: LLMQueryRepo,
+                 profile_repo: ProfileRepo,
                  sql_service: SqlService,
                  excel_service: ExcelService,
                  mail_service: MailService):
         self.llm_query_repo = llm_query_repo
+        self.profile_repo = profile_repo
         self.sql_service = sql_service
         self.excel_service = excel_service
         self.mail_service = mail_service
@@ -158,17 +161,22 @@ class ToolService:
             self.llm_query_repo.rollback()
             raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR, str(e))
 
-    def sync_company_tools(self, company_instance, tools_config: list):
+    def sync_company_tools(self, company_short_name: str, tools_config: list):
         """
         Synchronizes tools from YAML config to Database (Create/Update/Delete strategy).
         """
         if not tools_config:
             return
 
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
+                                     f'Company {company_short_name} not found')
+
         try:
             # 1. Get existing tools map for later cleanup
             existing_tools = {
-                f.name: f for f in self.llm_query_repo.get_company_tools(company_instance.company)
+                f.name: f for f in self.llm_query_repo.get_company_tools(company)
             }
             defined_tool_names = set()
 
@@ -180,7 +188,7 @@ class ToolService:
                 # Construct the tool object with current config values
                 # We create a new transient object and let the repo merge it
                 tool_obj = Tool(
-                    company_id=company_instance.company.id,
+                    company_id=company.id,
                     name=name,
                     description=tool_data['description'],
                     parameters=tool_data['params'],

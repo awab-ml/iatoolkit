@@ -146,3 +146,21 @@
   overflow-y: auto;
   font-family: inherit;                 /* 👈 clave: usa la misma fuente base */
 }
+
+.reasoning-list {
+    list-style-type: decimal;
+}
+
+.reasoning-item {
+    padding-left: 0.25rem;
+}
+
+.reasoning-header {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.reasoning-body {
+    line-height: 1.4;
+    white-space: pre-wrap;
+}

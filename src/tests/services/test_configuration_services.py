@@ -166,7 +166,7 @@ class TestConfigurationService:
         self.mock_utility.load_yaml_from_string.side_effect = load_yaml_side_effect
 
         # --- Act ---
-        self.service.load_configuration(self.COMPANY_NAME, self.mock_company_instance)
+        self.service.load_configuration(self.COMPANY_NAME)
 
         # --- Assert ---
         # Validar llamadas al repo
@@ -179,20 +179,16 @@ class TestConfigurationService:
 
         # 2. Verify ToolService delegation
         mock_tool_service.sync_company_tools.assert_called_once_with(
-            self.mock_company_instance,
+            self.COMPANY_NAME,
             MOCK_VALID_CONFIG['tools']
         )
 
         # 3. Verify PromptService delegation
         mock_prompt_service.sync_company_prompts.assert_called_once_with(
-            company_instance=self.mock_company_instance,
+            company_short_name=self.COMPANY_NAME,
             prompts_config=MOCK_VALID_CONFIG['prompts'],
             categories_config=MOCK_VALID_CONFIG['prompt_categories']
         )
-
-        # 4. Verify final attributes set
-        assert self.mock_company_instance.company_short_name == self.COMPANY_NAME
-        assert self.mock_company_instance.company == self.mock_company
 
     def test_get_configuration_uses_cache_on_second_call(self):
         """
@@ -273,15 +269,15 @@ class TestConfigurationService:
         self.mock_utility.load_yaml_from_string.return_value = minimal_config
 
         # --- Act ---
-        self.service.load_configuration('minimal_co', self.mock_company_instance)
+        self.service.load_configuration('minimal_co')
 
         # --- Assert ---
         # Verify ToolService received an empty list (default for missing key)
-        mock_tool_service.sync_company_tools.assert_called_once_with(self.mock_company_instance, [])
+        mock_tool_service.sync_company_tools.assert_called_once_with('minimal_co', [])
 
         # Verify PromptService received empty lists for prompts and categories
         mock_prompt_service.sync_company_prompts.assert_called_once_with(
-            company_instance=self.mock_company_instance,
+            company_short_name='minimal_co',
             prompts_config=[],
             categories_config=[]
         )
@@ -294,7 +290,7 @@ class TestConfigurationService:
         self.mock_utility.load_yaml_from_string.return_value = invalid_config
 
         with pytest.raises(IAToolkitException) as excinfo:
-            self.service.load_configuration(self.COMPANY_NAME, self.mock_company_instance)
+            self.service.load_configuration(self.COMPANY_NAME)
 
         assert excinfo.value.error_type == IAToolkitException.ErrorType.CONFIG_ERROR
 

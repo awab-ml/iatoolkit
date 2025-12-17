@@ -81,6 +81,8 @@ class TestDispatcher:
         # Instantiate all registered companies. The registry will use our mock_injector.
         registry.instantiate_companies(mock_injector)
 
+        self.mock_config_service.load_configuration.return_value = {"sample": {"key": "value"}}, []
+
         # Initialize the Dispatcher within the patched context
         self.dispatcher = Dispatcher(
             config_service=self.mock_config_service,
@@ -220,7 +222,7 @@ class TestDispatcher:
 
         # Verify config_service.load_configuration called for "sample"
         self.mock_config_service.load_configuration.assert_called_once_with(
-            "sample", self.mock_sample_company_instance
+            "sample"
         )
 
         assert result is True

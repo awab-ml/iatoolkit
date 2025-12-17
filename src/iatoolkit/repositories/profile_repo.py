@@ -6,7 +6,7 @@
 from iatoolkit.repositories.models import User, Company, user_company, ApiKey, UserFeedback
 from injector import inject
 from iatoolkit.repositories.database_manager import DatabaseManager
-from sqlalchemy.orm import joinedload # Para cargar la relación eficientemente
+from sqlalchemy import select
 
 
 class ProfileRepo:
@@ -68,6 +68,17 @@ class ProfileRepo:
 
     def get_companies(self) -> list[Company]:
         return self.session.query(Company).all()
+
+    def get_user_role_in_company(self, company_id, user_id, ):
+        stmt = (
+            select(user_company.c.role)
+            .where(
+                user_company.c.user_id == user_id,
+                user_company.c.company_id == company_id,
+            )
+        )
+        result = self.session.execute(stmt).scalar_one_or_none()
+        return result
 
     def get_admin_companies_by_user_identifier(self, user_identifier: str) -> list[Company]:
         """
