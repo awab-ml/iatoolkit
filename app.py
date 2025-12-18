@@ -17,7 +17,7 @@ from iatoolkit.company_registry import register_company
 from companies.sample_company.sample_company import SampleCompany
 
 # load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 def create_app():
     # IMPORTANT: companies must be registered before creating the IAToolkit
