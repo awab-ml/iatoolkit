@@ -92,7 +92,7 @@ class ModelRegistry:
 
             # Fine-grained per-model tuning.
             if model_lower in ("gpt-5", "gpt-5-mini"):
-                defaults["reasoning"] = {"effort": "minimal", "summary": "auto"}
+                defaults["reasoning"] = {"effort": "minimal"}
             elif model_lower == "gpt-5.1":
                 defaults["reasoning"] = {"effort": "low", "summary": "auto"}
 
