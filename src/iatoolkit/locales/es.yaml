@@ -67,7 +67,11 @@ ui:
     saved_ok: "Guardado correctamente"
     deleted_ok: "Eliminado correctamente"
     company: "Empresa"
-    admin_page_title: "Acceso de admiistración"
+    admin_page_title: "Acceso de administración"
+    user_manager: "Administración de usuarios"
+    load_configuration: "Guardar configuración"
+    goto_chat: "Ir al chat"
+    logout: "Cerrar sesión"
 
 
   tooltips:
@@ -206,6 +210,15 @@ js_messages:
   invalid_file_name: "Nombre de archivo no válido. Usa solo letras, números, guiones bajos, guiones y puntos."
   config_loaded: "Configuración cargada correctamente."
   config_load_error: "Error cargando confguración."
+  search_placeholder: "Buscar usuarios..."
+  showing: "Mostrando"
+  records: "Registros"
+  db_user: "Usuario"
+  db_role: "Rol"
+  db_verified: "Verificado"
+  db_created: "Ingreso"
+  db_last_access: "ultimo acceso"
+
 
 
 
