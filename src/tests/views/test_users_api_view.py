@@ -39,7 +39,7 @@ class TestUsersApiView:
 
         # Assert
         assert resp.status_code == 200
-        assert resp.json == {"users": expected_users}
+        assert resp.json == expected_users
         self.mock_profile_service.get_company_users.assert_called_once_with('acme')
 
     def test_get_users_auth_failure(self):

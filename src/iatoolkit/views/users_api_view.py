@@ -26,7 +26,7 @@ class UsersApiView(MethodView):
             # get users of the company
             users = self.profile_service.get_company_users(company_short_name)
 
-            return jsonify({"users": users}), 200
+            return jsonify(users), 200
 
         except Exception as e:
             logging.exception(f"Error fetching users for {company_short_name}: {e}")
