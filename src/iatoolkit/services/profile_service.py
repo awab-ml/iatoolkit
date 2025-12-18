@@ -9,6 +9,7 @@ from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.models import User, Company, ApiKey
 from flask_bcrypt import check_password_hash
 from iatoolkit.common.session_manager import SessionManager
+from iatoolkit.services.dispatcher_service import Dispatcher
 from iatoolkit.services.language_service import LanguageService
 from iatoolkit.services.user_session_context_service import UserSessionContextService
 from iatoolkit.services.configuration_service import ConfigurationService
@@ -19,7 +20,7 @@ import re
 import secrets
 import string
 import logging
-from iatoolkit.services.dispatcher_service import Dispatcher
+from typing import List, Dict
 
 
 class ProfileService:
@@ -321,6 +322,28 @@ class ProfileService:
 
     def get_company_by_short_name(self, short_name: str) -> Company:
         return self.profile_repo.get_company_by_short_name(short_name)
+
+    def get_company_users(self, company_short_name: str) -> List[Dict]:
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            return []
+
+        # get the company users from the repo
+        company_users =  self.profile_repo.get_company_users_with_details(company_short_name)
+
+        users_data = []
+        for user, role, last_access in company_users:
+            users_data.append({
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "created": user.created_at,
+                "verified": user.verified,
+                "role": role or "user",
+                "last_access": last_access
+            })
+
+        return users_data
 
     def get_active_api_key_entry(self, api_key_value: str) -> ApiKey | None:
         return self.profile_repo.get_active_api_key_entry(api_key_value)

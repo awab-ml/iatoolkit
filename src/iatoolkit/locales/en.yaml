@@ -53,6 +53,7 @@ ui:
     schemas: "Schemas"
     context: "Context"
     files: "Files"
+    users: "Users"
     select_file: "Select a file for editing"
     select_category: "Select a category"
     editing: "Editing"

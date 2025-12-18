@@ -30,6 +30,7 @@ def register_views(app):
     from iatoolkit.views.chat_view import ChatView
     from iatoolkit.views.static_page_view import StaticPageView
     from iatoolkit.views.root_redirect_view import RootRedirectView
+    from iatoolkit.views.users_api_view import UsersApiView
 
     # assign root '/' to our new redirect logic
     app.add_url_rule('/home', view_func=RootRedirectView.as_view('root_redirect'))
@@ -74,6 +75,10 @@ def register_views(app):
     app.add_url_rule('/<company_short_name>/verify/<token>', view_func=VerifyAccountView.as_view('verify_account'))
     app.add_url_rule('/<company_short_name>/forgot-password', view_func=ForgotPasswordView.as_view('forgot_password'))
     app.add_url_rule('/<company_short_name>/change-password/<token>', view_func=ChangePasswordView.as_view('change_password'))
+    app.add_url_rule(
+        '/<string:company_short_name>/api/company-users',
+        view_func=UsersApiView.as_view('company-users')
+    )
 
     # main chat query, used by the JS in the browser (with credentials)
     # can be used also for executing iatoolkit prompts

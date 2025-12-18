@@ -244,6 +244,42 @@ class TestProfileService:
         company = self.service.get_company_by_short_name('test_company')
         assert company == self.mock_company
 
+    def test_get_company_users_transforms_data_correctly(self, mock_session_manager):
+        # Arrange
+        short_name = "test_corp"
+
+        # Mock company existence
+        mock_company = MagicMock()
+        self.mock_repo.get_company_by_short_name.return_value = mock_company
+
+        # Mock raw data from repo (Tuple: User, Role, LastAccess)
+        mock_user = User(
+            first_name="John",
+            last_name="Doe",
+            email="john@test.com",
+            verified=True,
+            created_at="2023-01-01"
+        )
+        mock_role = "editor"
+        mock_access = "2024-05-20"
+
+        self.mock_repo.get_company_users_with_details.return_value = [
+            (mock_user, mock_role, mock_access)
+        ]
+
+        # Act
+        result = self.service.get_company_users(short_name)
+
+        # Assert
+        assert len(result) == 1
+        user_dict = result[0]
+
+        assert user_dict['email'] == "john@test.com"
+        assert user_dict['role'] == "editor"
+        assert user_dict['last_access'] == "2024-05-20"
+        # Verificar que se usaron los campos del objeto user
+        assert user_dict['first_name'] == "John"
+        
     def test_update_user(self, mock_session_manager):
         self.mock_repo.update_user.return_value = self.mock_user
         user = self.service.update_user('fl@opensoft.cl', first_name='fernando')

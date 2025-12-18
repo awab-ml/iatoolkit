@@ -3,10 +3,11 @@
 #
 # IAToolkit is open source software.
 
-from iatoolkit.repositories.models import User, Company, user_company, ApiKey, UserFeedback
+from iatoolkit.repositories.models import (User, Company, user_company,
+                                           ApiKey, UserFeedback, AccessLog)
 from injector import inject
 from iatoolkit.repositories.database_manager import DatabaseManager
-from sqlalchemy import select
+from sqlalchemy import select, func, and_
 
 
 class ProfileRepo:
@@ -93,6 +94,37 @@ class ProfileRepo:
             .filter(user_company.c.role == "admin")
             .all()
         )
+
+    def get_company_users_with_details(self, company_short_name: str) -> list[dict]:
+        # returns the list of users in the company with their role and last access date
+
+        # subquery for last access date
+        last_access_sq = (
+            self.session.query(
+                AccessLog.user_identifier,
+                func.max(AccessLog.timestamp).label("max_ts")
+            )
+            .filter(AccessLog.company_short_name == company_short_name)
+            .group_by(AccessLog.user_identifier)
+            .subquery()
+        )
+
+        # main query
+        stmt = (
+            self.session.query(
+                User,
+                user_company.c.role,
+                last_access_sq.c.max_ts
+            )
+            .join(user_company, User.id == user_company.c.user_id)
+            .join(Company, Company.id == user_company.c.company_id)
+            .outerjoin(last_access_sq, User.email == last_access_sq.c.user_identifier)
+            .filter(Company.short_name == company_short_name)
+        )
+
+        results = stmt.all()
+
+        return results
 
     def create_company(self, new_company: Company):
         company = self.session.query(Company).filter_by(short_name=new_company.short_name).first()

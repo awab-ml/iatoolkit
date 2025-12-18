@@ -4,8 +4,10 @@
 # IAToolkit is open source software.
 
 from iatoolkit.repositories.database_manager import DatabaseManager
-from iatoolkit.repositories.models import User, Company, UserFeedback, user_company
+from iatoolkit.repositories.models import (User, Company, UserFeedback,
+                                           user_company, AccessLog)
 from iatoolkit.repositories.profile_repo import ProfileRepo
+from datetime import datetime
 
 
 class TestProfileRepo:
@@ -154,6 +156,47 @@ class TestProfileRepo:
             )
         )
         self.session.commit()
+
+    def test_get_company_users_with_details(self):
+        # Arrange: Setup users, company, relation and access logs
+        self.session.add(self.user)
+        self.session.add(self.company)
+        self.session.commit()
+
+        # Add user-company relation with role
+        self.session.execute(
+            user_company.insert().values(
+                user_id=self.user.id,
+                company_id=self.company.id,
+                role='admin'
+            )
+        )
+
+        # Add access log
+        log_time = datetime(2024, 1, 1, 12, 0, 0)
+        log = AccessLog(
+            id=1,
+            company_short_name=self.company.short_name,
+            user_identifier=self.user.email,
+            auth_type='local',
+            outcome='success',
+            source_ip='127.0.0.1',
+            request_path='/login',
+            timestamp=log_time
+        )
+        self.session.add(log)
+        self.session.commit()
+
+        # Act
+        results = self.repo.get_company_users_with_details(self.company.short_name)
+
+        # Assert
+        assert len(results) == 1
+        user_obj, role, last_access = results[0]
+
+        assert user_obj.email == self.user.email
+        assert role == 'admin'
+        assert last_access == log_time
 
     def test_get_user_role_in_company_when_no_relation(self):
         # arrange
