@@ -42,7 +42,7 @@ class ModelRegistry:
         # Hardcoded rules for now; can be extended or loaded from config later.
         # The order of patterns matters: first match wins.
         self._provider_patterns: dict[ProviderType, tuple[str, ...]] = {
-            "openai": ("gpt", "gpt-5"),
+            "openai": ("gpt", "gpt-5", "gpt-5-mini", "gpt-5.1"),
             "gemini": ("gemini", "gemini-3"),
             "deepseek": ("deepseek",),
             "xai": ("grok", "grok-1", "grok-beta"),
@@ -92,11 +92,9 @@ class ModelRegistry:
 
             # Fine-grained per-model tuning.
             if model_lower in ("gpt-5", "gpt-5-mini"):
-                defaults["reasoning"] = {"effort": "minimal"}
+                defaults["reasoning"] = {"effort": "minimal", "summary": "auto"}
             elif model_lower == "gpt-5.1":
-                defaults["reasoning"] = {"effort": "low"}
-
-            # {"effort": "low", "summary": "auto"}
+                defaults["reasoning"] = {"effort": "low", "summary": "auto"}
 
         # Gemini/DeepSeek/unknown: keep defaults empty to avoid sending unsupported parameters.
         return defaults

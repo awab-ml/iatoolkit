@@ -79,7 +79,7 @@ class OpenAIAdapter:
 
         # Reasoning content extracted from Responses output items (type="reasoning")
         reasoning_list = self._extract_reasoning_content(openai_response)
-        reasoning_html = self.format_reasoning_as_html(reasoning_list)
+        reasoning_str = "\n".join(reasoning_list)
 
         return LLMResponse(
             id=openai_response.id,
@@ -88,7 +88,7 @@ class OpenAIAdapter:
             output_text=getattr(openai_response, 'output_text', ''),
             output=tool_calls,
             usage=usage,
-            reasoning_content=reasoning_html
+            reasoning_content=reasoning_str
         )
 
     def _extract_reasoning_content(self, openai_response) -> List[str]:
@@ -122,38 +122,3 @@ class OpenAIAdapter:
                     reasons.append(str(text).strip())
 
         return reasons
-
-    def format_reasoning_as_html(self, reasons: List[str]) -> str:
-        """
-        Format reasoning items as Bootstrap-friendly HTML.
-
-        Output:
-        <ol class="reasoning-list">
-            <li>...</li>
-        </ol>
-        """
-        if not reasons:
-            return ""
-
-        items_html = []
-
-        for idx, reason in enumerate(reasons, start=1):
-            safe_reason = html.escape(reason)
-
-            items_html.append(f"""
-            <li class="reasoning-item mb-2">
-                <div class="reasoning-header mb-1">
-                    <i class="bi bi-lightbulb me-1 text-warning"></i>
-                    <strong>Reason {idx}</strong>
-                </div>
-                <div class="reasoning-body small text-muted">
-                    {safe_reason}
-                </div>
-            </li>
-            """)
-
-        return f"""
-        <ol class="reasoning-list ps-3 mb-0">
-            {''.join(items_html)}
-        </ol>
-        """.strip()
