@@ -68,7 +68,7 @@ class SqlService:
 
         factory = self._provider_factories.get(conn_type)
         if not factory:
-            logging.warning(f"Unknown connection type '{conn_type}' for DB '{db_name}'. Skipping.")
+            logging.error(f"Unknown connection type '{conn_type}' for DB '{db_name}'. Skipping.")
             return
 
         try:

@@ -6,6 +6,7 @@
 from typing import Dict, Type, Any, Optional
 from .base_company import BaseCompany
 import logging
+from injector import inject
 
 
 class CompanyRegistry:
@@ -14,6 +15,7 @@ class CompanyRegistry:
     Allow the client to register companies and instantiate them with dependency injection.
     """
 
+    @inject
     def __init__(self):
         self._company_classes: Dict[str, Type[BaseCompany]] = {}
         self._company_instances: Dict[str, BaseCompany] = {}

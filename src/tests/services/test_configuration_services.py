@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 
 from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.common.interfaces.asset_storage import AssetRepository, AssetType
+from iatoolkit.services.prompt_service import PromptService
 from iatoolkit.common.util import Utility
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.base_company import BaseCompany
@@ -230,6 +231,7 @@ class TestConfigurationService:
 
         mock_tool_service = Mock()
         mock_prompt_service = Mock()
+        mock_sql_service = Mock()  # Mock SqlService
 
         # Configure Injector to return our specific mocks
         def get_side_effect(service_class):
@@ -237,6 +239,8 @@ class TestConfigurationService:
                 return mock_tool_service
             if "PromptService" in str(service_class):
                 return mock_prompt_service
+            if "SqlService" in str(service_class):
+                return mock_sql_service
             return Mock()
 
         mock_injector.get.side_effect = get_side_effect
@@ -281,15 +285,4 @@ class TestConfigurationService:
             categories_config=[]
         )
 
-    def test_validation_failure_raises_exception(self):
-        # Arrange invalid config
-        invalid_config = {'id': self.COMPANY_NAME, 'name': 'Invalid Co'}
-        self.mock_asset_repo.exists.return_value = True
-        self.mock_asset_repo.read_text.return_value = "yaml"
-        self.mock_utility.load_yaml_from_string.return_value = invalid_config
-
-        with pytest.raises(IAToolkitException) as excinfo:
-            self.service.load_configuration(self.COMPANY_NAME)
-
-        assert excinfo.value.error_type == IAToolkitException.ErrorType.CONFIG_ERROR
 

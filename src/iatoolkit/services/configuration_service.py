@@ -83,7 +83,7 @@ class ConfigurationService:
         self._register_company_database(config)
 
         # 3. Register config databases with db manager
-        self._register_data_sources(company_short_name, config)
+        self.register_data_sources(company_short_name, config=config)
 
         # 4. Register tools
         self._register_tools(company_short_name, config)
@@ -150,12 +150,26 @@ class ConfigurationService:
 
         return company
 
-    def _register_data_sources(self, company_short_name: str, config: dict):
+    def register_data_sources(self,
+                              company_short_name: str,
+                              config: dict = None,
+                              connection_type: str = 'direct', ):
         """
         Reads the data_sources config and registers databases with SqlService.
         Uses Lazy Loading to avoid circular dependency.
+
+        Public method: Can be called externally after initialization (e.g. by Enterprise)
+        to re-register sources once new factories (like 'bridge') are available.
         """
-        # Lazy import to avoid circular dependency: ConfigService -> SqlService -> I18n -> ConfigService
+
+        # If config is not provided, try to load it from cache
+        if config is None:
+            self._ensure_config_loaded(company_short_name)
+            config = self._loaded_configs.get(company_short_name)
+
+        if not config:
+            return
+
         from iatoolkit import current_iatoolkit
         from iatoolkit.services.sql_service import SqlService
         sql_service = current_iatoolkit().get_injector().get(SqlService)
@@ -171,6 +185,11 @@ class ConfigurationService:
         for source in sql_sources:
             db_name = source.get('database')
             if not db_name:
+                continue
+
+            # only register sources with the specified connection type
+            conn_type = source.get('connection_type', 'direct')
+            if conn_type != connection_type:
                 continue
 
             # Prepare the config dictionary for the factory
@@ -269,8 +288,12 @@ class ConfigurationService:
         for i, source in enumerate(config.get("data_sources", {}).get("sql", [])):
             if not source.get("database"):
                 add_error(f"data_sources.sql[{i}]", "Missing required key: 'database'")
-            if not source.get("connection_string_env"):
+
+            connection_type = source.get("connection_type")
+            if connection_type == 'direct' and not source.get("connection_string_env"):
                 add_error(f"data_sources.sql[{i}]", "Missing required key: 'connection_string_env'")
+            elif connection_type == 'bridge' and not source.get("bridge_id"):
+                add_error(f"data_sources.sql[{i}]", "Missing bridge_id'")
 
         # 5. Tools
         for i, tool in enumerate(config.get("tools", [])):

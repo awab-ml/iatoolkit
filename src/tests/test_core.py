@@ -34,6 +34,7 @@ class TestIAToolkit(unittest.TestCase):
         # Setup Mocks
         mock_injector_instance = MagicMock(spec=Injector)
         mock_injector_cls.return_value = mock_injector_instance
+        mock_injector_instance.binder = MagicMock()
 
         mock_db_instance = MagicMock(spec=DatabaseManager)
         mock_db_manager_cls.return_value = mock_db_instance
@@ -140,12 +141,6 @@ class TestIAToolkit(unittest.TestCase):
             toolkit._setup_database()
 
         self.assertEqual(cm.exception.error_type, IAToolkitException.ErrorType.CONFIG_ERROR)
-
-    def test_get_injector_raises_if_not_initialized(self):
-        """Test get_injector raises error if app not initialized."""
-        toolkit = IAToolkit({})
-        with self.assertRaises(IAToolkitException):
-            toolkit.get_injector()
 
     def test_get_database_manager_raises_if_not_initialized(self):
         """Test get_database_manager raises error if not initialized."""

@@ -34,6 +34,7 @@ class ApiKey(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('iat_companies.id', ondelete='CASCADE'), nullable=False)
+    key_name = Column(String, nullable=False)
     key = Column(String, unique=True, nullable=False, index=True) # La API Key en sí
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.now)

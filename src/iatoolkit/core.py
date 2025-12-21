@@ -11,7 +11,6 @@ from flask_cors import CORS
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.common.interfaces.asset_storage import AssetRepository
-from iatoolkit.repositories.filesystem_asset_repository import FileSystemAssetRepository
 from werkzeug.middleware.proxy_fix import ProxyFix
 from injector import Binder, Injector, singleton
 from typing import Optional, Dict, Any
@@ -24,6 +23,9 @@ from iatoolkit import __version__ as IATOOLKIT_VERSION
 
 # global variable for the unique instance of IAToolkit
 _iatoolkit_instance: Optional['IAToolkit'] = None
+
+def is_bound(injector: Injector, cls) -> bool:
+    return cls in injector.binder._bindings
 
 class IAToolkit:
     """
@@ -51,8 +53,7 @@ class IAToolkit:
         self.config = config or {}
         self.app = None
         self.db_manager = None
-        self._injector = None
-        self._asset_repository_class = FileSystemAssetRepository
+        self._injector = Injector()         # init empty injector
         self.version = IATOOLKIT_VERSION
         self.license = "Community Edition"
 
@@ -80,8 +81,8 @@ class IAToolkit:
         # Step 2: Set up the core components that DI depends on
         self._setup_database()
 
-        # Step 3: Create the Injector and configure all dependencies in one place
-        self._injector = Injector(self._configure_core_dependencies)
+        # Step 3: Configure dependencies using the existing injector
+        self._configure_core_dependencies(self._injector)
 
         # Step 4: Register routes using the fully configured injector
         self._register_routes()
@@ -260,8 +261,11 @@ class IAToolkit:
 
         logging.info(f"✅ CORS configured for: {all_origins}")
 
-    def _configure_core_dependencies(self, binder: Binder):
+    def _configure_core_dependencies(self, injector: Injector):
         """⚙️ Configures all system dependencies."""
+
+        # get the binder from injector
+        binder = injector.binder
         try:
             # Core dependencies
             binder.bind(Flask, to=self.app)
@@ -281,24 +285,21 @@ class IAToolkit:
                 f"❌ Error configuring dependencies: {e}"
             )
 
-    def set_asset_repository_implementation(self, repo_class):
-        """Permite configurar la implementación del AssetRepository antes de inicializar."""
-        if self._initialized:
-             logging.warning("⚠️ set_asset_repository_implementation called AFTER initialization. This might have no effect.")
-        self._asset_repository_class = repo_class
-        # print(f"asset_repository_implementation is {repo_class.__name__}. ")
-
     def _bind_repositories(self, binder: Binder):
         from iatoolkit.repositories.document_repo import DocumentRepo
         from iatoolkit.repositories.profile_repo import ProfileRepo
         from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
         from iatoolkit.repositories.vs_repo import VSRepo
+        from iatoolkit.repositories.filesystem_asset_repository import FileSystemAssetRepository
 
         binder.bind(DocumentRepo, to=DocumentRepo)
         binder.bind(ProfileRepo, to=ProfileRepo)
         binder.bind(LLMQueryRepo, to=LLMQueryRepo)
         binder.bind(VSRepo, to=VSRepo)
-        binder.bind(AssetRepository, to=self._asset_repository_class)
+
+        # this class can be setup befor by iatoolkit enterprise
+        if not is_bound(self._injector, AssetRepository):
+            binder.bind(AssetRepository, to=FileSystemAssetRepository)
 
     def _bind_services(self, binder: Binder):
         from iatoolkit.services.query_service import QueryService
@@ -320,7 +321,7 @@ class IAToolkit:
         from iatoolkit.services.tool_service import ToolService
         from iatoolkit.services.llm_client_service import llmClient
         from iatoolkit.services.auth_service import AuthService
-
+        from iatoolkit.services.sql_service import SqlService
 
         binder.bind(QueryService, to=QueryService)
         binder.bind(BenchmarkService, to=BenchmarkService)
@@ -341,6 +342,7 @@ class IAToolkit:
         binder.bind(ToolService, to=ToolService)
         binder.bind(llmClient, to=llmClient)
         binder.bind(AuthService, to=AuthService)
+        binder.bind(SqlService, to=SqlService)
 
     def _bind_infrastructure(self, binder: Binder):
         from iatoolkit.infra.llm_proxy import LLMProxy
@@ -485,6 +487,7 @@ class IAToolkit:
                 "No se pudo crear el directorio de descarga. Verifique que el directorio existe y tenga permisos de escritura."
             )
         logging.info(f"✅ download dir created in: {download_dir}")
+
 
 
 def current_iatoolkit() -> IAToolkit:
