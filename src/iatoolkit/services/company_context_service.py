@@ -103,6 +103,9 @@ class CompanyContextService:
             if not db_name:
                 continue
 
+            # get database schema definition, for this source.
+            database_schema_name = source.get('schema')
+
             try:
                 db_provider = self.sql_service.get_database_provider(company_short_name, db_name)
             except IAToolkitException as e:
@@ -131,7 +134,7 @@ class CompanyContextService:
             # 1. get the list of tables to process.
             tables_to_process = []
             if source.get('include_all_tables', False):
-                all_tables = db_provider.get_all_table_names()
+                all_tables = db_provider.get_all_table_names(database_schema_name)
                 tables_to_exclude = set(source.get('exclude_tables', []))
                 tables_to_process = [t for t in all_tables if t not in tables_to_exclude]
             elif 'tables' in source:
@@ -142,8 +145,7 @@ class CompanyContextService:
             global_exclude_columns = source.get('exclude_columns', [])
             table_prefix = source.get('table_prefix')
 
-            # get database schema definition, for this source.
-            database_schema_name = source.get('schema')
+
 
             table_overrides = source.get('tables', {})
 

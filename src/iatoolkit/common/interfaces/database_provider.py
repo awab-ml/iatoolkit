@@ -9,7 +9,7 @@ class DatabaseProvider(abc.ABC):
 
     # --- Schema Methods ---
     @abc.abstractmethod
-    def get_all_table_names(self) -> List[str]:
+    def get_all_table_names(self, db_schema: str) -> List[str]:
         pass
 
     @abc.abstractmethod

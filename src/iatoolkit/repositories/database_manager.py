@@ -133,10 +133,10 @@ class DatabaseManager(DatabaseProvider):
         self.get_session().rollback()
 
     # -- schema methods ----
-    def get_all_table_names(self) -> list[str]:
+    def get_all_table_names(self, db_schema) -> list[str]:
         # Returns a list of all table names in the database
         inspector = inspect(self._engine)
-        return inspector.get_table_names(schema=self.schema)
+        return inspector.get_table_names(schema=db_schema)
 
     def get_table_schema(self,
                          table_name: str,

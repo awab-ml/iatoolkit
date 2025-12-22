@@ -14,12 +14,13 @@ def register_core_commands(app):
 
     @app.cli.command("api-key")
     @click.argument("company_short_name")
-    def api_key(company_short_name: str):
+    @click.argument("key_name")
+    def api_key(company_short_name: str, key_name: str):
         """⚙️ Genera una nueva API key para una compañía ya registrada."""
         try:
             profile_service = IAToolkit.get_instance().get_injector().get(ProfileService)
             click.echo(f"🔑 Generating API-KEY for company: '{company_short_name}'...")
-            result = profile_service.new_api_key(company_short_name)
+            result = profile_service.new_api_key(company_short_name, key_name)
 
             if 'error' in result:
                 click.echo(f"❌ Error: {result['error']}")

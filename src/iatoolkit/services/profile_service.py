@@ -348,16 +348,19 @@ class ProfileService:
     def get_active_api_key_entry(self, api_key_value: str) -> ApiKey | None:
         return self.profile_repo.get_active_api_key_entry(api_key_value)
 
-    def new_api_key(self, company_short_name: str):
+    def new_api_key(self, company_short_name: str, key_name: str):
         company = self.get_company_by_short_name(company_short_name)
         if not company:
             return {"error": self.i18n_service.t('errors.company_not_found', company_short_name=company_short_name)}
+
+        if not key_name:
+            return {"error": self.i18n_service.t('errors.auth.api_key_name_required')}
 
         length = 40     # lenght of the api key
         alphabet = string.ascii_letters + string.digits
         key = ''.join(secrets.choice(alphabet) for i in range(length))
 
-        api_key = ApiKey(key=key, company_id=company.id)
+        api_key = ApiKey(key=key, company_id=company.id, key_name=key_name)
         self.profile_repo.create_api_key(api_key)
         return {"api-key": key}
 
