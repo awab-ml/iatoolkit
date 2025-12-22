@@ -162,6 +162,7 @@ class Utility:
         Parses a YAML string into a dictionary securely.
         """
         try:
+            yaml_content = yaml_content.replace('\t', '  ')
             return yaml.safe_load(yaml_content) or {}
         except yaml.YAMLError as e:
             logging.error(f"Error parsing YAML string: {e}")

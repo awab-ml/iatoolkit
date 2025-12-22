@@ -33,6 +33,8 @@ class LoadCompanyConfigurationApiView(MethodView):
                 return jsonify({"error": "company not found."}), 404
 
             config, errors = self.configuration_service.load_configuration(company_short_name)
+            if config:
+                self.configuration_service.register_data_sources(company_short_name)
 
             # this is fo avoid serialization issues
             if 'company' in config:

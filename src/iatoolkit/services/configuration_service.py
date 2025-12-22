@@ -78,18 +78,18 @@ class ConfigurationService:
 
         # 1. Load the main configuration file and supplementary content files
         config = self._load_and_merge_configs(company_short_name)
+        if config:
+            # 2. create/update company in database
+            self._register_company_database(config)
 
-        # 2. create/update company in database
-        self._register_company_database(config)
+            # 3. Register config databases with db manager
+            # self.register_data_sources(company_short_name, config=config)
 
-        # 3. Register config databases with db manager
-        self.register_data_sources(company_short_name, config=config)
+            # 4. Register tools
+            self._register_tools(company_short_name, config)
 
-        # 4. Register tools
-        self._register_tools(company_short_name, config)
-
-        # 5. Register prompt categories and prompts
-        self._register_prompts(company_short_name, config)
+            # 5. Register prompt categories and prompts
+            self._register_prompts(company_short_name, config)
 
         # Final step: validate the configuration against platform
         errors = self._validate_configuration(company_short_name, config)
@@ -122,6 +122,8 @@ class ConfigurationService:
         # read text and parse
         yaml_content = self.asset_repo.read_text(company_short_name, AssetType.CONFIG, main_config_filename)
         config = self.utility.load_yaml_from_string(yaml_content)
+        if not config:
+            return {}
 
         # Load and merge supplementary content files (e.g., onboarding_cards)
         for key, filename in config.get('help_files', {}).items():
@@ -152,8 +154,7 @@ class ConfigurationService:
 
     def register_data_sources(self,
                               company_short_name: str,
-                              config: dict = None,
-                              connection_type: str = 'direct', ):
+                              config: dict = None):
         """
         Reads the data_sources config and registers databases with SqlService.
         Uses Lazy Loading to avoid circular dependency.
@@ -180,16 +181,11 @@ class ConfigurationService:
         if not sql_sources:
             return
 
-        logging.info(f"🛢️ Registering databases for '{company_short_name}'...")
+        logging.info(f"🛢️ Registering databases  for '{company_short_name}'...")
 
         for source in sql_sources:
             db_name = source.get('database')
             if not db_name:
-                continue
-
-            # only register sources with the specified connection type
-            conn_type = source.get('connection_type', 'direct')
-            if conn_type != connection_type:
                 continue
 
             # Prepare the config dictionary for the factory
@@ -256,6 +252,10 @@ class ConfigurationService:
         # Helper to collect errors
         def add_error(section, message):
             errors.append(f"[{section}] {message}")
+
+        if not config:
+            add_error("General", "Configuration file missing or with errors, check the application logs.")
+            return errors
 
         # 1. Top-level keys
         if not config.get("id"):

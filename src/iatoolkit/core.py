@@ -11,6 +11,7 @@ from flask_cors import CORS
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.common.interfaces.asset_storage import AssetRepository
+from iatoolkit.company_registry import get_registered_companies
 from werkzeug.middleware.proxy_fix import ProxyFix
 from injector import Binder, Injector, singleton
 from typing import Optional, Dict, Any
@@ -20,6 +21,7 @@ import logging
 import os
 
 from iatoolkit import __version__ as IATOOLKIT_VERSION
+from iatoolkit.services.configuration_service import ConfigurationService
 
 # global variable for the unique instance of IAToolkit
 _iatoolkit_instance: Optional['IAToolkit'] = None
@@ -65,7 +67,7 @@ class IAToolkit:
             _iatoolkit_instance = cls()
         return _iatoolkit_instance
 
-    def create_iatoolkit(self):
+    def create_iatoolkit(self, start = True):
         """
             Creates, configures, and returns the Flask application instance.
             this is the main entry point for the application factory.
@@ -112,10 +114,20 @@ class IAToolkit:
         # Step 9: define the download_dir
         self._setup_download_dir()
 
+        # register data source
+        if start:
+            self.register_data_sources()
+
         logging.info(f"🎉 IAToolkit {self.license} version {self.version} correctly initialized.")
         self._initialized = True
 
         return self.app
+
+    def register_data_sources(self):
+        # load the company configurations
+        configuration_service = self._injector.get(ConfigurationService)
+        for company in get_registered_companies():
+            configuration_service.register_data_sources(company)
 
     def _get_config_value(self, key: str, default=None):
         # get a value from the config dict or the environment variable
@@ -245,8 +257,9 @@ class IAToolkit:
         extra_origins = []
         all_company_instances = get_company_registry().get_all_company_instances()
         for company_name, company_instance in all_company_instances.items():
-            cors_origin = company_instance.company.parameters.get('cors_origin', [])
-            extra_origins += cors_origin
+            if company_instance.company:
+                cors_origin = company_instance.company.parameters.get('cors_origin', [])
+                extra_origins += cors_origin
 
         all_origins = default_origins + extra_origins
 
