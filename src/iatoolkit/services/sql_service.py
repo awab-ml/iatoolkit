@@ -3,9 +3,9 @@
 #
 # IAToolkit is open source software.
 
+from iatoolkit.common.interfaces.database_provider import DatabaseProvider
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.services.i18n_service import I18nService
-from iatoolkit.common.interfaces.database_provider import DatabaseProvider
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.common.util import Utility
 from injector import inject, singleton
@@ -47,7 +47,7 @@ class SqlService:
 
     def _create_direct_connection(self, config: dict) -> DatabaseProvider:
         """Default factory for standard SQLAlchemy connections."""
-        uri = config.get('db_uri')
+        uri = config.get('DATABASE_URI')
         schema = config.get('schema')
         if not uri:
             raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
