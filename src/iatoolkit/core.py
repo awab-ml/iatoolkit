@@ -67,7 +67,7 @@ class IAToolkit:
             _iatoolkit_instance = cls()
         return _iatoolkit_instance
 
-    def create_iatoolkit(self, start = True):
+    def create_iatoolkit(self, start: bool = True):
         """
             Creates, configures, and returns the Flask application instance.
             this is the main entry point for the application factory.

@@ -47,7 +47,7 @@ class SqlService:
 
     def _create_direct_connection(self, config: dict) -> DatabaseProvider:
         """Default factory for standard SQLAlchemy connections."""
-        uri = config.get('DATABASE_URI')
+        uri = config.get('db_uri') or config.get('DATABASE_URI')
         schema = config.get('schema')
         if not uri:
             raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR,
