@@ -50,7 +50,7 @@ class TestSqlService:
         # Arrange
         config = {
             'connection_type': 'direct',
-            'db_uri': DUMMY_URI,
+            'DATABASE_URI': DUMMY_URI,
             'schema': 'an_schema'
         }
 
@@ -97,7 +97,7 @@ class TestSqlService:
         WHEN register_database is called again
         THEN it should verify cache hit and NOT create a new instance.
         """
-        config = {'connection_type': 'direct', 'db_uri': DUMMY_URI}
+        config = {'connection_type': 'direct', 'DATABASE_URI': DUMMY_URI}
 
         # Act
         self.service.register_database(COMPANY_SHORT_NAME, DB_NAME_SUCCESS, config)
@@ -126,7 +126,7 @@ class TestSqlService:
         WHEN get_db_names is called
         THEN it should return strictly the databases for that company.
         """
-        config = {'db_uri': DUMMY_URI}
+        config = {'DATABASE_URI': DUMMY_URI}
 
         # We assume mocks for the underlying providers since we just check keys here
         with patch('iatoolkit.services.sql_service.DatabaseManager'):
@@ -156,7 +156,7 @@ class TestSqlService:
         db_data = [{'id': 1, 'name': 'Alice'}, {'id': 2, 'name': 'Bob'}]
         mock_provider.execute_query.return_value = db_data
 
-        config = {'db_uri': DUMMY_URI}
+        config = {'DATABASE_URI': DUMMY_URI}
         self.service.register_database(COMPANY_SHORT_NAME, DB_NAME_SUCCESS, config)
 
         # Act
@@ -189,7 +189,7 @@ class TestSqlService:
         # Mocking utility serializer logic
         self.util_mock.serialize.side_effect = lambda obj: obj.isoformat() if isinstance(obj, datetime) else obj
 
-        config = {'db_uri': DUMMY_URI}
+        config = {'DATABASE_URI': DUMMY_URI}
         self.service.register_database(COMPANY_SHORT_NAME, DB_NAME_SUCCESS, config)
 
         # Act
@@ -213,7 +213,7 @@ class TestSqlService:
         db_error = Exception("Connection lost")
         mock_provider.execute_query.side_effect = db_error
 
-        config = {'db_uri': DUMMY_URI}
+        config = {'DATABASE_URI': DUMMY_URI}
         self.service.register_database(COMPANY_SHORT_NAME, DB_NAME_SUCCESS, config)
 
         # Act & Assert
