@@ -59,8 +59,6 @@ class SqlService:
         Creates and caches a DatabaseProvider instance based on the configuration.
         """
         key = (company_short_name, db_name)
-        if key in self._db_connections:
-            return
 
         # Determine connection type (default to 'direct')
         conn_type = config.get('connection_type', 'direct')

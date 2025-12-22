@@ -91,7 +91,7 @@ class TestSqlService:
         assert self.service.get_database_provider(COMPANY_SHORT_NAME, 'bridge_db') == mock_provider
 
     @patch('iatoolkit.services.sql_service.DatabaseManager')
-    def test_register_database_skips_if_already_exists(self, MockDatabaseManager):
+    def test_register_database_not_skips_if_already_exists(self, MockDatabaseManager):
         """
         GIVEN a database is already registered
         WHEN register_database is called again
@@ -104,7 +104,7 @@ class TestSqlService:
         self.service.register_database(COMPANY_SHORT_NAME, DB_NAME_SUCCESS, config)  # Second call
 
         # Assert
-        MockDatabaseManager.assert_called_once()
+        assert MockDatabaseManager.call_count == 2
 
     # --- Tests for Provider Retrieval ---
 
