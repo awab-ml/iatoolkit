@@ -109,13 +109,13 @@ class DatabaseManager(DatabaseProvider):
 
     # -- execution methods ----
 
-    def execute_query(self, db_schema: str, query: str, commit: bool = False) -> list[dict] | dict:
+    def execute_query(self, query: str, commit: bool = False) -> list[dict] | dict:
         """
         Implementation for Direct SQLAlchemy connection.
         """
         session = self.get_session()
-        if db_schema:
-            session.execute(text(f"SET search_path TO {db_schema}"))
+        if self.schema:
+            session.execute(text(f"SET search_path TO {self.schema}"))
 
         result = session.execute(text(query))
 

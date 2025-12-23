@@ -63,6 +63,7 @@ ui:
     cancel: "Cancel"
     new_file: "New file"
     delete_file: "Delete file"
+    rename_file: "Rename file"
     save_file: "Save"
     credentials: "Email and password required for login."
     saved_ok: "Saved successfully"
@@ -207,6 +208,7 @@ js_messages:
   no_file_selected: "No file selected"
   select_company: "Select company"
   delete_ok: "File deleted successfully"
+  rename_ok: "File rename successfully"
   not_saved: 'Could not save'
   saved_ok: "Saved successfully"
   invalid_file_name: "Invalid filename. Use only letters, numbers, underscores, hyphens, and dots."

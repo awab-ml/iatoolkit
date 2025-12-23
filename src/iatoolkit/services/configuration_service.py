@@ -190,8 +190,10 @@ class ConfigurationService:
 
             # Prepare the config dictionary for the factory
             db_config = {
+                'database': db_name,
                 'schema': source.get('schema', 'public'),
                 'connection_type': source.get('connection_type', 'direct'),
+
                 # Pass through keys needed for Bridge or other plugins
                 'bridge_id': source.get('bridge_id'),
                 'timeout': source.get('timeout')
@@ -208,6 +210,11 @@ class ConfigurationService:
             if db_config['connection_type'] == 'direct' and not db_config.get('db_uri'):
                 logging.error(
                     f"-> Skipping DB '{db_name}' for '{company_short_name}': missing URI in env '{db_env_var}'.")
+                continue
+
+            elif db_config['connection_type'] == 'bridge' and not db_config.get('bridge_id'):
+                logging.error(
+                    f"-> Skipping DB '{db_name}' for '{company_short_name}': missing bridge_id in configuration.")
                 continue
 
             # Register with the SQL service

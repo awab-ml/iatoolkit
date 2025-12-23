@@ -169,7 +169,6 @@ class TestSqlService:
         # Assert
         # 1. Verify delegation
         mock_provider.execute_query.assert_called_once_with(
-                    db_schema='web_db',
                     query="SELECT * FROM users",
             commit=None)
 

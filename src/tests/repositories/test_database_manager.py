@@ -102,7 +102,7 @@ class TestDatabaseManager:
         mock_result.fetchall.return_value = [(1, 'a'), (2, 'b')]
 
         # Act
-        result = self.db_manager.execute_query(db_schema='public', query="SELECT * FROM t")
+        result = self.db_manager.execute_query(query="SELECT * FROM t")
 
         # Assert
         assert result == [{'id': 1, 'val': 'a'}, {'id': 2, 'val': 'b'}]
@@ -121,7 +121,7 @@ class TestDatabaseManager:
         mock_result.rowcount = 5
 
         # Act
-        result = self.db_manager.execute_query(db_schema='public', query="UPDATE t SET val='x'")
+        result = self.db_manager.execute_query(query="UPDATE t SET val='x'")
 
         # Assert
         assert result == {'rowcount': 5}
@@ -136,7 +136,7 @@ class TestDatabaseManager:
         mock_result = mock_session.execute.return_value
         mock_result.returns_rows = False
 
-        self.db_manager.execute_query(db_schema='public', query="INSERT INTO ...", commit=True)
+        self.db_manager.execute_query(query="INSERT INTO ...", commit=True)
 
         mock_session.commit.assert_called_once()
 

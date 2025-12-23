@@ -127,7 +127,7 @@ class SqlService:
 
             # 2. Delegate execution
             # The provider returns a clean List[Dict] or Dict result
-            result_data = provider.execute_query(db_schema=db_schema, query=query, commit=commit)
+            result_data = provider.execute_query(query=query, commit=commit)
 
             # 3. Handle Formatting (Service layer responsibility)
             if format == 'dict':
