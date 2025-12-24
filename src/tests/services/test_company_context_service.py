@@ -99,10 +99,10 @@ class TestCompanyContextService:
         # Assert
         self.mock_db_provider.get_all_table_names.assert_called_once()
         expected_calls = [
-            call(table_name='users', db_schema='public', schema_object_name='users', exclude_columns=[]),
-            call(table_name='products', db_schema='public', schema_object_name='products', exclude_columns=[])
+            call(table_name='users', schema_object_name='users', exclude_columns=[]),
+            call(table_name='products', schema_object_name='products', exclude_columns=[])
         ]
-        self.mock_db_provider.get_table_schema.assert_has_calls(expected_calls, any_order=True)
+        self.mock_db_provider.get_table_description.assert_has_calls(expected_calls, any_order=True)
 
     def test_sql_context_with_explicit_table_map(self):
         """
@@ -118,12 +118,12 @@ class TestCompanyContextService:
 
         # Assert
         self.mock_db_provider.get_all_table_names.assert_not_called()
-        assert self.mock_db_provider.get_table_schema.call_count == 2
+        assert self.mock_db_provider.get_table_description.call_count == 2
         expected_calls = [
-            call(table_name='products', db_schema='public', schema_object_name='products', exclude_columns=[]),
-            call(table_name='customers', db_schema='public', schema_object_name='customers', exclude_columns=[])
+            call(table_name='products', schema_object_name='products', exclude_columns=[]),
+            call(table_name='customers', schema_object_name='customers', exclude_columns=[])
         ]
-        self.mock_db_provider.get_table_schema.assert_has_calls(expected_calls, any_order=True)
+        self.mock_db_provider.get_table_description.assert_has_calls(expected_calls, any_order=True)
 
     def test_sql_context_with_complex_overrides(self):
         """
@@ -141,18 +141,16 @@ class TestCompanyContextService:
 
         # Assert
         # Check call count first
-        assert self.mock_db_provider.get_table_schema.call_count == 2
+        assert self.mock_db_provider.get_table_description.call_count == 2
 
         # Check calls with correct, final parameters
         expected_calls = [
             # 'users' table should use its local exclude_columns override
-            call(table_name='users', db_schema='public',  schema_object_name='users', exclude_columns=['password_hash']),
+            call(table_name='users', schema_object_name='users', exclude_columns=['password_hash']),
             # 'user_profiles' should use the global exclude_columns and its local schema_object_name override
-            call(table_name='user_profiles', db_schema='public', schema_object_name='profiles', exclude_columns=['id', 'created_at'])
+            call(table_name='user_profiles', schema_object_name='profiles', exclude_columns=['id', 'created_at'])
         ]
-        self.mock_db_provider.get_table_schema.assert_has_calls(expected_calls, any_order=True)
-
-    # --- Existing Tests (can be kept as they test other parts) ---
+        self.mock_db_provider.get_table_description.assert_has_calls(expected_calls, any_order=True)
 
     def test_build_context_with_only_static_files(self):
         """

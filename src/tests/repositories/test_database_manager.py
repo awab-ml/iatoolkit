@@ -65,7 +65,7 @@ class TestDatabaseManager:
         self.db_manager.remove_session()
         self.mock_scoped_session.remove.assert_called_once()
 
-    def test_get_table_schema_table_exists(self):
+    def test_get_table_description_when_ok(self):
         """Prueba get_table_schema cuando la tabla existe"""
         self.mock_inspect.return_value.get_table_names.return_value = ['test_table']
         self.mock_inspect.return_value.get_columns.return_value = [
@@ -73,16 +73,16 @@ class TestDatabaseManager:
             {"name": "name", "type": "VARCHAR"}
         ]
 
-        result = self.db_manager.get_table_schema('test_table', db_schema='public')
+        result = self.db_manager.get_table_description('test_table')
 
-        assert "{'table': 'test_table', 'description': 'It belongs to the **`public`** schema.', 'fields': [{'name': 'id', 'type': 'INTEGER'}, {'name': 'name', 'type': 'VARCHAR'}], 'schema': 'public'}" == result.strip()
+        assert "{'table': 'test_table', 'schema': 'public', 'description': 'The table belongs to the **`public`** schema.', 'fields': [{'name': 'id', 'type': 'INTEGER'}, {'name': 'name', 'type': 'VARCHAR'}]}" == result.strip()
 
-    def test_get_table_schema_table_not_exists(self):
+    def test_get_table_description_when_table_not_exists(self):
         """Prueba get_table_schema cuando la tabla no existe"""
         self.mock_inspect.return_value.get_table_names.return_value = []
 
         with pytest.raises(RuntimeError) as exc_info:
-            self.db_manager.get_table_schema('non_existent_table', db_schema='public')
+            self.db_manager.get_table_description('non_existent_table')
 
         assert "Table 'non_existent_table' does not exist" in str(exc_info.value)
 

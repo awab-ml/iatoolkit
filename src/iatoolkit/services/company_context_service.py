@@ -134,7 +134,7 @@ class CompanyContextService:
             # 1. get the list of tables to process.
             tables_to_process = []
             if source.get('include_all_tables', False):
-                all_tables = db_provider.get_all_table_names(database_schema_name)
+                all_tables = db_provider.get_all_table_names()
                 tables_to_exclude = set(source.get('exclude_tables', []))
                 tables_to_process = [t for t in all_tables if t not in tables_to_exclude]
             elif 'tables' in source:
@@ -144,9 +144,6 @@ class CompanyContextService:
             # 2. get the global settings and overrides.
             global_exclude_columns = source.get('exclude_columns', [])
             table_prefix = source.get('table_prefix')
-
-
-
             table_overrides = source.get('tables', {})
 
             # 3. iterate over the tables.
@@ -172,9 +169,8 @@ class CompanyContextService:
                     final_exclude_columns = local_exclude_columns if local_exclude_columns is not None else global_exclude_columns
 
                     # 7. get the table schema definition.
-                    table_definition = db_provider.get_table_schema(
+                    table_definition = db_provider.get_table_description(
                         table_name=table_name,
-                        db_schema=db_provider.schema,
                         schema_object_name=schema_object_name,
                         exclude_columns=final_exclude_columns
                     )

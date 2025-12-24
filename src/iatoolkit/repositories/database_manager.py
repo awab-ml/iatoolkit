@@ -17,7 +17,7 @@ class DatabaseManager(DatabaseProvider):
     @inject
     def __init__(self,
                  database_url: str,
-                 schema: str | None = None,
+                 schema: str = 'public',
                  register_pgvector: bool = True):
         """
         Inicializa el gestor de la base de datos.
@@ -118,7 +118,6 @@ class DatabaseManager(DatabaseProvider):
             session.execute(text(f"SET search_path TO {self.schema}"))
 
         result = session.execute(text(query))
-
         if commit:
             session.commit()
 
@@ -136,32 +135,32 @@ class DatabaseManager(DatabaseProvider):
         self.get_session().rollback()
 
     # -- schema methods ----
-    def get_all_table_names(self, db_schema) -> list[str]:
+    def get_all_table_names(self) -> list[str]:
         # Returns a list of all table names in the database
         inspector = inspect(self._engine)
-        return inspector.get_table_names(schema=db_schema)
+        return inspector.get_table_names(schema=self.schema)
 
-    def get_table_schema(self,
-                         table_name: str,
-                         db_schema: str,
-                         schema_object_name: str | None = None,
-                         exclude_columns: list[str] | None = None) -> str:
+    def get_table_description(self,
+                              table_name: str,
+                              schema_object_name: str | None = None,
+                              exclude_columns: list[str] | None = None) -> str:
         inspector = inspect(self._engine)
 
         # search the table in the specified schema
-        if table_name not in inspector.get_table_names(schema=db_schema):
-            raise RuntimeError(f"Table '{table_name}' does not exist in database schema '{db_schema}'.")
+        if table_name not in inspector.get_table_names(schema=self.schema):
+            raise RuntimeError(f"Table '{table_name}' does not exist in database schema '{self.schema}'.")
 
         if exclude_columns is None:
             exclude_columns = []
 
         # get all the table columns
-        columns = inspector.get_columns(table_name, schema=db_schema)
+        columns = inspector.get_columns(table_name, schema=self.schema)
 
         # construct a json dictionary with the table definition
         json_dict = {
             "table": table_name,
-            "description": "",
+            "schema": self.schema,
+            "description": f"The table belongs to the **`{self.schema}`** schema.",
             "fields": []
         }
 
@@ -169,10 +168,6 @@ class DatabaseManager(DatabaseProvider):
             json_dict["description"] += (
                 f"The meaning of each field in this table is detailed in the **`{schema_object_name}`** object."
             )
-
-        if db_schema:
-            json_dict["schema"] = db_schema
-            json_dict["description"] += f"It belongs to the **`{db_schema}`** schema."
 
         # now add every column to the json dictionary
         for col in columns:
