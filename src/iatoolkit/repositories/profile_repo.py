@@ -81,17 +81,16 @@ class ProfileRepo:
         result = self.session.execute(stmt).scalar_one_or_none()
         return result
 
-    def get_admin_companies_by_user_identifier(self, user_identifier: str) -> list[Company]:
+    def get_companies_by_user_identifier(self, user_identifier: str) -> list:
         """
         Return all the companies to which the user belongs (by email),
-        and where also he has admin role in the iat_user_company table.
+        and the role he has in each company.
         """
         return (
-            self.session.query(Company)
+            self.session.query(Company, user_company.c.role)
             .join(user_company, Company.id == user_company.c.company_id)
             .join(User, User.id == user_company.c.user_id)
             .filter(User.email == user_identifier)
-            .filter(user_company.c.role == "admin")
             .all()
         )
 
