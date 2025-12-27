@@ -87,6 +87,7 @@ class RagApiView(MethodView):
                 response_list.append({
                     'id': doc.id,
                     'filename': doc.filename,
+                    'user_identifier': doc.user_identifier,
                     'status': doc.status.value if hasattr(doc.status, 'value') else str(doc.status),
                     'created_at': doc.created_at.isoformat() if doc.created_at else None,
                     'metadata': doc.meta,
