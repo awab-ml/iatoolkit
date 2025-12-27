@@ -31,6 +31,7 @@ def register_views(app):
     from iatoolkit.views.static_page_view import StaticPageView
     from iatoolkit.views.root_redirect_view import RootRedirectView
     from iatoolkit.views.users_api_view import UsersApiView
+    from iatoolkit.views.rag_api_view import RagApiView
 
     # assign root '/' to our new redirect logic
     app.add_url_rule('/home', view_func=RootRedirectView.as_view('root_redirect'))
@@ -91,6 +92,27 @@ def register_views(app):
     app.add_url_rule('/<company_short_name>/api/feedback', view_func=UserFeedbackApiView.as_view('feedback'))
     app.add_url_rule('/<company_short_name>/api/history', view_func=HistoryApiView.as_view('history'))
     app.add_url_rule('/<company_short_name>/api/help-content', view_func=HelpContentApiView.as_view('help-content'))
+
+    # --- RAG API Routes ---
+    rag_view = RagApiView.as_view('rag_api')
+
+    # 1. List Files (POST for filters)
+    app.add_url_rule('/api/rag/<company_short_name>/files',
+                     view_func=rag_view,
+                     methods=['POST'],
+                     defaults={'action': 'list_files'})
+
+    # 2. Delete File
+    app.add_url_rule('/api/rag/<company_short_name>/files/<int:document_id>',
+                     view_func=rag_view,
+                     methods=['DELETE'],
+                     defaults={'action': 'delete_file'})
+
+    # 3. Search Lab
+    app.add_url_rule('/api/rag/<company_short_name>/search',
+                     view_func=rag_view,
+                     methods=['POST'],
+                     defaults={'action': 'search'})
 
     # this endpoint is for upload documents into the vector store (api-key)
     app.add_url_rule('/api/load-document', view_func=LoadDocumentApiView.as_view('load-document'), methods=['POST'])

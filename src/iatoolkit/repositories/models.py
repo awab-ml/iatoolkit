@@ -9,6 +9,7 @@ from sqlalchemy.orm import relationship, class_mapper, declarative_base
 from sqlalchemy.sql import func
 from datetime import datetime
 from pgvector.sqlalchemy import Vector
+import enum
 
 
 # base class for the ORM
@@ -141,6 +142,13 @@ class Tool(Base):
         return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}
 
 
+class DocumentStatus(str, enum.Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    ACTIVE = "active"
+    FAILED = "failed"
+
+
 class Document(Base):
     """Represents a file or document uploaded by a company for context."""
     __tablename__ = 'iat_documents'
@@ -149,10 +157,17 @@ class Document(Base):
     company_id = Column(Integer, ForeignKey('iat_companies.id',
                     ondelete='CASCADE'), nullable=False)
     filename = Column(String, nullable=False, index=True)
+    status = Column(Enum(DocumentStatus), default=DocumentStatus.PENDING, nullable=False)
     meta = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     content = Column(Text, nullable=False)
     content_b64 = Column(Text, nullable=False)
+
+    # For feedback if OCR or embedding fails
+    error_message = Column(Text, nullable=True)
+
+    # file hash for duplicate detection
+    file_hash = Column(String, index=True, nullable=True)
 
     company = relationship("Company", back_populates="documents")
 
@@ -196,7 +211,7 @@ class VSDoc(Base):
 
     # the size of this vector should be set depending on the embedding model used
     # for OpenAI is 1536, and for huggingface is 384
-    embedding = Column(Vector(1536), nullable=False)
+    embedding = Column(Vector(384), nullable=False)
 
     company = relationship("Company", back_populates="vsdocs")
 

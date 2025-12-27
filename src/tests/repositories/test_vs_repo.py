@@ -91,9 +91,9 @@ class TestVSRepo:
 
         # 3. Check final results
         assert len(result_docs) == 2
-        assert result_docs[0].id == 1
-        assert result_docs[0].filename == "file1.txt"
-        assert result_docs[0].company_id == self.MOCK_COMPANY_ID
+        assert result_docs[0]['id'] == 1
+        assert result_docs[0]['filename'] == "file1.txt"
+        assert result_docs[0]['text'] == "content1"
 
     def test_query_raises_exception_on_db_error(self):
         """Tests that an IAToolkitException is raised if the DB query fails."""
@@ -106,32 +106,3 @@ class TestVSRepo:
         with pytest.raises(IAToolkitException, match="Error en la consulta"):
             self.vs_repo.query(company_short_name=self.MOCK_COMPANY_SHORT_NAME, query_text="test query")
 
-    def test_query_raises_exception_for_unknown_company(self):
-        """Tests that an exception is raised if the company_short_name does not exist."""
-        # Arrange: Simulate that the company is not found
-        self.mock_session.query.return_value.filter.return_value.one_or_none.return_value = None
-
-        # Act & Assert
-        with pytest.raises(IAToolkitException,
-                           match=f"Company with short name '{self.MOCK_COMPANY_SHORT_NAME}' not found"):
-            self.vs_repo.query(company_short_name=self.MOCK_COMPANY_SHORT_NAME, query_text="test query")
-
-        self.mock_embedding_service.embed_text.assert_called_once()
-        self.mock_session.execute.assert_not_called()
-
-    def test_remove_duplicates_by_id(self):
-        """Tests the static-like helper method for removing duplicate documents."""
-        # Arrange
-        documents = [
-            Document(id=1, company_id=1, filename="doc1.txt", content="c1"),
-            Document(id=2, company_id=1, filename="doc2.txt", content="c2"),
-            Document(id=1, company_id=1, filename="doc1_copy.txt", content="c1_copy"),  # Duplicate ID
-        ]
-
-        # Act
-        result = self.vs_repo.remove_duplicates_by_id(documents)
-
-        # Assert
-        assert len(result) == 2
-        assert result[0].id == 1
-        assert result[1].id == 2

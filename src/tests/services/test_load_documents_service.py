@@ -1,14 +1,15 @@
-# tests/services/test_load_documents_service.py
+# Copyright (c) 2024 Fernando Libedinsky
+# Product: IAToolkit
+#
+# IAToolkit is open source software.
 
 import pytest
 from unittest.mock import MagicMock, patch, call
 from iatoolkit.services.load_documents_service import LoadDocumentsService
 from iatoolkit.services.configuration_service import ConfigurationService
+from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.infra.connectors.file_connector_factory import FileConnectorFactory
-from iatoolkit.services.document_service import DocumentService
-from iatoolkit.repositories.document_repo import DocumentRepo
-from iatoolkit.repositories.vs_repo import VSRepo
-from iatoolkit.repositories.models import Company, Document
+from iatoolkit.repositories.models import Company
 from iatoolkit.common.exceptions import IAToolkitException
 
 # Mock configuration to simulate the 'knowledge_base' section of company.yaml
@@ -31,20 +32,12 @@ class TestLoadDocumentsService:
         """Set up mocks for all dependencies and instantiate the service."""
         self.mock_config_service = MagicMock(spec=ConfigurationService)
         self.mock_file_connector_factory = MagicMock(spec=FileConnectorFactory)
-        self.mock_doc_service = MagicMock(spec=DocumentService)
-        self.mock_doc_repo = MagicMock(spec=DocumentRepo)
-        self.mock_vector_store = MagicMock(spec=VSRepo)
-
-        # SOLUCIÓN: Crear un mock para 'session' y adjuntarlo al mock del repositorio.
-        self.mock_session = MagicMock()
-        self.mock_doc_repo.session = self.mock_session
+        self.mock_kb_service = MagicMock(spec=KnowledgeBaseService)
 
         self.service = LoadDocumentsService(
             config_service=self.mock_config_service,
             file_connector_factory=self.mock_file_connector_factory,
-            doc_service=self.mock_doc_service,
-            doc_repo=self.mock_doc_repo,
-            vector_store=self.mock_vector_store,
+            knowledge_base_service=self.mock_kb_service
         )
         self.company = Company(id=1, short_name='acme')
 
@@ -54,7 +47,7 @@ class TestLoadDocumentsService:
             self.service.load_sources(self.company, sources_to_load=['contracts'])
         assert excinfo.value.error_type == IAToolkitException.ErrorType.CONFIG_ERROR
 
-    @patch('iatoolkit.services.load_documents_service.os.getenv', return_value='dev')  # CORREGIDO: 'dev'
+    @patch('iatoolkit.services.load_documents_service.os.getenv', return_value='dev')
     @patch('iatoolkit.services.load_documents_service.FileProcessor')
     def test_load_sources_uses_dev_connector_in_development(self, MockFileProcessor, mock_getenv):
         self.mock_config_service.get_configuration.return_value = MOCK_KNOWLEDGE_BASE_CONFIG
@@ -81,28 +74,47 @@ class TestLoadDocumentsService:
         """
         GIVEN sources_to_load is None or empty
         WHEN load_company_sources is called
-        THEN it should raise a parameter error, as per the service logic.
+        THEN it should raise a parameter error.
         """
         self.mock_config_service.get_configuration.return_value = MOCK_KNOWLEDGE_BASE_CONFIG
         with pytest.raises(IAToolkitException) as excinfo:
-            # CORREGIDO: Este test ahora verifica que se lance la excepción.
             self.service.load_sources(self.company)
         assert excinfo.value.error_type == IAToolkitException.ErrorType.PARAM_NOT_FILLED
 
-    def test_callback_skips_processing_if_document_exists(self):
-        self.mock_doc_repo.get.return_value = MagicMock()
-        self.service._file_processing_callback(self.company, 'existing.pdf', b'content')
-        self.mock_doc_service.file_to_txt.assert_not_called()
-        self.mock_vector_store.add_document.assert_not_called()
-        self.mock_session.commit.assert_not_called()
+    def test_callback_delegates_to_knowledge_base_service(self):
+        """
+        GIVEN a file callback trigger
+        WHEN _file_processing_callback is called
+        THEN it should delegate ingestion to KnowledgeBaseService.
+        """
+        # Arrange
+        filename = 'doc.pdf'
+        content = b'pdf_content'
+        context = {'metadata': {'type': 'manual'}}
 
+        # Act
+        self.service._file_processing_callback(self.company, filename, content, context)
 
-    def test_callback_rolls_back_on_exception(self):
-        self.mock_doc_repo.get.return_value = None
-        self.mock_doc_service.file_to_txt.return_value = "text"
-        self.mock_vector_store.add_document.side_effect = Exception("Vector DB is down")
+        # Assert
+        self.mock_kb_service.ingest_document_sync.assert_called_once_with(
+            company=self.company,
+            filename=filename,
+            content=content,
+            metadata={'type': 'manual'}
+        )
+
+    def test_callback_handles_exception_from_knowledge_base(self):
+        """
+        GIVEN KnowledgeBaseService raises an exception
+        WHEN _file_processing_callback is called
+        THEN it should catch and re-raise as IAToolkitException.
+        """
+        # Arrange
+        self.mock_kb_service.ingest_document_sync.side_effect = Exception("Ingestion failed")
+
+        # Act & Assert
         with pytest.raises(IAToolkitException) as excinfo:
             self.service._file_processing_callback(self.company, 'fail.pdf', b'content')
+
         assert excinfo.value.error_type == IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR
-        self.mock_session.rollback.assert_called_once()
-        self.mock_session.commit.assert_not_called()
+        assert "Error while processing file" in str(excinfo.value)

@@ -9,6 +9,7 @@ from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.services.embedding_service import EmbeddingService
 from iatoolkit.repositories.models import Document, VSDoc, Company
+from typing import Dict
 import logging
 
 
@@ -39,7 +40,7 @@ class VSRepo:
               query_text: str,
               n_results=5,
               metadata_filter=None
-              ) -> list[Document]:
+              ) -> list[Dict]:
         """
         search documents similar to the query for a company
 
@@ -70,9 +71,9 @@ class VSRepo:
 
             # build the SQL query
             sql_query_parts = ["""
-                               SELECT iat_documents.id, \
+                               SELECT iat_vsdocs.id, \
                                       iat_documents.filename, \
-                                      iat_documents.content, \
+                                      iat_vsdocs.text, \
                                       iat_documents.content_b64, \
                                       iat_documents.meta
                                FROM iat_vsdocs, \
@@ -117,17 +118,17 @@ class VSRepo:
             for row in rows:
                 # create the document object with the data
                 meta_data = row[4] if len(row) > 4 and row[4] is not None else {}
-                doc = Document(
-                    id=row[0],
-                    company_id=company.id,
-                    filename=row[1],
-                    content=row[2],
-                    content_b64=row[3],
-                    meta=meta_data
+                vs_documents.append(
+                    {
+                        'id': row[0],
+                        'filename': row[1],
+                        'text': row[2],
+                        'meta': meta_data,
+                    }
                 )
-                vs_documents.append(doc)
 
-            return self.remove_duplicates_by_id(vs_documents)
+            return vs_documents
+
 
         except Exception as e:
             logging.error(f"Error en la consulta de documentos: {str(e)}")
@@ -138,13 +139,3 @@ class VSRepo:
         finally:
             self.session.close()
 
-    def remove_duplicates_by_id(self, objects):
-        unique_by_id = {}
-        result = []
-
-        for obj in objects:
-            if obj.id not in unique_by_id:
-                unique_by_id[obj.id] = True
-                result.append(obj)
-
-        return result

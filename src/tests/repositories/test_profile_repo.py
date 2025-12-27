@@ -126,6 +126,46 @@ class TestProfileRepo:
         assert result[0].name == 'Opensoft'
         assert result[1].name == 'TestLabs'
 
+    def test_get_companies_by_user_identifier_when_no_companies(self):
+        self.session.add(self.user)
+        self.session.commit()
+
+        results = self.repo.get_companies_by_user_identifier(self.user.email)
+        assert results == []
+
+    def test_get_companies_by_user_identifier_when_success(self):
+        self.session.add(self.user)
+        self.session.add(self.company)
+        company2 = Company(name='Second Corp', short_name='second')
+        self.session.add(company2)
+        self.session.commit()
+
+        # Add relations
+        self.session.execute(
+            user_company.insert().values([
+                {'user_id': self.user.id, 'company_id': self.company.id, 'role': 'owner'},
+                {'user_id': self.user.id, 'company_id': company2.id, 'role': 'member'}
+            ])
+        )
+        self.session.commit()
+
+        # Act
+        results = self.repo.get_companies_by_user_identifier(self.user.email)
+
+        # Assert
+        assert len(results) == 2
+
+        # Mapping results for easier assertion irrespective of order
+        # Result format is [(CompanyObj, 'role_str'), ...]
+        result_map = {comp.short_name: role for comp, role in results}
+
+        assert result_map['open'] == 'owner'
+        assert result_map['second'] == 'member'
+
+    def test_get_companies_by_user_identifier_when_user_does_not_exist(self):
+        results = self.repo.get_companies_by_user_identifier("nonexistent@mail.com")
+        assert results == []
+
     def test_create_company_when_company_exists(self):
         self.session.add(self.company)
         self.session.commit()

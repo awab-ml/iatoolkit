@@ -5,21 +5,22 @@
 
 from flask.views import MethodView
 from flask import request, jsonify
-from iatoolkit.services.load_documents_service import LoadDocumentsService
-from iatoolkit.services.auth_service import AuthService
-from iatoolkit.repositories.profile_repo import ProfileRepo
 from injector import inject
 import base64
+
+from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
+from iatoolkit.services.auth_service import AuthService
+from iatoolkit.repositories.profile_repo import ProfileRepo
 
 
 class LoadDocumentApiView(MethodView):
     @inject
     def __init__(self,
                  auth_service: AuthService,
-                 doc_service: LoadDocumentsService,
-                 profile_repo: ProfileRepo,):
+                 knowledge_base_service: KnowledgeBaseService,
+                 profile_repo: ProfileRepo):
         self.auth_service = auth_service
-        self.doc_service = doc_service
+        self.knowledge_base_service = knowledge_base_service
         self.profile_repo = profile_repo
 
     def post(self):
@@ -48,14 +49,17 @@ class LoadDocumentApiView(MethodView):
             # get the file content from base64
             content = base64.b64decode(base64_content)
 
-            new_document = self.doc_service._file_processing_callback(
+            # Use KnowledgeBaseService for ingestion
+            new_document = self.knowledge_base_service.ingest_document_sync(
+                company=company,
                 filename=filename,
                 content=content,
-                company=company,
-                context={'metadata': metadata})
+                metadata=metadata
+            )
 
             return jsonify({
                 "document_id": new_document.id,
+                "status": "active" # ingest_document_sync returns ACTIVE on success
             }), 200
 
         except Exception as e:

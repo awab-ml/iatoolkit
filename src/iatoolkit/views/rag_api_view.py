@@ -1,0 +1,164 @@
+# Copyright (c) 2024 Fernando Libedinsky
+# Product: IAToolkit
+#
+# IAToolkit is open source software.
+
+from flask import request, jsonify
+from flask.views import MethodView
+from injector import inject
+from datetime import datetime
+
+from iatoolkit.common.exceptions import IAToolkitException
+from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
+from iatoolkit.services.auth_service import AuthService
+from iatoolkit.common.util import Utility
+
+class RagApiView(MethodView):
+    """
+    API Endpoints for managing the RAG Knowledge Base.
+    """
+
+    @inject
+    def __init__(self,
+                 knowledge_base_service: KnowledgeBaseService,
+                 auth_service: AuthService,
+                 utility: Utility):
+        self.knowledge_base_service = knowledge_base_service
+        self.auth_service = auth_service
+        self.utility = utility
+
+    def dispatch_request(self, *args, **kwargs):
+        """
+        Sobreescribimos el dispatch para soportar el mapeo de acciones personalizadas
+        pasadas a través de 'defaults' en add_url_rule (ej: action='list_files').
+        """
+        action = kwargs.pop('action', None)
+        if action:
+            method = getattr(self, action, None)
+            if method:
+                return method(*args, **kwargs)
+            else:
+                raise AttributeError(f"Action '{action}' not found in {self.__class__.__name__}")
+
+        return super().dispatch_request(*args, **kwargs)
+
+    def list_files(self, company_short_name):
+        """
+        POST /api/rag/<company_short_name>/files
+        Returns a paginated list of documents based on filters provided in the JSON body.
+        """
+        try:
+            # 1. Authenticate the user from the current session.
+            auth_result = self.auth_service.verify()
+            if not auth_result.get("success"):
+                return jsonify(auth_result), auth_result.get("status_code")
+
+            # 2. Parse Input
+            data = request.get_json() or {}
+
+            status = data.get('status')
+            keyword = data.get('filename_keyword')
+            from_date_str = data.get('from_date')
+            to_date_str = data.get('to_date')
+            limit = int(data.get('limit', 100))
+            offset = int(data.get('offset', 0))
+
+            from_date = datetime.fromisoformat(from_date_str) if from_date_str else None
+            to_date = datetime.fromisoformat(to_date_str) if to_date_str else None
+
+            # 3. Call Service
+            documents = self.knowledge_base_service.list_documents(
+                company_short_name=company_short_name,
+                status=status,
+                filename_keyword=keyword,
+                from_date=from_date,
+                to_date=to_date,
+                limit=limit,
+                offset=offset
+            )
+
+            # 4. Format Response
+            response_list = []
+            for doc in documents:
+                response_list.append({
+                    'id': doc.id,
+                    'filename': doc.filename,
+                    'status': doc.status.value if hasattr(doc.status, 'value') else str(doc.status),
+                    'created_at': doc.created_at.isoformat() if doc.created_at else None,
+                    'metadata': doc.meta,
+                    'error_message': doc.error_message
+                })
+
+            return jsonify({
+                'result': 'success',
+                'count': len(response_list),
+                'documents': response_list
+            }), 200
+
+        except IAToolkitException as e:
+            return jsonify({'result': 'error', 'message': e.message}), e.http_code
+        except Exception as e:
+            return jsonify({'result': 'error', 'message': str(e)}), 500
+
+    def delete_file(self, company_short_name, document_id):
+        """
+        DELETE /api/rag/<company_short_name>/files/<document_id>
+        Deletes a document and its vectors.
+        """
+        try:
+            # 1. Authenticate
+            auth_result = self.auth_service.verify()
+            if not auth_result.get("success"):
+                return jsonify(auth_result), auth_result.get("status_code")
+
+            # 2. Call Service
+            success = self.knowledge_base_service.delete_document(document_id)
+
+            if success:
+                return jsonify({'result': 'success', 'message': f'Document {document_id} deleted.'}), 200
+            else:
+                return jsonify({'result': 'error', 'message': 'Document not found.'}), 404
+
+        except IAToolkitException as e:
+            return jsonify({'result': 'error', 'message': e.message}), e.http_code
+        except Exception as e:
+            return jsonify({'result': 'error', 'message': str(e)}), 500
+
+    def search(self, company_short_name):
+        """
+        POST /api/rag/<company_short_name>/search
+        Synchronous semantic search for the "Search Lab" UI.
+        Returns detailed chunks with text and metadata using search_raw.
+        """
+        try:
+            # 1. Authenticate
+            auth_result = self.auth_service.verify()
+            if not auth_result.get("success"):
+                return jsonify(auth_result), auth_result.get("status_code")
+
+            # 2. Parse Input
+            data = request.get_json() or {}
+            query = data.get('query')
+            n_results = int(data.get('k', 5))
+            metadata_filter = data.get('metadata_filter')
+
+            if not query:
+                return jsonify({'result': 'error', 'message': 'Query is required'}), 400
+
+            # 3. Call Service
+            chunks = self.knowledge_base_service.search_raw(
+                company_short_name=company_short_name,
+                query=query,
+                n_results=n_results,
+                metadata_filter=metadata_filter
+            )
+
+            return jsonify({
+                "result": "success",
+                "chunks": chunks
+            }), 200
+
+        except IAToolkitException as e:
+            return jsonify({'result': 'error', 'error_message': e.message}), 501
+        except Exception as e:
+            return jsonify({'result': 'error', 'error_message': str(e)}), 500

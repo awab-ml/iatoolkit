@@ -1,0 +1,202 @@
+# Copyright (c) 2024 Fernando Libedinsky
+# Product: IAToolkit
+#
+# IAToolkit is open source software.
+
+import pytest
+from flask import Flask
+from unittest.mock import MagicMock
+from datetime import datetime
+
+from iatoolkit.views.rag_api_view import RagApiView
+from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
+from iatoolkit.services.auth_service import AuthService
+from iatoolkit.common.util import Utility
+from iatoolkit.repositories.models import Document, DocumentStatus
+
+
+class TestRagApiView:
+    """Test suite for RagApiView endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
+        self.app = Flask(__name__)
+        self.client = self.app.test_client()
+        self.app.secret_key = "test-secret"
+
+        # Mock dependencies
+        self.mock_kb_service = MagicMock(spec=KnowledgeBaseService)
+        self.mock_auth_service = MagicMock(spec=AuthService)
+        self.mock_utility = MagicMock(spec=Utility)
+
+        # Register the view
+        rag_view = RagApiView.as_view(
+            'rag_api',
+            knowledge_base_service=self.mock_kb_service,
+            auth_service=self.mock_auth_service,
+            utility=self.mock_utility
+        )
+
+        # 1. List Files
+        self.app.add_url_rule(
+            '/api/rag/<company_short_name>/files',
+            view_func=rag_view,
+            methods=['POST'],
+            defaults={'action': 'list_files'}
+        )
+
+        # 2. Delete File
+        self.app.add_url_rule(
+            '/api/rag/<company_short_name>/files/<int:document_id>',
+            view_func=rag_view,
+            methods=['DELETE'],
+            defaults={'action': 'delete_file'}
+        )
+
+        # 3. Search
+        self.app.add_url_rule(
+            '/api/rag/<company_short_name>/search',
+            view_func=rag_view,
+            methods=['POST'],
+            defaults={'action': 'search'}
+        )
+
+        self.company_short_name = "acme"
+
+        # Setup Auth Success by default
+        self.mock_auth_service.verify.return_value = {
+            "success": True,
+            "user_identifier": "test@acme.com",
+            "company_short_name": "acme"
+        }
+
+    # --- List Files Tests ---
+
+    def test_list_files_success(self):
+        """Should return a list of documents formatted as JSON."""
+        # Arrange
+        mock_doc = Document(
+            id=1,
+            filename="contract.pdf",
+            status=DocumentStatus.ACTIVE,
+            created_at=datetime(2024, 1, 1),
+            meta={"type": "contract"},
+            error_message=None
+        )
+        self.mock_kb_service.list_documents.return_value = [mock_doc]
+
+        payload = {
+            "status": "active",
+            "limit": 10
+        }
+
+        # Act
+        response = self.client.post(f'/api/rag/{self.company_short_name}/files', json=payload)
+
+        # Assert
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['result'] == 'success'
+        assert data['count'] == 1
+        assert data['documents'][0]['filename'] == 'contract.pdf'
+
+        # Verify service call params
+        self.mock_kb_service.list_documents.assert_called_with(
+            company_short_name=self.company_short_name,
+            status='active',
+            filename_keyword=None,
+            from_date=None,
+            to_date=None,
+            limit=10,
+            offset=0
+        )
+        self.mock_auth_service.verify.assert_called_once()
+
+    def test_list_files_auth_error(self):
+        """Should return error if auth verify fails."""
+        self.mock_auth_service.verify.return_value = {
+            "success": False,
+            "status_code": 401,
+            "error_message": "Auth failed"
+        }
+
+        response = self.client.post(f'/api/rag/{self.company_short_name}/files', json={})
+
+        assert response.status_code == 401
+        assert response.get_json()['error_message'] == 'Auth failed'
+        self.mock_kb_service.list_documents.assert_not_called()
+
+    # --- Delete File Tests ---
+
+    def test_delete_file_success(self):
+        """Should return success message when document is deleted."""
+        self.mock_kb_service.delete_document.return_value = True
+
+        response = self.client.delete(f'/api/rag/{self.company_short_name}/files/123')
+
+        assert response.status_code == 200
+        assert response.get_json()['message'] == 'Document 123 deleted.'
+        self.mock_kb_service.delete_document.assert_called_with(123)
+
+    def test_delete_file_not_found(self):
+        """Should return 404 if document does not exist."""
+        self.mock_kb_service.delete_document.return_value = False
+
+        response = self.client.delete(f'/api/rag/{self.company_short_name}/files/999')
+
+        assert response.status_code == 404
+        assert response.get_json()['result'] == 'error'
+
+    # --- Search Tests ---
+
+    def test_search_raw_success(self):
+        """Should return structured search results."""
+        # Arrange
+        mock_doc = {
+            'id': 10,
+            'filename': 'guide.pdf',
+            'text': 'This is a relevant chunk',
+            'meta': {'page': 5},
+            'count': 1
+        }
+
+        self.mock_kb_service.search_raw.return_value = [mock_doc]
+
+        payload = {
+            "query": "how to install",
+            "k": 3
+        }
+
+        # Act
+        response = self.client.post(f'/api/rag/{self.company_short_name}/search', json=payload)
+
+        # Assert
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['result'] == 'success'
+        assert data['chunks'][0]['text'] == "This is a relevant chunk"
+
+        self.mock_kb_service.search_raw.assert_called_with(
+            company_short_name=self.company_short_name,
+            query="how to install",
+            n_results=3,
+            metadata_filter=None
+        )
+
+    def test_search_missing_query(self):
+        """Should return 400 if query is missing."""
+        response = self.client.post(f'/api/rag/{self.company_short_name}/search', json={"k": 5})
+        assert response.status_code == 400
+        assert "Query is required" in response.get_json()['message']
+
+    def test_search_exception(self):
+        """Should handle internal server errors gracefully."""
+        self.mock_kb_service.search_raw.side_effect = Exception("Vector DB Down")
+
+        response = self.client.post(
+            f'/api/rag/{self.company_short_name}/search',
+            json={"query": "test"}
+        )
+
+        assert response.status_code == 500
+        assert "Vector DB Down" in response.get_json()['error_message']

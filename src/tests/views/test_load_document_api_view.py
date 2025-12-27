@@ -7,13 +7,14 @@ import pytest
 from unittest.mock import MagicMock
 from flask import Flask
 from iatoolkit.views.load_document_api_view import LoadDocumentApiView
-from iatoolkit.services.load_documents_service import LoadDocumentsService
+from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.services.auth_service import AuthService
+from iatoolkit.repositories.models import Document
 import base64
 
 
-class TestFileStoreView:
+class TestLoadDocumentView:
 
     def setup_method(self):
         self.app = Flask(__name__)
@@ -21,15 +22,15 @@ class TestFileStoreView:
         self.url = '/api/load-document'
 
         # Mock the services
-        self.mock_doc_service = MagicMock(spec=LoadDocumentsService)
+        self.mock_kb_service = MagicMock(spec=KnowledgeBaseService)
         self.mock_profile_repo = MagicMock(spec=ProfileRepo)
         self.mock_auth = MagicMock(spec=AuthService)
 
         # Instantiate the view with mocked services
         self.file_store_view = LoadDocumentApiView.as_view("load",
-                                                    doc_service=self.mock_doc_service,
-                                                    profile_repo=self.mock_profile_repo,
-                                                     auth_service=self.mock_auth)
+                                                           knowledge_base_service=self.mock_kb_service,
+                                                           profile_repo=self.mock_profile_repo,
+                                                           auth_service=self.mock_auth)
         self.app.add_url_rule(self.url, view_func=self.file_store_view, methods=["POST"])
         self.mock_auth.verify.return_value = {"success": True}
 
@@ -50,7 +51,7 @@ class TestFileStoreView:
             "error": f"El campo {missing_field} es requerido"
         }
 
-        self.mock_doc_service._file_processing_callback.assert_not_called()
+        self.mock_kb_service.ingest_document_sync.assert_not_called()
 
     def test_post_when_company_not_found(self):
         # Mock the profile repo to return None for the company
@@ -71,11 +72,11 @@ class TestFileStoreView:
         }
 
         self.mock_profile_repo.get_company_by_short_name.assert_called_once_with("nonexistent_company")
-        self.mock_doc_service._file_processing_callback.assert_not_called()
+        self.mock_kb_service.ingest_document_sync.assert_not_called()
 
 
     def test_post_when_company_not_auth(self):
-        # Mock the profile repo to return None for the company
+        # Mock auth failure
         self.mock_auth.verify.return_value = {"success": False, "status_code": 401}
 
         payload = {
@@ -89,15 +90,15 @@ class TestFileStoreView:
         assert response.status_code == 401
 
 
-        self.mock_doc_service._file_processing_callback.assert_not_called()
+        self.mock_kb_service.ingest_document_sync.assert_not_called()
 
     def test_post_when_internal_exception_error(self):
         # Mock the profile repo to return a company
         mock_company = MagicMock()
         self.mock_profile_repo.get_company_by_short_name.return_value = mock_company
 
-        # Mock the doc service to raise an exception
-        self.mock_doc_service._file_processing_callback.side_effect = Exception("Internal Error")
+        # Mock the kb service to raise an exception
+        self.mock_kb_service.ingest_document_sync.side_effect = Exception("Internal Error")
 
         payload = {
             "company": "test_company",
@@ -116,7 +117,7 @@ class TestFileStoreView:
         assert response_json["error"] == "Internal Error"
 
         self.mock_profile_repo.get_company_by_short_name.assert_called_once_with("test_company")
-        self.mock_doc_service._file_processing_callback.assert_called_once()
+        self.mock_kb_service.ingest_document_sync.assert_called_once()
 
     def test_post_when_successful_file_storage(self):
         # Mock the profile repo to return a company
@@ -124,9 +125,9 @@ class TestFileStoreView:
         self.mock_profile_repo.get_company_by_short_name.return_value = mock_company
 
         # Mock the document returned by the service
-        mock_document = MagicMock()
+        mock_document = MagicMock(spec=Document)
         mock_document.id = 123
-        self.mock_doc_service._file_processing_callback.return_value = mock_document
+        self.mock_kb_service.ingest_document_sync.return_value = mock_document
 
         payload = {
             "company": "test_company",
@@ -139,13 +140,14 @@ class TestFileStoreView:
 
         assert response.status_code == 200
         assert response.get_json() == {
-            "document_id": 123
+            "document_id": 123,
+            "status": "active"
         }
 
         self.mock_profile_repo.get_company_by_short_name.assert_called_once_with("test_company")
-        self.mock_doc_service._file_processing_callback.assert_called_once_with(
+        self.mock_kb_service.ingest_document_sync.assert_called_once_with(
             filename="test_file.txt",
             content=b"test content",
             company=mock_company,
-            context={'metadata':{"key": "value"}}
+            metadata={"key": "value"}
         )
