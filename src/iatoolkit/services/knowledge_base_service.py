@@ -9,15 +9,17 @@ from iatoolkit.repositories.document_repo import DocumentRepo
 from iatoolkit.repositories.vs_repo import VSRepo
 from iatoolkit.services.document_service import DocumentService
 from iatoolkit.services.profile_service import ProfileService
-import base64
-import logging
-from typing import List, Optional
-from datetime import datetime
-from injector import inject
+from iatoolkit.services.i18n_service import I18nService
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy import desc
 from typing import Dict
 from iatoolkit.common.exceptions import IAToolkitException
+import base64
+import logging
+import hashlib
+from typing import List, Optional
+from datetime import datetime
+from injector import inject
 
 
 class KnowledgeBaseService:
@@ -31,11 +33,13 @@ class KnowledgeBaseService:
                  document_repo: DocumentRepo,
                  vs_repo: VSRepo,
                  document_service: DocumentService,
-                 profile_service: ProfileService):
+                 profile_service: ProfileService,
+                 i18n_service: I18nService):
         self.document_repo = document_repo
         self.vs_repo = vs_repo
         self.document_service = document_service
         self.profile_service = profile_service
+        self.i18n_service = i18n_service
 
         # Configure LangChain for intelligent text splitting
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -44,7 +48,7 @@ class KnowledgeBaseService:
             separators=["\n\n", "\n", ".", " ", ""]
         )
 
-    def ingest_document_sync(self, company: Company, filename: str, content: bytes, metadata: dict = None) -> Document:
+    def ingest_document_sync(self, company: Company, filename: str, content: bytes, user_identifier: str = None, metadata: dict = None) -> Document:
         """
         Synchronously processes a document through the entire RAG pipeline:
         1. Saves initial metadata and raw content (base64) to the SQL Document table.
@@ -65,13 +69,19 @@ class KnowledgeBaseService:
         if not metadata:
             metadata = {}
 
-        # 1. Check for duplicates (basic idempotency based on filename)
-        existing_doc = self.document_repo.get(company.id, filename)
+        # 1. Calculate SHA-256 hash of the content
+        file_hash = hashlib.sha256(content).hexdigest()
+
+        # 2. Check for duplicates by HASH (Content deduplication)
+        # If the same content exists (even with a different filename), we skip processing.
+        existing_doc = self.document_repo.get_by_hash(company.id, file_hash)
         if existing_doc:
-            logging.info(f"Document '{filename}' already exists for company '{company.short_name}'. Skipping ingestion.")
+            msg = self.i18n_service.t('rag.ingestion.duplicate', filename=filename, company_short_name=company.short_name)
+            logging.info(msg)
             return existing_doc
 
-        # 2. Create initial record with PENDING status
+
+        # 3. Create initial record with PENDING status
         try:
             # Encode to b64 for safe storage in DB if needed later for download
             content_b64 = base64.b64encode(content).decode('utf-8')
@@ -79,7 +89,9 @@ class KnowledgeBaseService:
             new_doc = Document(
                 company_id=company.id,
                 filename=filename,
-                content="",  # Will be populated after text extraction
+                hash=file_hash,
+                user_identifier=user_identifier,
+                content="",         # Will be populated after text extraction
                 content_b64=content_b64,
                 meta=metadata,
                 status=DocumentStatus.PENDING
@@ -94,8 +106,10 @@ class KnowledgeBaseService:
 
         except Exception as e:
             logging.exception(f"Error initializing document ingestion for {filename}: {e}")
-            raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR,
-                                     f"Failed to ingest document: {str(e)}")
+            error_msg = self.i18n_service.t('rag.ingestion.failed', error=str(e))
+
+            raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR, error_msg)
+
 
     def _process_document_content(self, company_short_name: str, document: Document, raw_content: bytes):
         """
@@ -113,7 +127,7 @@ class KnowledgeBaseService:
             extracted_text = self.document_service.file_to_txt(document.filename, raw_content)
 
             if not extracted_text:
-                raise ValueError("Extracted text is empty")
+                raise ValueError(self.i18n_service.t('rag.ingestion.empty_text'))
 
             # Update the extracted content in the original document record
             document.content = extracted_text
@@ -153,8 +167,9 @@ class KnowledgeBaseService:
             except:
                 pass  # If error commit fails, we can't do much more
 
-            raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR,
-                                     f"Processing failed: {str(e)}")
+            error_msg = self.i18n_service.t('rag.ingestion.processing_failed', error=str(e))
+            raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR, error_msg)
+
 
     def search(self, company_short_name: str, query: str, n_results: int = 5, metadata_filter: dict = None) -> str:
         """
@@ -172,7 +187,7 @@ class KnowledgeBaseService:
         """
         company = self.profile_service.get_company_by_short_name(company_short_name)
         if not company:
-            return f"error: company {company_short_name} not found"
+            return f"error: {self.i18n_service.t('rag.search.company_not_found', company_short_name=company_short_name)}"
 
         # Queries VSRepo (which typically uses pgvector/SQL underneath)
         chunk_list = self.vs_repo.query(

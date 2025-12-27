@@ -12,6 +12,8 @@ from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.services.auth_service import AuthService
 from iatoolkit.common.util import Utility
+from iatoolkit.services.i18n_service import I18nService
+
 
 class RagApiView(MethodView):
     """
@@ -22,10 +24,12 @@ class RagApiView(MethodView):
     def __init__(self,
                  knowledge_base_service: KnowledgeBaseService,
                  auth_service: AuthService,
+                 i18n_service: I18nService,
                  utility: Utility):
         self.knowledge_base_service = knowledge_base_service
         self.auth_service = auth_service
         self.utility = utility
+        self.i18n_service = i18n_service
 
     def dispatch_request(self, *args, **kwargs):
         """
@@ -38,7 +42,7 @@ class RagApiView(MethodView):
             if method:
                 return method(*args, **kwargs)
             else:
-                raise AttributeError(f"Action '{action}' not found in {self.__class__.__name__}")
+                raise AttributeError(self.i18n_service.t('rag.management.action_not_found', action=action))
 
         return super().dispatch_request(*args, **kwargs)
 
@@ -115,9 +119,11 @@ class RagApiView(MethodView):
             success = self.knowledge_base_service.delete_document(document_id)
 
             if success:
-                return jsonify({'result': 'success', 'message': f'Document {document_id} deleted.'}), 200
+                msg = self.i18n_service.t('rag.management.delete_success')
+                return jsonify({'result': 'success', 'message': msg}), 200
             else:
-                return jsonify({'result': 'error', 'message': 'Document not found.'}), 404
+                msg = self.i18n_service.t('rag.management.not_found')
+                return jsonify({'result': 'error', 'message': msg}), 404
 
         except IAToolkitException as e:
             return jsonify({'result': 'error', 'message': e.message}), e.http_code
@@ -143,7 +149,8 @@ class RagApiView(MethodView):
             metadata_filter = data.get('metadata_filter')
 
             if not query:
-                return jsonify({'result': 'error', 'message': 'Query is required'}), 400
+                msg = self.i18n_service.t('rag.search.query_required')
+                return jsonify({'result': 'error', 'message': msg}), 400
 
             # 3. Call Service
             chunks = self.knowledge_base_service.search_raw(

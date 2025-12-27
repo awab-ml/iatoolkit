@@ -176,6 +176,20 @@ services:
   start_query: "Hola, cual es tu pregunta?"
   mail_change_password: "se envio mail para cambio de clave"
 
+rag:
+  ingestion:
+    duplicate: "El documento '{filename}' ya existe para la empresa '{company_short_name}'. Omitiendo ingesta."
+    failed: "Error al ingerir el documento: {error}"
+    processing_failed: "El procesamiento falló: {error}"
+    empty_text: "El texto extraído está vacío."
+  search:
+    query_required: "La consulta (query) es obligatoria."
+    company_not_found: "Empresa '{company_short_name}' no encontrada."
+  management:
+    delete_success: "Documento eliminado."
+    not_found: "Documento no encontrado."
+    action_not_found: "Acción '{action}' no encontrada."
+
 flash_messages:
   password_changed_success: "Tu contraseña ha sido restablecida exitosamente. Ahora puedes iniciar sesión."
   signup_success: "Registro exitoso. Por favor, revisa tu correo para verificar tu cuenta."

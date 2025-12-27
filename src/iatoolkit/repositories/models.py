@@ -156,6 +156,7 @@ class Document(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('iat_companies.id',
                     ondelete='CASCADE'), nullable=False)
+    user_identifier = Column(String, nullable=True)
     filename = Column(String, nullable=False, index=True)
     status = Column(Enum(DocumentStatus), default=DocumentStatus.PENDING, nullable=False)
     meta = Column(JSON, nullable=True)
@@ -166,8 +167,8 @@ class Document(Base):
     # For feedback if OCR or embedding fails
     error_message = Column(Text, nullable=True)
 
-    # file hash for duplicate detection
-    file_hash = Column(String, index=True, nullable=True)
+    # Hash column for deduplication (SHA-256 hex digest)
+    hash = Column(String(64), index=True, nullable=True)
 
     company = relationship("Company", back_populates="documents")
 

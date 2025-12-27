@@ -174,6 +174,19 @@ services:
   start_query: "Hello, what can I help you with today?"
   mail_change_password: "mail sent for password change"
 
+rag:
+  ingestion:
+    duplicate: "Document '{filename}' already exists for company '{company_short_name}'. Skipping ingestion."
+    failed: "Failed to ingest document: {error}"
+    processing_failed: "Processing failed: {error}"
+    empty_text: "Extracted text is empty."
+  search:
+    query_required: "Query is required."
+    company_not_found: "Company '{company_short_name}' not found."
+  management:
+    delete_success: "Document deleted."
+    not_found: "Document not found."
+    action_not_found: "Action '{action}' not f
 
 flash_messages:
   password_changed_success: "Your password has been successfully reset. You can now log in."

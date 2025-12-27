@@ -26,6 +26,13 @@ class DocumentRepo:
 
         return self.session.query(Document).filter_by(company_id=company_id, filename=filename).first()
 
+    def get_by_hash(self, company_id: int, file_hash: str) -> Document:
+        """Find a document by its content hash within a company."""
+        if not company_id or not file_hash:
+            return None
+
+        return self.session.query(Document).filter_by(company_id=company_id, hash=file_hash).first()
+
     def get_by_id(self, document_id: int) -> Document:
         if not document_id:
             return None

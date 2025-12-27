@@ -12,6 +12,7 @@ from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.repositories.document_repo import DocumentRepo
 from iatoolkit.repositories.vs_repo import VSRepo
 from iatoolkit.services.document_service import DocumentService
+from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.repositories.models import Company, Document, DocumentStatus, VSDoc
 from iatoolkit.common.exceptions import IAToolkitException
@@ -26,6 +27,7 @@ class TestKnowledgeBaseService:
         self.mock_vs_repo = MagicMock(spec=VSRepo)
         self.mock_doc_service = MagicMock(spec=DocumentService)
         self.mock_profile_service = MagicMock(spec=ProfileService)
+        self.mock_i18n_service = MagicMock(spec=I18nService)
 
         # Mock session for DocumentRepo (crucial for commits/rollbacks)
         self.mock_session = MagicMock()
@@ -36,7 +38,8 @@ class TestKnowledgeBaseService:
             document_repo=self.mock_doc_repo,
             vs_repo=self.mock_vs_repo,
             document_service=self.mock_doc_service,
-            profile_service=self.mock_profile_service
+            profile_service=self.mock_profile_service,
+            i18n_service=self.mock_i18n_service
         )
 
         # Common test data
@@ -44,6 +47,9 @@ class TestKnowledgeBaseService:
         self.filename = 'contract.pdf'
         self.content = b'PDF content'
         self.metadata = {'type': 'contract'}
+
+        self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
+
 
     # --- Ingestion Tests ---
 
@@ -55,7 +61,7 @@ class TestKnowledgeBaseService:
         """
         # Arrange
         existing_doc = Document(id=99, filename=self.filename)
-        self.mock_doc_repo.get.return_value = existing_doc
+        self.mock_doc_repo.get_by_hash.return_value = existing_doc
 
         # Act
         result = self.service.ingest_document_sync(self.company, self.filename, self.content)
@@ -72,7 +78,7 @@ class TestKnowledgeBaseService:
         THEN it should extraction text, split it, and save vectors.
         """
         # Arrange
-        self.mock_doc_repo.get.return_value = None
+        self.mock_doc_repo.get_by_hash.return_value = None
 
         # Mock file processing
         extracted_text = "Part 1. Part 2. Part 3."
@@ -111,7 +117,7 @@ class TestKnowledgeBaseService:
         THEN it should mark the document as FAILED and raise exception.
         """
         # Arrange
-        self.mock_doc_repo.get.return_value = None
+        self.mock_doc_repo.get_by_hash.return_value = None
         self.mock_doc_service.file_to_txt.side_effect = Exception("OCR Failed")
 
         # Act & Assert
@@ -160,7 +166,7 @@ class TestKnowledgeBaseService:
     def test_search_returns_error_if_company_not_found(self):
         self.mock_profile_service.get_company_by_short_name.return_value = None
         result = self.service.search('unknown', 'query')
-        assert "not found" in result
+        assert 'translated:rag.search.company_not_found' in result
 
     # --- Search Raw Tests ---
 

@@ -11,6 +11,7 @@ from datetime import datetime
 from iatoolkit.views.rag_api_view import RagApiView
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.services.auth_service import AuthService
+from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.common.util import Utility
 from iatoolkit.repositories.models import Document, DocumentStatus
 
@@ -28,12 +29,16 @@ class TestRagApiView:
         self.mock_kb_service = MagicMock(spec=KnowledgeBaseService)
         self.mock_auth_service = MagicMock(spec=AuthService)
         self.mock_utility = MagicMock(spec=Utility)
+        self.mock_i8n_service = MagicMock(spec=I18nService)
+
+        self.mock_i8n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
 
         # Register the view
         rag_view = RagApiView.as_view(
             'rag_api',
             knowledge_base_service=self.mock_kb_service,
             auth_service=self.mock_auth_service,
+            i18n_service=self.mock_i8n_service,
             utility=self.mock_utility
         )
 
@@ -135,7 +140,7 @@ class TestRagApiView:
         response = self.client.delete(f'/api/rag/{self.company_short_name}/files/123')
 
         assert response.status_code == 200
-        assert response.get_json()['message'] == 'Document 123 deleted.'
+        assert 'translated:rag.management.delete_success' in  response.get_json()['message']
         self.mock_kb_service.delete_document.assert_called_with(123)
 
     def test_delete_file_not_found(self):
@@ -187,7 +192,7 @@ class TestRagApiView:
         """Should return 400 if query is missing."""
         response = self.client.post(f'/api/rag/{self.company_short_name}/search', json={"k": 5})
         assert response.status_code == 400
-        assert "Query is required" in response.get_json()['message']
+        assert 'translated:rag.search.query_required' in response.get_json()['message']
 
     def test_search_exception(self):
         """Should handle internal server errors gracefully."""
