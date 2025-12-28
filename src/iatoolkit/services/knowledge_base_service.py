@@ -298,6 +298,29 @@ class KnowledgeBaseService:
 
         return query.all()
 
+    def get_document_content(self, document_id: int) -> tuple[bytes, str]:
+        """
+        Retrieves the raw content of a document and its filename.
+
+        Args:
+            document_id: ID of the document.
+
+        Returns:
+            A tuple containing (file_bytes, filename).
+            Returns (None, None) if document not found.
+        """
+        doc = self.document_repo.get_by_id(document_id)
+        if not doc or not doc.content_b64:
+            return None, None
+
+        try:
+            file_bytes = base64.b64decode(doc.content_b64)
+            return file_bytes, doc.filename
+        except Exception as e:
+            logging.error(f"Error decoding content for document {document_id}: {e}")
+            raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
+                        f"Error reading file content: {e}")
+
     def delete_document(self, document_id: int) -> bool:
         """
         Deletes a document and its associated vectors.

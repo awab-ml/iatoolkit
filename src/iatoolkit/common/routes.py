@@ -114,6 +114,12 @@ def register_views(app):
                      methods=['POST'],
                      defaults={'action': 'search'})
 
+    # 4. Get File Content (View/Download)
+    app.add_url_rule('/api/rag/<company_short_name>/files/<int:document_id>/content',
+                     view_func=rag_view,
+                     methods=['GET'],
+                     defaults={'action': 'get_file_content'})
+
     # this endpoint is for upload documents into the vector store (api-key)
     app.add_url_rule('/api/load-document', view_func=LoadDocumentApiView.as_view('load-document'), methods=['POST'])
 

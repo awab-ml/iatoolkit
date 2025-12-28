@@ -3,17 +3,18 @@
 #
 # IAToolkit is open source software.
 
-from flask import request, jsonify
-from flask.views import MethodView
-from injector import inject
-from datetime import datetime
 
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.services.auth_service import AuthService
 from iatoolkit.common.util import Utility
 from iatoolkit.services.i18n_service import I18nService
-
+from flask import request, jsonify, send_file
+from flask.views import MethodView
+from injector import inject
+from datetime import datetime
+import io
+import mimetypes
 
 class RagApiView(MethodView):
     """
@@ -101,6 +102,42 @@ class RagApiView(MethodView):
                 'count': len(response_list),
                 'documents': response_list
             }), 200
+
+        except IAToolkitException as e:
+            return jsonify({'result': 'error', 'message': e.message}), e.http_code
+        except Exception as e:
+            return jsonify({'result': 'error', 'message': str(e)}), 500
+
+    def get_file_content(self, company_short_name, document_id):
+        """
+        GET /api/rag/<company_short_name>/files/<document_id>/content
+        Streams the file content to the browser (inline view preferred).
+        """
+        try:
+            # 1. Authenticate
+            auth_result = self.auth_service.verify()
+            if not auth_result.get("success"):
+                return jsonify(auth_result), auth_result.get("status_code")
+
+            # 2. Get content from service
+            file_bytes, filename = self.knowledge_base_service.get_document_content(document_id)
+
+            if not file_bytes:
+                msg = self.i18n_service.t('rag.management.not_found')
+                return jsonify({'result': 'error', 'message': msg}), 404
+
+            # 3. Determine MIME type
+            mime_type, _ = mimetypes.guess_type(filename)
+            if not mime_type:
+                mime_type = 'application/octet-stream'
+
+            # 4. Stream response
+            return send_file(
+                io.BytesIO(file_bytes),
+                mimetype=mime_type,
+                as_attachment=False,  # Inline view
+                download_name=filename
+            )
 
         except IAToolkitException as e:
             return jsonify({'result': 'error', 'message': e.message}), e.http_code

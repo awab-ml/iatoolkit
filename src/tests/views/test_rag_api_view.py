@@ -66,6 +66,14 @@ class TestRagApiView:
             defaults={'action': 'search'}
         )
 
+        # 4. Get Content (New route)
+        self.app.add_url_rule(
+            '/api/rag/<company_short_name>/files/<int:document_id>/content',
+            view_func=rag_view,
+            methods=['GET'],
+            defaults={'action': 'get_file_content'}
+        )
+
         self.company_short_name = "acme"
 
         # Setup Auth Success by default
@@ -132,6 +140,49 @@ class TestRagApiView:
         assert response.status_code == 401
         assert response.get_json()['error_message'] == 'Auth failed'
         self.mock_kb_service.list_documents.assert_not_called()
+
+    # --- Get File Content Tests ---
+
+    def test_get_file_content_success(self):
+        """Should stream the file content with correct headers."""
+        # Arrange
+        file_bytes = b"%PDF-1.4..."
+        filename = "manual.pdf"
+        self.mock_kb_service.get_document_content.return_value = (file_bytes, filename)
+
+        # Act
+        response = self.client.get(f'/api/rag/{self.company_short_name}/files/10/content')
+
+        # Assert
+        assert response.status_code == 200
+        assert response.data == file_bytes
+        # Flask send_file sets mimetype based on filename guess or default
+        assert response.mimetype == 'application/pdf'
+        # Check for inline disposition
+        assert 'inline' in response.headers.get('Content-Disposition', '')
+
+        self.mock_kb_service.get_document_content.assert_called_with(10)
+
+    def test_get_file_content_not_found(self):
+        """Should return 404 if service returns None."""
+        # Arrange
+        self.mock_kb_service.get_document_content.return_value = (None, None)
+
+        # Act
+        response = self.client.get(f'/api/rag/{self.company_short_name}/files/999/content')
+
+        # Assert
+        assert response.status_code == 404
+        assert response.get_json()['result'] == 'error'
+
+    def test_get_file_content_auth_fail(self):
+        """Should return 401 if auth fails."""
+        self.mock_auth_service.verify.return_value = {"success": False, "status_code": 401}
+
+        response = self.client.get(f'/api/rag/{self.company_short_name}/files/10/content')
+
+        assert response.status_code == 401
+        self.mock_kb_service.get_document_content.assert_not_called()
 
     # --- Delete File Tests ---
 

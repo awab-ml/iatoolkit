@@ -287,3 +287,67 @@ class TestKnowledgeBaseService:
             self.service.delete_document(1)
 
         self.mock_session.rollback.assert_called()
+
+    def test_get_document_content_success(self):
+        """
+        GIVEN an existing document ID with valid base64 content
+        WHEN get_document_content is called
+        THEN it should return the decoded bytes and the filename.
+        """
+        # Arrange
+        original_content = b"Hello World PDF"
+        b64_content = base64.b64encode(original_content).decode('utf-8')
+
+        mock_doc = Document(id=1, filename="test.pdf", content_b64=b64_content)
+        self.mock_doc_repo.get_by_id.return_value = mock_doc
+
+        # Act
+        content, filename = self.service.get_document_content(1)
+
+        # Assert
+        assert content == original_content
+        assert filename == "test.pdf"
+        self.mock_doc_repo.get_by_id.assert_called_with(1)
+
+    def test_get_document_content_not_found(self):
+        """
+        GIVEN a non-existent document ID
+        WHEN get_document_content is called
+        THEN it should return (None, None).
+        """
+        self.mock_doc_repo.get_by_id.return_value = None
+
+        content, filename = self.service.get_document_content(999)
+
+        assert content is None
+        assert filename is None
+
+    def test_get_document_content_no_b64_data(self):
+        """
+        GIVEN a document that exists but has no content_b64
+        WHEN get_document_content is called
+        THEN it should return (None, None).
+        """
+        mock_doc = Document(id=1, filename="empty.pdf", content_b64=None)
+        self.mock_doc_repo.get_by_id.return_value = mock_doc
+
+        content, filename = self.service.get_document_content(1)
+
+        assert content is None
+        assert filename is None
+
+    def test_get_document_content_invalid_base64(self):
+        """
+        GIVEN a document with corrupted base64 data
+        WHEN get_document_content is called
+        THEN it should raise an IAToolkitException.
+        """
+        # Arrange
+        mock_doc = Document(id=1, filename="corrupt.pdf", content_b64="not-a-valid-base64!!")
+        self.mock_doc_repo.get_by_id.return_value = mock_doc
+
+        # Act & Assert
+        with pytest.raises(IAToolkitException) as exc:
+            self.service.get_document_content(1)
+
+        assert exc.value.error_type == IAToolkitException.ErrorType.FILE_FORMAT_ERROR
