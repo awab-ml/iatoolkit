@@ -280,7 +280,7 @@ class KnowledgeBaseService:
 
         # Filter by user identifier
         if user_identifier:
-            query = query.filter(Document.user_identifier.ilike(user_identifier))
+            query = query.filter(Document.user_identifier.ilike(f"%{user_identifier}%"))
 
         if filename_keyword:
             # Case-insensitive search

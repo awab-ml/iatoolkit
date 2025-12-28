@@ -75,7 +75,8 @@ class VSRepo:
                                       iat_documents.filename, \
                                       iat_vsdocs.text, \
                                       iat_documents.content_b64, \
-                                      iat_documents.meta
+                                      iat_documents.meta,
+                                      iat_documents.id
                                FROM iat_vsdocs, \
                                     iat_documents
                                WHERE iat_vsdocs.company_id = :company_id
@@ -121,6 +122,7 @@ class VSRepo:
                 vs_documents.append(
                     {
                         'id': row[0],
+                        'document_id': row[5],
                         'filename': row[1],
                         'text': row[2],
                         'meta': meta_data,

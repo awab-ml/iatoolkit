@@ -76,7 +76,7 @@ class TestVSRepo:
         self.mock_session.query.return_value.filter.return_value.one_or_none.return_value = mock_company
 
         # Mock the final DB query result
-        db_rows = [(1, "file1.txt", "content1", "b64_1", {}), (2, "file2.txt", "content2", "b64_2", {})]
+        db_rows = [(1, "file1.txt", "content1", "b64_1", {}, 77), (2, "file2.txt", "content2", "b64_2", {}, 88)]
         self.mock_session.execute.return_value.fetchall.return_value = db_rows
 
         # Act
@@ -94,6 +94,7 @@ class TestVSRepo:
         assert result_docs[0]['id'] == 1
         assert result_docs[0]['filename'] == "file1.txt"
         assert result_docs[0]['text'] == "content1"
+        assert result_docs[0]['document_id'] == 77
 
     def test_query_raises_exception_on_db_error(self):
         """Tests that an IAToolkitException is raised if the DB query fails."""
