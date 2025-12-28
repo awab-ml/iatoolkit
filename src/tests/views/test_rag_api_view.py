@@ -91,8 +91,9 @@ class TestRagApiView:
         self.mock_kb_service.list_documents.return_value = [mock_doc]
 
         payload = {
+            "user_identifier": "fl",
             "status": "active",
-            "limit": 10
+            "limit": 10,
         }
 
         # Act
@@ -109,6 +110,7 @@ class TestRagApiView:
         self.mock_kb_service.list_documents.assert_called_with(
             company_short_name=self.company_short_name,
             status='active',
+            user_identifier='fl',
             filename_keyword=None,
             from_date=None,
             to_date=None,

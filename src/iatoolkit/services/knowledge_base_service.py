@@ -17,7 +17,7 @@ from iatoolkit.common.exceptions import IAToolkitException
 import base64
 import logging
 import hashlib
-from typing import List, Optional
+from typing import List, Optional, Union
 from datetime import datetime
 from injector import inject
 
@@ -242,7 +242,8 @@ class KnowledgeBaseService:
 
     def list_documents(self,
                        company_short_name: str,
-                       status: Optional[str] = None,
+                       status: Optional[Union[str, List[str]]] = None,
+                       user_identifier: Optional[str] = None,
                        filename_keyword: Optional[str] = None,
                        from_date: Optional[datetime] = None,
                        to_date: Optional[datetime] = None,
@@ -254,7 +255,8 @@ class KnowledgeBaseService:
 
         Args:
             company_short_name: Required. Filters by company.
-            status: Optional status enum value (pending, active, failed).
+            status: Optional status enum value or list of values (e.g. 'active' or ['active', 'failed']).
+            user_identifier: Optional. Filters by the user who uploaded the document.
             filename_keyword: Optional substring to search in filename.
             from_date: Optional start date filter (created_at).
             to_date: Optional end date filter (created_at).
@@ -269,8 +271,16 @@ class KnowledgeBaseService:
         # Start building the query
         query = session.query(Document).join(Company).filter(Company.short_name == company_short_name)
 
+        # Filter by status (single string or list)
         if status:
-            query = query.filter(Document.status == status)
+            if isinstance(status, list):
+                query = query.filter(Document.status.in_(status))
+            else:
+                query = query.filter(Document.status == status)
+
+        # Filter by user identifier
+        if user_identifier:
+            query = query.filter(Document.user_identifier.ilike(user_identifier))
 
         if filename_keyword:
             # Case-insensitive search

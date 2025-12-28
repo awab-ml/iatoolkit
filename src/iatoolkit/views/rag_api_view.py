@@ -60,7 +60,8 @@ class RagApiView(MethodView):
             # 2. Parse Input
             data = request.get_json() or {}
 
-            status = data.get('status')
+            status = data.get('status', [])
+            user_identifier = data.get('user_identifier')
             keyword = data.get('filename_keyword')
             from_date_str = data.get('from_date')
             to_date_str = data.get('to_date')
@@ -75,6 +76,7 @@ class RagApiView(MethodView):
                 company_short_name=company_short_name,
                 status=status,
                 filename_keyword=keyword,
+                user_identifier=user_identifier,
                 from_date=from_date,
                 to_date=to_date,
                 limit=limit,
