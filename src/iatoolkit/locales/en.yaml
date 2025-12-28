@@ -186,7 +186,7 @@ rag:
   management:
     delete_success: "Document deleted."
     not_found: "Document not found."
-    action_not_found: "Action '{action}' not f
+    action_not_found: "Action '{action}' not found."
 
 flash_messages:
   password_changed_success: "Your password has been successfully reset. You can now log in."
