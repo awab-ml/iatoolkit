@@ -75,6 +75,7 @@ class LoadDocumentsService:
                 # Prepare the context for the callback function.
                 context = {
                     'company': company,
+                    'collection': source_config.get('metadata', {}).get('collection'),
                     'metadata': source_config.get('metadata', {})
                 }
 
@@ -126,13 +127,12 @@ class LoadDocumentsService:
             # Get predefined metadata from the context passed by the processor.
             predefined_metadata = context.get('metadata', {}) if context else {}
 
-            logging.info(f"Delegating ingestion of '{filename}' to KnowledgeBaseService...")
-
             # Delegate heavy lifting to KnowledgeBaseService
             new_document = self.knowledge_base_service.ingest_document_sync(
                 company=company,
                 filename=filename,
                 content=content,
+                collection=predefined_metadata.get('collection'),
                 metadata=predefined_metadata
             )
 
