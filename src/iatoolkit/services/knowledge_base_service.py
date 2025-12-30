@@ -308,7 +308,7 @@ class KnowledgeBaseService:
 
         # filter by collection
         if collection:
-            query = query.join(CollectionType).filter(CollectionType.name == collection)
+            query = query.join(Document.collection_type).filter(CollectionType.name == collection)
 
         # Filter by user identifier
         if user_identifier:

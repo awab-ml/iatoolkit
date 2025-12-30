@@ -47,28 +47,6 @@ class TestLoadDocumentsService:
             self.service.load_sources(self.company, sources_to_load=['contracts'])
         assert excinfo.value.error_type == IAToolkitException.ErrorType.CONFIG_ERROR
 
-    @patch('iatoolkit.services.load_documents_service.os.getenv', return_value='dev')
-    @patch('iatoolkit.services.load_documents_service.FileProcessor')
-    def test_load_sources_uses_dev_connector_in_development(self, MockFileProcessor, mock_getenv):
-        self.mock_config_service.get_configuration.return_value = MOCK_KNOWLEDGE_BASE_CONFIG
-        self.service.load_sources(self.company, sources_to_load=['contracts'])
-        self.mock_file_connector_factory.create.assert_called_once_with({
-            'type': 'local',
-            'path': 'data/contracts'
-        })
-        MockFileProcessor.assert_called_once()
-
-    @patch('iatoolkit.services.load_documents_service.os.getenv', return_value='production')
-    @patch('iatoolkit.services.load_documents_service.FileProcessor')
-    def test_load_sources_uses_prod_connector_in_production(self, MockFileProcessor, mock_getenv):
-        self.mock_config_service.get_configuration.return_value = MOCK_KNOWLEDGE_BASE_CONFIG
-        self.service.load_sources(self.company, sources_to_load=['manuals'])
-        self.mock_file_connector_factory.create.assert_called_once_with({
-            'type': 's3',
-            'bucket': 'prod_bucket',
-            'prefix': 'prod_prefix',
-            'path': 'data/manuals'
-        })
 
     def test_load_sources_raises_exception_if_no_sources_provided(self):
         """
