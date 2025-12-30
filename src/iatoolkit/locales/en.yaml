@@ -117,6 +117,9 @@ ui:
     delete_cancel: "Cancel"
     target_collection: "Target collection"
     select_collection_placeholder: "Select a collection"
+    collection_required: "Collection is required"
+    collection: "Collection"
+    all_collections: "All collections"
 
   tooltips:
     history: "History of my queries"

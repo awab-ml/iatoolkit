@@ -8,6 +8,7 @@
     {# Movemos los estilos y los links aquí para que se rendericen en el <head> #}
     <style>
         {{ branding.css_variables | safe }}
+        {{ branding.css_variables | safe }}
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -104,7 +105,7 @@
                        style="color: {{ branding.header_text_color }};">
                         <i class="bi bi-question-circle-fill"></i>
                 </a>
-                {% if user_role == "admin" and license == 'enterprise' %}
+                {% if user_role != "user" and license == 'enterprise' %}
                     <a href="/{{ company_short_name }}/admin/dashboard"
                        target="_blank"
                            id="preferences-button"

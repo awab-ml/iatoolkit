@@ -101,7 +101,7 @@ ui:
     filename_placeholder: "Contiene..."
     user: "Usuario"
     status: "Estado"
-    all_status: "Todos los estados"
+    all_status: "Estados"
     status_active: "Activo"
     status_pending: "Pendiente"
     status_processing: "Procesando"
@@ -112,8 +112,11 @@ ui:
     delete_message: "Esta acción no se puede deshacer. El archivo se eliminará permanentemente."
     delete_button: "Eliminar"
     delete_cancel: "Cancelar"
-    target_collection: "Colección seleccionada"
-    select_collection_placeholder: "Selecciona una colección"
+    target_collection: "Categoría seleccionada"
+    select_collection_placeholder: "Selecciona una categoría"
+    collection_required: "Debe seleccionar una categoría"
+    all_collections: "Todas las categorías"
+    collection: "Categoría"
 
 
   tooltips:
