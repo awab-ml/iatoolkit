@@ -112,6 +112,8 @@ ui:
     delete_message: "Esta acción no se puede deshacer. El archivo se eliminará permanentemente."
     delete_button: "Eliminar"
     delete_cancel: "Cancelar"
+    target_collection: "Colección seleccionada"
+    select_collection_placeholder: "Selecciona una colección"
 
 
   tooltips:

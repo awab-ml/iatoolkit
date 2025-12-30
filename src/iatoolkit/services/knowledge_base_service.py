@@ -403,6 +403,19 @@ class KnowledgeBaseService:
 
         session.commit()
 
+    def get_collection_names(self, company_short_name: str) -> List[str]:
+        """
+        Retrieves the names of all collections defined for a specific company.
+        """
+        company = self.profile_service.get_company_by_short_name(company_short_name)
+        if not company:
+            logging.warning(f"Company {company_short_name} not found when listing collections.")
+            return []
+
+        session = self.document_repo.session
+        collections = session.query(CollectionType).filter_by(company_id=company.id).all()
+        return [c.name for c in collections]
+
     def _get_collection_type_id(self, company_id: int, collection_name: str) -> Optional[int]:
         """Helper to get ID by name"""
         if not collection_name:

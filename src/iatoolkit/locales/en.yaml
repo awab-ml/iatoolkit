@@ -115,8 +115,8 @@ ui:
     delete_message: "This action cannot be undone. The file will be permanently removed."
     delete_button: "Delete"
     delete_cancel: "Cancel"
-
-
+    target_collection: "Target collection"
+    select_collection_placeholder: "Select a collection"
 
   tooltips:
     history: "History of my queries"

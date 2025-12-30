@@ -471,3 +471,55 @@ class TestKnowledgeBaseService:
         assert added_obj.name == 'Technical'
         assert added_obj.company_id == self.company.id
         self.mock_session.commit.assert_called()
+
+    def test_get_collection_names_success(self):
+        """Should return a list of collection names for the given company."""
+        # Arrange
+        company_short_name = "tech_corp"
+        mock_company = Company(id=10, short_name=company_short_name)
+
+        # 1. Mock encontrar la compañía
+        self.mock_profile_service.get_company_by_short_name.return_value = mock_company
+
+        # 2. Mock resultados de la base de datos
+        col1 = CollectionType(name="Finance", company_id=10)
+        col2 = CollectionType(name="Engineering", company_id=10)
+
+        # Configurar la cadena de llamadas: session.query(Model).filter_by(...).all()
+        (self.mock_session.query.return_value
+         .filter_by.return_value
+         .all.return_value) = [col1, col2]
+
+        # Act
+        result = self.service.get_collection_names(company_short_name)
+
+        # Assert
+        assert result == ["Finance", "Engineering"]
+
+        # Verificaciones adicionales
+        self.mock_profile_service.get_company_by_short_name.assert_called_with(company_short_name)
+        self.mock_session.query.assert_called_with(CollectionType)
+        self.mock_session.query.return_value.filter_by.assert_called_with(company_id=10)
+
+    def test_get_collection_names_empty(self):
+        """Should return an empty list if no collections exist."""
+        mock_company = Company(id=20, short_name="startup")
+        self.mock_profile_service.get_company_by_short_name.return_value = mock_company
+
+        # DB devuelve lista vacía
+        (self.mock_session.query.return_value
+         .filter_by.return_value
+         .all.return_value) = []
+
+        result = self.service.get_collection_names("startup")
+
+        assert result == []
+
+    def test_get_collection_names_company_not_found(self):
+        """Should return an empty list and log warning if company does not exist."""
+        self.mock_profile_service.get_company_by_short_name.return_value = None
+
+        result = self.service.get_collection_names("ghost_corp")
+
+        assert result == []
+        self.mock_session.query.assert_not_called()
