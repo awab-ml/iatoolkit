@@ -64,28 +64,6 @@ class TestDatabaseManager:
     def test_remove_session_calls_scoped_session_remove(self):
         self.db_manager.remove_session()
         self.mock_scoped_session.remove.assert_called_once()
-
-    def test_get_table_description_when_ok(self):
-        """Prueba get_table_schema cuando la tabla existe"""
-        self.mock_inspect.return_value.get_table_names.return_value = ['test_table']
-        self.mock_inspect.return_value.get_columns.return_value = [
-            {"name": "id", "type": "INTEGER"},
-            {"name": "name", "type": "VARCHAR"}
-        ]
-
-        result = self.db_manager.get_table_description('test_table')
-
-        assert "{'table': 'test_table', 'schema': 'public', 'description': 'The table belongs to the **`public`** schema.', 'fields': [{'name': 'id', 'type': 'INTEGER'}, {'name': 'name', 'type': 'VARCHAR'}]}" == result.strip()
-
-    def test_get_table_description_when_table_not_exists(self):
-        """Prueba get_table_schema cuando la tabla no existe"""
-        self.mock_inspect.return_value.get_table_names.return_value = []
-
-        with pytest.raises(RuntimeError) as exc_info:
-            self.db_manager.get_table_description('non_existent_table')
-
-        assert "Table 'non_existent_table' does not exist" in str(exc_info.value)
-
     # --- Tests for Execution Methods (New Interface) ---
 
     def test_execute_query_returns_rows_as_dict(self):
@@ -149,3 +127,77 @@ class TestDatabaseManager:
 
         self.db_manager.rollback()
         mock_session.rollback.assert_called()
+
+        # --- Tests for Schema Methods ---
+
+        def test_get_database_structure_success(self):
+            """
+            GIVEN a database with tables
+            WHEN get_database_structure is called
+            THEN it should return the correct dictionary structure.
+            """
+            # Arrange
+            # Configure the inspector instance (returned by calling inspect())
+            inspector_mock = self.mock_inspect.return_value
+            inspector_mock.get_table_names.return_value = ['users', 'orders']
+
+            # Mock columns for 'users'
+            inspector_mock.get_columns.side_effect = [
+                [
+                    {'name': 'id', 'type': 'INTEGER', 'nullable': False},
+                    {'name': 'name', 'type': 'VARCHAR', 'nullable': True}
+                ],
+                [
+                    {'name': 'id', 'type': 'INTEGER', 'nullable': False},
+                    {'name': 'user_id', 'type': 'INTEGER', 'nullable': False}
+                ]
+            ]
+
+            # Mock PKs
+            inspector_mock.get_pk_constraint.side_effect = [
+                {'constrained_columns': ['id']},  # users PK
+                {'constrained_columns': ['id']}  # orders PK
+            ]
+
+            # Act
+            structure = self.db_manager.get_database_structure()
+
+            # Assert
+            assert 'users' in structure
+            assert 'orders' in structure
+
+            # Check users structure
+            users_cols = structure['users']['columns']
+            assert len(users_cols) == 2
+            assert users_cols[0]['name'] == 'id'
+            assert users_cols[0]['pk'] is True
+            assert users_cols[0]['nullable'] is False
+            assert users_cols[1]['name'] == 'name'
+            assert users_cols[1]['pk'] is False
+
+            # Verify inspect calls
+            inspector_mock.get_table_names.assert_called_with(schema='public')
+            assert inspector_mock.get_columns.call_count == 2
+
+        def test_get_database_structure_handles_introspection_error(self):
+            """
+            GIVEN an error occurs during column introspection for a table
+            WHEN get_database_structure is called
+            THEN it should log the error and return partial structure (empty columns for that table).
+            """
+            # Arrange
+            inspector_mock = self.mock_inspect.return_value
+            inspector_mock.get_table_names.return_value = ['broken_table']
+            inspector_mock.get_columns.side_effect = Exception("DB Error")
+
+            with patch('iatoolkit.repositories.database_manager.logging') as mock_logging:
+                # Act
+                structure = self.db_manager.get_database_structure()
+
+                # Assert
+                assert 'broken_table' in structure
+                assert structure['broken_table']['columns'] == []  # Should be empty list on error
+
+                # Check that warning was logged
+                mock_logging.warning.assert_called_once()
+                assert "Could not inspect columns" in mock_logging.warning.call_args[0][0]

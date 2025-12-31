@@ -63,14 +63,9 @@ class TestCompanyContextService:
         self.mock_sql_service = MagicMock(spec=SqlService)
         self.mock_utility = MagicMock(spec=Utility)
         self.mock_config_service = MagicMock(spec=ConfigurationService)
-        self.mock_asset_repo = MagicMock(spec=AssetRepository) # <--- Mock Repo
+        self.mock_asset_repo = MagicMock(spec=AssetRepository)  # <--- Mock Repo
 
-        # Setup a default mock for the DatabaseProvider (implemented by DatabaseManager)
-        self.mock_db_provider = MagicMock(spec=DatabaseManager)
-        self.mock_db_provider.schema = 'public'
-
-        # Configure the factory method to return this mock
-        self.mock_sql_service.get_database_provider.return_value = self.mock_db_provider
+        # NOTE: DatabaseProvider mock is no longer needed for these tests as we mock sql_service.get_database_structure directly
 
         self.context_service = CompanyContextService(
             sql_service=self.mock_sql_service,
@@ -81,105 +76,131 @@ class TestCompanyContextService:
         self.COMPANY_NAME = 'acme'
 
     # --- Tests for New SQL Context Logic ---
+        def test_sql_context_with_include_all_tables(self):
+            """
+            GIVEN config has 'include_all_tables: true'
+            WHEN _get_sql_schema_context is called
+            THEN it should process all tables returned by the db structure.
+            """
+            # Arrange
+            self.mock_config_service.get_configuration.return_value = MOCK_CONFIG_INCLUDE_ALL
 
-    def test_sql_context_with_include_all_tables(self):
-        """
-        GIVEN config has 'include_all_tables: true'
-        WHEN _get_sql_schema_context is called
-        THEN it should process all tables returned by the db_provider.
-        """
-        # Arrange
-        self.mock_config_service.get_configuration.return_value = MOCK_CONFIG_INCLUDE_ALL
-        self.mock_db_provider.get_all_table_names.return_value = ['users', 'products']
-        self.mock_db_provider.schema = 'public'
+            # Mock the structure returned by SQL service
+            mock_structure = {
+                'users': {'columns': [{'name': 'id', 'type': 'INTEGER'}, {'name': 'name', 'type': 'VARCHAR'}]},
+                'products': {'columns': [{'name': 'sku', 'type': 'VARCHAR'}, {'name': 'price', 'type': 'DECIMAL'}]}
+            }
+            self.mock_sql_service.get_database_structure.return_value = mock_structure
 
-        # Act
-        self.context_service._get_sql_schema_context(self.COMPANY_NAME)
+            # Act
+            result = self.context_service._get_sql_schema_context(self.COMPANY_NAME)
 
-        # Assert
-        self.mock_db_provider.get_all_table_names.assert_called_once()
-        expected_calls = [
-            call(table_name='users', schema_object_name='users', exclude_columns=[]),
-            call(table_name='products', schema_object_name='products', exclude_columns=[])
-        ]
-        self.mock_db_provider.get_table_description.assert_has_calls(expected_calls, any_order=True)
+            # Assert
+            self.mock_sql_service.get_database_structure.assert_called_once_with(self.COMPANY_NAME, 'main_db')
 
-    def test_sql_context_with_explicit_table_map(self):
-        """
-        GIVEN config has an explicit map of tables
-        WHEN _get_sql_schema_context is called
-        THEN it should only process tables listed in the map.
-        """
-        # Arrange
-        self.mock_config_service.get_configuration.return_value = MOCK_CONFIG_EXPLICIT_LIST
+            # Verify content presence (simple check as exact string matching is brittle)
+            assert "'table': 'users'" in result
+            assert "'table': 'products'" in result
+            assert "sku" in result
+            assert "price" in result
 
-        # Act
-        self.context_service._get_sql_schema_context(self.COMPANY_NAME)
+        def test_sql_context_with_explicit_table_map(self):
+            """
+            GIVEN config has an explicit map of tables
+            WHEN _get_sql_schema_context is called
+            THEN it should only process tables listed in the map.
+            """
+            # Arrange
+            self.mock_config_service.get_configuration.return_value = MOCK_CONFIG_EXPLICIT_LIST
 
-        # Assert
-        self.mock_db_provider.get_all_table_names.assert_not_called()
-        assert self.mock_db_provider.get_table_description.call_count == 2
-        expected_calls = [
-            call(table_name='products', schema_object_name='products', exclude_columns=[]),
-            call(table_name='customers', schema_object_name='customers', exclude_columns=[])
-        ]
-        self.mock_db_provider.get_table_description.assert_has_calls(expected_calls, any_order=True)
+            # DB has more tables than config asks for
+            mock_structure = {
+                'products': {'columns': [{'name': 'sku', 'type': 'VARCHAR'}]},
+                'customers': {'columns': [{'name': 'id', 'type': 'INTEGER'}]},
+                'orders': {'columns': [{'name': 'id', 'type': 'INTEGER'}]}  # Should be ignored
+            }
+            self.mock_sql_service.get_database_structure.return_value = mock_structure
 
-    def test_sql_context_with_complex_overrides(self):
-        """
-        GIVEN a complex config with include_all, exclusions, and overrides
-        WHEN _get_sql_schema_context is called
-        THEN it should apply all rules correctly.
-        """
-        # Arrange
-        self.mock_config_service.get_configuration.return_value = MOCK_CONFIG_COMPLEX
-        # DB has 'users', 'user_profiles', and 'logs'. 'logs' should be excluded.
-        self.mock_db_provider.get_all_table_names.return_value = ['users', 'user_profiles', 'logs']
+            # Act
+            result = self.context_service._get_sql_schema_context(self.COMPANY_NAME)
 
-        # Act
-        self.context_service._get_sql_schema_context(self.COMPANY_NAME)
+            # Assert
+            assert "'table': 'products'" in result
+            assert "'table': 'customers'" in result
+            assert "'table': 'orders'" not in result
 
-        # Assert
-        # Check call count first
-        assert self.mock_db_provider.get_table_description.call_count == 2
+        def test_sql_context_with_complex_overrides(self):
+            """
+            GIVEN a complex config with include_all, exclusions, and overrides
+            WHEN _get_sql_schema_context is called
+            THEN it should apply all rules correctly.
+            """
+            # Arrange
+            self.mock_config_service.get_configuration.return_value = MOCK_CONFIG_COMPLEX
 
-        # Check calls with correct, final parameters
-        expected_calls = [
-            # 'users' table should use its local exclude_columns override
-            call(table_name='users', schema_object_name='users', exclude_columns=['password_hash']),
-            # 'user_profiles' should use the global exclude_columns and its local schema_object_name override
-            call(table_name='user_profiles', schema_object_name='profiles', exclude_columns=['id', 'created_at'])
-        ]
-        self.mock_db_provider.get_table_description.assert_has_calls(expected_calls, any_order=True)
+            mock_structure = {
+                'users': {'columns': [
+                    {'name': 'id', 'type': 'INT'},
+                    {'name': 'name', 'type': 'VARCHAR'},
+                    {'name': 'password_hash', 'type': 'VARCHAR'}  # Should be excluded locally
+                ]},
+                'user_profiles': {'columns': [
+                    {'name': 'id', 'type': 'INT'},  # Excluded globally
+                    {'name': 'created_at', 'type': 'DATE'},  # Excluded globally
+                    {'name': 'bio', 'type': 'TEXT'}
+                ]},
+                'logs': {'columns': [{'name': 'msg', 'type': 'TEXT'}]}  # Excluded via exclude_tables
+            }
+            self.mock_sql_service.get_database_structure.return_value = mock_structure
 
-    def test_build_context_with_only_static_files(self):
-        """
-        GIVEN only static markdown files provide context in the repo
-        WHEN get_company_context is called
-        THEN it should return only the markdown context.
-        """
-        # Arrange
-        # 1. Mock Markdown files
-        self.mock_asset_repo.list_files.side_effect = lambda company, asset_type, extension: \
-            ['info.md'] if asset_type == AssetType.CONTEXT else []
+            # Act
+            result = self.context_service._get_sql_schema_context(self.COMPANY_NAME)
 
-        self.mock_asset_repo.read_text.return_value = "STATIC_INFO"
+            # Assert
+            # 1. 'logs' excluded
+            assert "'table': 'logs'" not in result
 
-        # 2. No SQL config
-        self.mock_config_service.get_configuration.return_value = None
+            # 2. 'users': password_hash excluded, name included
+            assert "password_hash" not in result
+            assert "name" in result
 
-        # Act
-        full_context = self.context_service.get_company_context(self.COMPANY_NAME)
+            # 3. 'user_profiles': id, created_at excluded, bio included
+            assert "created_at" not in result
+            assert "bio" in result
 
-        # Assert
-        assert "STATIC_INFO" in full_context
+            # 4. Check schema override for user_profiles
+            # The code generates: f"The meaning of each field in this table is detailed in the **`{schema_object_name}`** object."
+            # MOCK_CONFIG_COMPLEX sets schema_name: 'profiles' for 'user_profiles'
+            assert "**`profiles`** object" in result
 
-        # Verify repository calls
-        self.mock_asset_repo.list_files.assert_any_call(self.COMPANY_NAME, AssetType.CONTEXT, extension='.md')
-        self.mock_asset_repo.read_text.assert_any_call(self.COMPANY_NAME, AssetType.CONTEXT, 'info.md')
+        def test_build_context_with_only_static_files(self):
+            """
+            GIVEN only static markdown files provide context in the repo
+            WHEN get_company_context is called
+            THEN it should return only the markdown context.
+            """
+            # Arrange
+            # 1. Mock Markdown files
+            self.mock_asset_repo.list_files.side_effect = lambda company, asset_type, extension: \
+                ['info.md'] if asset_type == AssetType.CONTEXT else []
 
-        # Verify SQL service was NOT called
-        self.mock_sql_service.get_database_provider.assert_not_called()
+            self.mock_asset_repo.read_text.return_value = "STATIC_INFO"
+
+            # 2. No SQL config
+            self.mock_config_service.get_configuration.return_value = None
+
+            # Act
+            full_context = self.context_service.get_company_context(self.COMPANY_NAME)
+
+            # Assert
+            assert "STATIC_INFO" in full_context
+
+            # Verify repository calls
+            self.mock_asset_repo.list_files.assert_any_call(self.COMPANY_NAME, AssetType.CONTEXT, extension='.md')
+            self.mock_asset_repo.read_text.assert_any_call(self.COMPANY_NAME, AssetType.CONTEXT, 'info.md')
+
+            # Verify SQL service was NOT called
+            self.mock_sql_service.get_database_structure.assert_not_called()
 
     def test_build_context_with_yaml_schemas(self):
         """

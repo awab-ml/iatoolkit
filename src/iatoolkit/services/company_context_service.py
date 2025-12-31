@@ -104,16 +104,17 @@ class CompanyContextService:
                 continue
 
             # get database schema definition, for this source.
-            database_schema_name = source.get('schema')
+            database_schema_name = source.get('schema', 'public')
 
             try:
-                db_provider = self.sql_service.get_database_provider(company_short_name, db_name)
+                # 1. Get the full database structure at once using the SQL service
+                db_structure = self.sql_service.get_database_structure(company_short_name, db_name)
             except IAToolkitException as e:
-                logging.warning(f"Could not get DB provider for '{db_name}': {e}")
+                logging.warning(f"Could not get DB structure for '{db_name}': {e}")
                 continue
 
             db_description = source.get('description', '')
-            sql_context = f"***Database (`database_key`)***: {db_name}\n"
+            sql_context += f"***Database (`database_key`)***: {db_name}\n"
 
             if db_description:
                 sql_context += (
@@ -131,28 +132,32 @@ class CompanyContextService:
                 f"Use exactly: `database_key='{db_name}'`.\n"
             )
 
-            # 1. get the list of tables to process.
+            # 2. get the list of tables to process based on structure and config
             tables_to_process = []
             if source.get('include_all_tables', False):
-                all_tables = db_provider.get_all_table_names()
+                # Use keys from the fetched structure
+                all_tables = list(db_structure.keys())
                 tables_to_exclude = set(source.get('exclude_tables', []))
                 tables_to_process = [t for t in all_tables if t not in tables_to_exclude]
             elif 'tables' in source:
-                # if not include_all_tables, use the list of tables explicitly specified in the map.
-                tables_to_process = list(source['tables'].keys())
+                # Use keys from the config map, but check if they exist in DB structure
+                config_tables = list(source['tables'].keys())
+                tables_to_process = [t for t in config_tables if t in db_structure]
 
-            # 2. get the global settings and overrides.
+            # 3. get the global settings and overrides.
             global_exclude_columns = source.get('exclude_columns', [])
             table_prefix = source.get('table_prefix')
             table_overrides = source.get('tables', {})
 
-            # 3. iterate over the tables.
+            # 4. iterate over the tables.
             for table_name in tables_to_process:
                 try:
-                    # 4. get the table specific configuration.
+                    table_data = db_structure[table_name]
+
+                    # 5. get the table specific configuration.
                     table_config = table_overrides.get(table_name, {})
 
-                    # 5. define the schema object name, using the override if it exists.
+                    # 6. define the schema object name, using the override if it exists.
                     # Priority 1: Explicit override from the 'tables' map.
                     schema_object_name = table_config.get('schema_name')
 
@@ -164,17 +169,36 @@ class CompanyContextService:
                             # Priority 4: Default to the table name itself.
                             schema_object_name = table_name
 
-                    # 6. define the list of columns to exclude, (local vs. global).
+                    # 7. define the list of columns to exclude, (local vs. global).
                     local_exclude_columns = table_config.get('exclude_columns')
                     final_exclude_columns = local_exclude_columns if local_exclude_columns is not None else global_exclude_columns
 
-                    # 7. get the table schema definition.
-                    table_definition = db_provider.get_table_description(
-                        table_name=table_name,
-                        schema_object_name=schema_object_name,
-                        exclude_columns=final_exclude_columns
-                    )
-                    sql_context += table_definition
+                    # 8. Build the table definition dictionary manually using the structure data
+                    json_dict = {
+                        "table": table_name,
+                        "schema": database_schema_name,
+                        "description": f"The table belongs to the **`{database_schema_name}`** schema.",
+                        "fields": []
+                    }
+
+                    if schema_object_name:
+                        json_dict["description"] += (
+                            f"The meaning of each field in this table is detailed in the **`{schema_object_name}`** object."
+                        )
+
+                    for col in table_data.get('columns', []):
+                        name = col["name"]
+                        if name in final_exclude_columns:
+                            continue
+
+                        json_dict["fields"].append({
+                            "name": name,
+                            "type": col["type"]
+                        })
+
+                    # Append as string representation of dict (consistent with previous behavior)
+                    sql_context += "\n\n" + str(json_dict)
+
                 except (KeyError, RuntimeError) as e:
                     logging.warning(f"Could not generate schema for table '{table_name}': {e}")
 

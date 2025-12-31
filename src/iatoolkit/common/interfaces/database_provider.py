@@ -9,17 +9,6 @@ class DatabaseProvider(abc.ABC):
 
     # --- Schema Methods ---
     @abc.abstractmethod
-    def get_all_table_names(self) -> List[str]:
-        pass
-
-    @abc.abstractmethod
-    def get_table_description(self,
-                              table_name: str,
-                              schema_object_name: str | None = None,
-                              exclude_columns: List[str] | None = None) -> str:
-        pass
-
-    @abc.abstractmethod
     def get_database_structure(self) -> dict:
         """
         Returns the structure of the database (tables, columns, types)

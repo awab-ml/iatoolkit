@@ -136,57 +136,7 @@ class DatabaseManager(DatabaseProvider):
         self.get_session().rollback()
 
     # -- schema methods ----
-    def get_all_table_names(self) -> list[str]:
-        # Returns a list of all table names in the database
-        inspector = inspect(self._engine)
-        return inspector.get_table_names(schema=self.schema)
-
-    def get_table_description(self,
-                              table_name: str,
-                              schema_object_name: str | None = None,
-                              exclude_columns: list[str] | None = None) -> str:
-        inspector = inspect(self._engine)
-
-        # search the table in the specified schema
-        if table_name not in inspector.get_table_names(schema=self.schema):
-            raise RuntimeError(f"Table '{table_name}' does not exist in database schema '{self.schema}'.")
-
-        if exclude_columns is None:
-            exclude_columns = []
-
-        # get all the table columns
-        columns = inspector.get_columns(table_name, schema=self.schema)
-
-        # construct a json dictionary with the table definition
-        json_dict = {
-            "table": table_name,
-            "schema": self.schema,
-            "description": f"The table belongs to the **`{self.schema}`** schema.",
-            "fields": []
-        }
-
-        if schema_object_name:
-            json_dict["description"] += (
-                f"The meaning of each field in this table is detailed in the **`{schema_object_name}`** object."
-            )
-
-        # now add every column to the json dictionary
-        for col in columns:
-            name = col["name"]
-
-            # omit the excluded columns.
-            if name in exclude_columns:
-                continue
-
-            json_dict["fields"].append({
-                "name": name,
-                "type": str(col["type"]),
-            })
-
-        return "\n\n" + str(json_dict)
-
     def get_database_structure(self) -> dict:
-
         inspector = inspect(self._engine)
         structure = {}
         for table in inspector.get_table_names(schema=self.schema):
