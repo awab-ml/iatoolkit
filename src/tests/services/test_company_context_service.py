@@ -254,7 +254,7 @@ class TestCompanyContextService:
 
     def test_gracefully_handles_db_manager_exception(self):
         """
-        GIVEN retrieving a database provider throws an exception
+        GIVEN retrieving a database structure throws an exception
         WHEN get_company_context is called
         THEN it should log a warning and return context from other sources.
         """
@@ -262,8 +262,8 @@ class TestCompanyContextService:
         self.mock_utility.get_files_by_extension.return_value = []  # No static context
         self.mock_config_service.get_configuration.return_value = {'sql': [{'database': 'down_db'}]}
 
-        # Configure the exception on get_database_provider
-        self.mock_sql_service.get_database_provider.side_effect = IAToolkitException(
+        # Configure the exception on get_database_structure
+        self.mock_sql_service.get_database_structure.side_effect = IAToolkitException(
             IAToolkitException.ErrorType.DATABASE_ERROR, "DB is down"
         )
 
@@ -272,4 +272,4 @@ class TestCompanyContextService:
 
         # Assert
         assert full_context == ""
-        self.mock_sql_service.get_database_provider.assert_called_once_with(self.COMPANY_NAME, 'down_db')
+        self.mock_sql_service.get_database_structure.assert_called_once_with(self.COMPANY_NAME, 'down_db')
