@@ -97,6 +97,96 @@ class ConfigurationService:
         logging.info(f"✅ Company '{company_short_name}' configured successfully.")
         return config, errors
 
+    def update_configuration_key(self, company_short_name: str, key: str, value: any) -> tuple[dict, list[str]]:
+        """
+        Updates a specific key in the company's configuration file, validates the result,
+        and saves it to the asset repository if valid.
+
+        Args:
+            company_short_name: The company identifier.
+            key: The configuration key to update (supports dot notation, e.g., 'llm.model').
+            value: The new value for the key.
+
+        Returns:
+            A tuple containing the updated configuration dict and a list of error strings (if any).
+        """
+        # 1. Load raw config from file (to avoid working with merged supplementary files if possible,
+        # but for simplicity we load the main yaml structure)
+        main_config_filename = "company.yaml"
+
+        if not self.asset_repo.exists(company_short_name, AssetType.CONFIG, main_config_filename):
+            raise FileNotFoundError(f"Configuration file not found for {company_short_name}")
+
+        yaml_content = self.asset_repo.read_text(company_short_name, AssetType.CONFIG, main_config_filename)
+        config = self.utility.load_yaml_from_string(yaml_content) or {}
+
+        # 2. Update the key in the dictionary
+        self._set_nested_value(config, key, value)
+
+        # 3. Validate the new configuration structure
+        errors = self._validate_configuration(company_short_name, config)
+
+        if errors:
+            logging.warning(f"Configuration update failed validation: {errors}")
+            return config, errors
+
+        # 4. Save back to repository
+        # Assuming Utility has a method to dump YAML. If not, standard yaml library would be needed.
+        # For this example, we assume self.utility.dump_yaml_to_string exists.
+        new_yaml_content = self.utility.dump_yaml_to_string(config)
+        self.asset_repo.write_text(company_short_name, AssetType.CONFIG, main_config_filename, new_yaml_content)
+
+        # 5. Invalidate cache so next reads get the new version
+        if company_short_name in self._loaded_configs:
+            del self._loaded_configs[company_short_name]
+
+        return config, []
+
+    def validate_configuration(self, company_short_name: str) -> list[str]:
+        """
+        Public method to trigger validation of the current configuration.
+        """
+        config = self._load_and_merge_configs(company_short_name)
+        return self._validate_configuration(company_short_name, config)
+
+    def _set_nested_value(self, data: dict, key: str, value: any):
+        """
+        Helper to set a value in a nested dictionary or list using dot notation (e.g. 'llm.model', 'tools.0.name').
+        Handles traversal through both dictionaries and lists.
+        """
+        keys = key.split('.')
+        current = data
+
+        # Traverse up to the parent of the target key
+        for i, k in enumerate(keys[:-1]):
+            if isinstance(current, dict):
+                # If it's a dict, we can traverse or create the path
+                current = current.setdefault(k, {})
+            elif isinstance(current, list):
+                # If it's a list, we MUST use an integer index
+                try:
+                    idx = int(k)
+                    current = current[idx]
+                except (ValueError, IndexError) as e:
+                    raise ValueError(
+                        f"Invalid path: cannot access index '{k}' in list at '{'.'.join(keys[:i + 1])}'") from e
+            else:
+                raise ValueError(
+                    f"Invalid path: '{k}' is not a container (got {type(current)}) at '{'.'.join(keys[:i + 1])}'")
+
+        # Set the final value
+        last_key = keys[-1]
+        if isinstance(current, dict):
+            current[last_key] = value
+        elif isinstance(current, list):
+            try:
+                idx = int(last_key)
+                current[idx] = value
+            except (ValueError, IndexError) as e:
+                raise ValueError(f"Invalid path: cannot assign to index '{last_key}' in list") from e
+        else:
+            raise ValueError(f"Cannot assign value to non-container type {type(current)} at '{key}'")
+
     def _load_and_merge_configs(self, company_short_name: str) -> dict:
         """
         Loads the main company.yaml and merges data from supplementary files

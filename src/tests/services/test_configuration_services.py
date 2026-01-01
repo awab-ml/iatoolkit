@@ -1,13 +1,11 @@
 # tests/services/test_configuration_services.py
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, call
 
 from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.common.interfaces.asset_storage import AssetRepository, AssetType
-from iatoolkit.services.prompt_service import PromptService
 from iatoolkit.common.util import Utility
-from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.base_company import BaseCompany
 from iatoolkit.repositories.models import Company
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
@@ -20,7 +18,7 @@ MOCK_VALID_CONFIG = {
     'locale': 'en_US',
     'llm': {
         'model': 'gpt-5',
-        'provider_api_keys': [{'openai': 'TEST_OPENAI_API_KEY'}]
+        'provider_api_keys': {'openai': 'TEST_OPENAI_API_KEY'}
     },
     'embedding_provider': {
         'provider': 'openai',
@@ -130,7 +128,7 @@ class TestConfigurationService:
                 return mock_tool_service
             if "PromptService" in str(service_class):
                 return mock_prompt_service
-            if "SqlService" in str(service_class):  # Nuevo caso
+            if "SqlService" in str(service_class):
                 return mock_sql_service
             return Mock()
         mock_injector.get.side_effect = get_side_effect
@@ -139,18 +137,9 @@ class TestConfigurationService:
         self.mock_asset_repo.exists.return_value = True
 
         # 2. Simular contenido de archivos (texto)
-        # Nota: aquí no importa el contenido exacto del string, importa lo que devuelva el parser
         self.mock_asset_repo.read_text.return_value = "yaml content"
 
         # 3. Simular el parser de Utility
-        def yaml_parser_side_effect(content):
-            # Simulamos que si el repo devolvió contenido, el parser devuelve el dict
-            # Podríamos hacer lógica más compleja si necesitamos distinguir company.yaml de onboarding
-            # Pero para este test, usaremos el mock global que devuelve MOCK_VALID_CONFIG
-            # O mejor, usamos side_effect basado en llamadas previas (complicado).
-            # Simplificación: Asumimos que la primera llamada es company.yaml
-            return MOCK_VALID_CONFIG
-
         def read_text_side_effect(company, asset_type, filename):
             if filename == "company.yaml": return "company_yaml_content"
             if filename == "onboarding.yaml": return "onboarding_yaml_content"
@@ -174,7 +163,6 @@ class TestConfigurationService:
         self.mock_asset_repo.read_text.assert_any_call(self.COMPANY_NAME, AssetType.CONFIG, "company.yaml")
 
         # Validar validación de prompts (el paso final)
-        # El código valida si los prompts existen en el repo
         self.mock_asset_repo.exists.assert_any_call(self.COMPANY_NAME, AssetType.PROMPT, "sales_report.prompt")
 
         # 2. Verify ToolService delegation
@@ -196,8 +184,7 @@ class TestConfigurationService:
         WHEN get_configuration is called multiple times
         THEN file-reading logic executes only on the first call.
         """
-
-        # Setup mocks similares al anterior
+        # Setup mocks
         self.mock_asset_repo.exists.return_value = True
         self.mock_asset_repo.read_text.return_value = "yaml"
         self.mock_utility.load_yaml_from_string.return_value = MOCK_VALID_CONFIG
@@ -205,7 +192,7 @@ class TestConfigurationService:
         # First Call
         result1 = self.service.get_configuration(self.COMPANY_NAME, 'name')
         assert result1 == 'ACME Corp'
-        assert self.mock_asset_repo.read_text.call_count >= 1  # Se llamó para cargar
+        assert self.mock_asset_repo.read_text.call_count >= 1
 
         # Reset counts
         self.mock_asset_repo.read_text.reset_mock()
@@ -216,7 +203,6 @@ class TestConfigurationService:
 
         # Verify NO calls to repo (cache used)
         self.mock_asset_repo.read_text.assert_not_called()
-
 
     @patch('iatoolkit.current_iatoolkit')
     def test_load_configuration_handles_empty_sections(self, mock_current_iatoolkit):
@@ -231,9 +217,8 @@ class TestConfigurationService:
 
         mock_tool_service = Mock()
         mock_prompt_service = Mock()
-        mock_sql_service = Mock()  # Mock SqlService
+        mock_sql_service = Mock()
 
-        # Configure Injector to return our specific mocks
         def get_side_effect(service_class):
             if "ToolService" in str(service_class):
                 return mock_tool_service
@@ -246,7 +231,6 @@ class TestConfigurationService:
         mock_injector.get.side_effect = get_side_effect
 
         # --- Arrange Minimal Config ---
-        # A minimal configuration without 'tools' or 'prompts' keys
         minimal_config = {
             'id': 'minimal_co',
             'name': 'Minimal Co',
@@ -259,30 +243,147 @@ class TestConfigurationService:
                 'model': 'test',
                 'api_key_name': 'TEST'
             },
-            # Note: No 'tools' or 'prompts' keys here
         }
 
-        # 1. Simulate file existence in AssetRepository
         self.mock_asset_repo.exists.return_value = True
-
-        # 2. Simulate reading file content (returns a dummy string)
         self.mock_asset_repo.read_text.return_value = "yaml_content"
-
-        # 3. Simulate parsing that content into our minimal dict
         self.mock_utility.load_yaml_from_string.return_value = minimal_config
 
         # --- Act ---
         self.service.load_configuration('minimal_co')
 
         # --- Assert ---
-        # Verify ToolService received an empty list (default for missing key)
         mock_tool_service.sync_company_tools.assert_called_once_with('minimal_co', [])
-
-        # Verify PromptService received empty lists for prompts and categories
         mock_prompt_service.sync_company_prompts.assert_called_once_with(
             company_short_name='minimal_co',
             prompts_config=[],
             categories_config=[]
         )
 
+    # --- New Tests for Update and Validation ---
 
+    def test_update_configuration_key_success(self):
+        """
+        GIVEN a valid update for a configuration key
+        WHEN update_configuration_key is called
+        THEN it should update the config, dump it to string, and write to asset repo.
+        """
+        # Arrange
+        # 1. Configuración inicial válida
+        initial_config = MOCK_VALID_CONFIG.copy()
+
+        self.mock_asset_repo.exists.return_value = True
+        self.mock_asset_repo.read_text.return_value = "original_yaml"
+        self.mock_utility.load_yaml_from_string.return_value = initial_config
+        self.mock_utility.dump_yaml_to_string.return_value = "updated_yaml"
+
+        # Pre-fill cache to verify invalidation
+        self.service._loaded_configs[self.COMPANY_NAME] = initial_config
+
+        # Act
+        # Update nested key 'llm.model'
+        updated_config, errors = self.service.update_configuration_key(self.COMPANY_NAME, "llm.model", "gpt-6")
+
+        # Assert
+        assert errors == []
+        assert updated_config['llm']['model'] == 'gpt-6'
+
+        # Verify writing back to repo
+        self.mock_asset_repo.write_text.assert_called_once_with(
+            self.COMPANY_NAME, AssetType.CONFIG, "company.yaml", "updated_yaml"
+        )
+
+        # Verify utility calls
+        self.mock_utility.load_yaml_from_string.assert_called()
+        # Ensure dump was called with the modified config object
+        self.mock_utility.dump_yaml_to_string.assert_called()
+        args, _ = self.mock_utility.dump_yaml_to_string.call_args
+        assert args[0]['llm']['model'] == 'gpt-6'
+
+        # Verify cache invalidation
+        assert self.COMPANY_NAME not in self.service._loaded_configs
+
+    def test_update_configuration_key_list_index(self):
+        """
+        GIVEN a configuration with a list
+        WHEN update_configuration_key is called with an index path (e.g. tools.0.description)
+        THEN it should update the correct item in the list.
+        """
+        # Arrange
+        initial_config = MOCK_VALID_CONFIG.copy()
+        # Ensure we have a list to test against with all required fields (params is required by validation)
+        initial_config['tools'] = [
+            {'function_name': 'func1', 'description': 'old desc', 'params': {}},
+            {'function_name': 'func2', 'description': 'another desc', 'params': {}}
+        ]
+
+        self.mock_asset_repo.exists.return_value = True
+        self.mock_asset_repo.read_text.return_value = "yaml"
+        self.mock_utility.load_yaml_from_string.return_value = initial_config
+        self.mock_utility.dump_yaml_to_string.return_value = "new_yaml"
+
+        # Act
+        updated_config, errors = self.service.update_configuration_key(
+            self.COMPANY_NAME,
+            "tools.0.description",
+            "new description"
+        )
+
+        # Assert
+        assert errors == []
+        assert updated_config['tools'][0]['description'] == "new description"
+        assert updated_config['tools'][1]['description'] == "another desc"  # Should remain untouched
+
+    def test_update_configuration_key_invalid_list_index(self):
+        """
+        GIVEN a list path with invalid index
+        WHEN update_configuration_key is called
+        THEN it should raise an exception (ValueError).
+        """
+        initial_config = {'my_list': ['a', 'b']}
+
+        self.mock_asset_repo.exists.return_value = True
+        self.mock_asset_repo.read_text.return_value = "yaml"
+        self.mock_utility.load_yaml_from_string.return_value = initial_config
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="Invalid path"):
+            self.service.update_configuration_key(self.COMPANY_NAME, "my_list.99", "val")
+
+    def test_validate_configuration_success(self):
+        """
+        GIVEN a valid configuration file
+        WHEN validate_configuration is called
+        THEN it should return an empty list of errors.
+        """
+        # Arrange
+        self.mock_asset_repo.exists.return_value = True
+        self.mock_asset_repo.read_text.return_value = "yaml"
+        self.mock_utility.load_yaml_from_string.return_value = MOCK_VALID_CONFIG
+
+        # Act
+        errors = self.service.validate_configuration(self.COMPANY_NAME)
+
+        # Assert
+        assert errors == []
+
+    def test_validate_configuration_with_errors(self):
+        """
+        GIVEN an invalid configuration file
+        WHEN validate_configuration is called
+        THEN it should return a list of validation errors.
+        """
+        # Arrange
+        invalid_config = MOCK_VALID_CONFIG.copy()
+        del invalid_config['name'] # Remove required field
+
+        self.mock_asset_repo.exists.return_value = True
+        self.mock_asset_repo.read_text.return_value = "yaml"
+        self.mock_utility.load_yaml_from_string.return_value = invalid_config
+
+        # Act
+        errors = self.service.validate_configuration(self.COMPANY_NAME)
+
+        # Assert
+        assert len(errors) > 0
+        assert any("Missing required key: 'name'" in e for e in errors)

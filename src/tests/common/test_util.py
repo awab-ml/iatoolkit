@@ -109,6 +109,52 @@ class TestUtil:
         result = self.util.load_yaml_from_string(yaml_content)
         assert result == {'key': 'value', 'list': ['item1']}
 
+    def test_dump_yaml_to_string_valid(self):
+        """Test serialización de dict a string YAML válido."""
+        config_dict = {
+            'id': 'my_company',
+            'parameters': {
+                'enabled': True,
+                'threshold': 0.5
+            },
+            'items': ['a', 'b']
+        }
+        yaml_output = self.util.dump_yaml_to_string(config_dict)
+
+        # Verificar que el output es un string válido y contiene las claves
+        assert isinstance(yaml_output, str)
+        assert "id: my_company" in yaml_output
+        assert "enabled: true" in yaml_output.lower()  # YAML usa lower case para booleanos usualmente
+        assert "- a" in yaml_output
+
+        # Verificar round-trip (dump -> load)
+        loaded_back = self.util.load_yaml_from_string(yaml_output)
+        assert loaded_back == config_dict
+
+    def test_dump_yaml_to_string_handles_unicode(self):
+        """Test que los caracteres unicode (tildes, ñ) se preservan."""
+        config_dict = {'message': 'acción y ñandú'}
+        yaml_output = self.util.dump_yaml_to_string(config_dict)
+
+        assert 'acción y ñandú' in yaml_output
+        # Asegurar que no se escapeó como unicode (e.g. \u00f3)
+        assert "\\u" not in yaml_output
+
+    def test_dump_yaml_to_string_error(self):
+        """Test que se lanza IAToolkitException en caso de error de serialización."""
+
+        # Crear un objeto que yaml no pueda serializar por defecto
+        class UnserializableObj:
+            pass
+
+        bad_config = {'key': UnserializableObj()}
+
+        with pytest.raises(IAToolkitException) as excinfo:
+            self.util.dump_yaml_to_string(bad_config)
+
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.FILE_IO_ERROR
+        assert "Failed to generate YAML" in str(excinfo.value)
+
     def test_load_schema_from_yaml(self):
         mock_yaml_content = """
         field1: "Descripción del campo 1"

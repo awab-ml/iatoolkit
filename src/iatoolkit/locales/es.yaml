@@ -105,11 +105,15 @@ ui:
     meta_synonyms: "Sinonimos"
     pii_sesitive: "IP Sensible"
 
-
-
-
-
-
+  config:
+    editor_description: "Editor de configuración"
+    title: "Editor de configuraciones"
+    sections: "Secciones"
+    refresh: "Refrescar"
+    validate: "Validar"
+    select_section: "Seleccione una sección del panel izquierdo"
+    no_section_selected: "No hay sección seleccionada."
+    view_yaml: "Ver YAML"
 
 
   rag:

@@ -168,6 +168,20 @@ class Utility:
             logging.error(f"Error parsing YAML string: {e}")
             return {}
 
+    def dump_yaml_to_string(self, config: dict) -> str:
+        """
+        Dumps a dictionary into a YAML formatted string.
+        It uses default flow style False to ensure block format (readable YAML).
+        """
+        try:
+            # default_flow_style=False ensures lists and dicts are expanded (not inline like JSON)
+            # allow_unicode=True ensures characters like accents are preserved
+            return yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        except yaml.YAMLError as e:
+            logging.error(f"Error dumping YAML to string: {e}")
+            raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
+                                     f"Failed to generate YAML: {e}")
+
     def generate_context_for_schema(self, entity_name: str, schema_file: str = None, schema: dict = {}) -> str:
         if not schema_file and not schema:
             raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
@@ -203,7 +217,7 @@ class Utility:
 
             if isinstance(root_details, dict):
                 # Las claves de metadatos describen el objeto en sí, no sus propiedades hijas.
-                METADATA_KEYS = ['description', 'type', 'format', 'items', 'properties']
+                METADATA_KEYS = ['description', 'type', 'format', 'items', 'properties', 'pk']
 
                 # Las propiedades son las claves restantes en el diccionario.
                 properties = {
@@ -246,6 +260,8 @@ class Utility:
             description = details.get('description', '')
             data_type = details.get('type', 'any')
             output.append(f"{indent_str}- **`{name.lower()}`** ({data_type}): {description}")
+            # if 'pk' in details and details['pk']:
+            #    output.append(f"{indent_str}- **Primary Key**: {details['pk']}")
 
             child_indent_str = '  ' * (indent_level + 1)
 
