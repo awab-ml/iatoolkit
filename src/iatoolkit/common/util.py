@@ -197,6 +197,10 @@ class Utility:
             root_name = list(schema.keys())[0]
             root_details = schema[root_name]
 
+            # support this format
+            if root_details.get('columns'):
+                root_details = root_details['columns']
+
             if isinstance(root_details, dict):
                 # Las claves de metadatos describen el objeto en sí, no sus propiedades hijas.
                 METADATA_KEYS = ['description', 'type', 'format', 'items', 'properties']
