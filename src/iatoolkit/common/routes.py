@@ -133,7 +133,7 @@ def register_views(app):
                      methods=['GET', 'POST', 'PATCH'],)
 
     app.add_url_rule('/<company_short_name>/api/configuration/validate',
-                     view_func=ValidateConfigurationApiView.as_view('configuration'),
+                     view_func=ValidateConfigurationApiView.as_view('configuration-validate'),
                      methods=['GET'])
 
     # static pages

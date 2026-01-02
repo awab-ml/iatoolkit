@@ -8,7 +8,6 @@ from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.common.util import Utility
 from injector import inject
-from typing import Any
 import logging
 import os
 
@@ -375,13 +374,12 @@ class ConfigurationService:
         from iatoolkit.services.prompt_service import PromptService
         prompt_service = current_iatoolkit().get_injector().get(PromptService)
 
-        prompts_config = config.get('prompts', [])
-        categories_config = config.get('prompt_categories', [])
+        prompts_config = config.get('prompts', {})
 
         prompt_service.sync_company_prompts(
             company_short_name=company_short_name,
-            prompts_config=prompts_config,
-            categories_config=categories_config
+            prompts_config=prompts_config.get('prompt_list', []),
+            categories_config=prompts_config.get('prompt_categories', []),
         )
 
     def _register_knowledge_base(self, company_short_name: str, config: dict):
@@ -464,8 +462,11 @@ class ConfigurationService:
                 add_error(f"tools[{i}]", "'params' key must be a dictionary.")
 
         # 6. Prompts
-        category_set = set(config.get("prompt_categories", []))
-        for i, prompt in enumerate(config.get("prompts", [])):
+        prompt_list = config.get("prompts", {}).get("prompt_list", [])
+        prompt_categories = config.get("prompts", {}).get("prompt_categories", [])
+
+        category_set = set(prompt_categories)
+        for i, prompt in enumerate(prompt_list):
             prompt_name = prompt.get("name")
             if not prompt_name:
                 add_error(f"prompts[{i}]", "Missing required key: 'name'")

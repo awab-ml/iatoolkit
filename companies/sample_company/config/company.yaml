@@ -90,33 +90,35 @@ tools:
 # Prompts are files in the company prompts/ folder
 # (filename is: prompt_name.prompt).
 # Example: analisis_ventas.prompt
-prompt_categories:
-  - "Sales"
-  - "Finance"     # sample for adding more categories
+
 
 prompts:
-  - category: "Sales"     # assign this prompt to the category "General"
-    name: "analisis_ventas"
-    description: "Sales Analysis"
-    order: 1
-  - category: "Sales"
-    name: "supplier_report"
-    description: "Suppliers Report"
-    order: 2
-    custom_fields:
-      - data_key: "supplier_id"
-        label: "Provider ID (example: cascadia, andean foods, ...)"
-  - category: "Finance"
-    name: "analisis_despachos"
-    description: "Supply Chain Analysis"
-    order: 3
-    custom_fields:
-      - data_key: "init_date"
-        label: "from date"
-        type: "date"
-      - data_key: "end_date"
-        label: "to date"
-        type: "date"
+  prompt_categories:
+    - "Sales"
+    - "Finance"     # sample for adding more categories
+  prompt_list:
+    - category: "Sales"     # assign this prompt to the category "General"
+      name: "analisis_ventas"
+      description: "Sales Analysis"
+      order: 1
+    - category: "Sales"
+      name: "supplier_report"
+      description: "Suppliers Report"
+      order: 2
+      custom_fields:
+        - data_key: "supplier_id"
+          label: "Provider ID (example: cascadia, andean foods, ...)"
+    - category: "Finance"
+      name: "analisis_despachos"
+      description: "Supply Chain Analysis"
+      order: 3
+      custom_fields:
+        - data_key: "init_date"
+          label: "from date"
+          type: "date"
+        - data_key: "end_date"
+          label: "to date"
+          type: "date"
 
 # Company-specific Parameters
 # These parameters are used by the company code to customize its behavior.
