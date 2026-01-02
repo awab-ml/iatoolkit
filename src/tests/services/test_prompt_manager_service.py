@@ -204,3 +204,144 @@ class TestPromptService:
                 company=self.mock_company
             )
         assert exc_info.value.error_type == IAToolkitException.ErrorType.DATABASE_ERROR
+
+        # --- Tests para save_prompt (Nuevo método orquestador) ---
+
+        @patch('iatoolkit.services.prompt_service.PromptService._sync_to_configuration')
+        def test_save_prompt_success_update_existing(self, mock_sync_config):
+            """
+            Prueba save_prompt cuando el prompt ya existe en la BD.
+            Verifica escritura de archivo, actualización de BD y llamada a sync de config.
+            """
+            # Arrange
+            prompt_name = "sales_agent"
+            input_data = {
+                'content': 'You are a sales expert...',
+                'description': 'New description',
+                'custom_fields': [{'data_key': 'k', 'label': 'l'}],
+                'active': False,
+                'category': 'Sales',
+                'order': 2
+            }
+
+            self.profile_repo.get_company_by_short_name.return_value = self.mock_company
+
+            # Simular que el prompt ya existe en BD
+            mock_existing_prompt = MagicMock(spec=Prompt)
+            mock_existing_prompt.filename = "sales_agent.prompt"
+            self.llm_query_repo.get_prompt_by_name.return_value = mock_existing_prompt
+
+            # Act
+            self.prompt_service.save_prompt('test_co', prompt_name, input_data)
+
+            # Assert
+            # 1. Verificar escritura del archivo físico
+            self.mock_asset_repo.write_text.assert_called_once_with(
+                'test_co', AssetType.PROMPT, 'sales_agent.prompt', 'You are a sales expert...'
+            )
+
+            # 2. Verificar actualización del objeto DB
+            assert mock_existing_prompt.description == 'New description'
+            assert mock_existing_prompt.custom_fields == [{'data_key': 'k', 'label': 'l'}]
+            assert mock_existing_prompt.active is False
+            self.llm_query_repo.create_or_update_prompt.assert_called_once_with(mock_existing_prompt)
+
+            # 3. Verificar llamada a la sincronización de configuración
+            mock_sync_config.assert_called_once()
+            args, _ = mock_sync_config.call_args
+            assert args[0] == 'test_co'
+            assert args[1]['name'] == prompt_name
+            assert args[1]['description'] == 'New description'
+
+        @patch('iatoolkit.services.prompt_service.PromptService._sync_to_configuration')
+        def test_save_prompt_success_create_new(self, mock_sync_config):
+            """
+            Prueba save_prompt cuando el prompt NO existe en BD (caso nuevo).
+            Verifica que no falla y delega la creación a sync_config.
+            """
+            # Arrange
+            prompt_name = "new_prompt"
+            input_data = {'content': 'Hi', 'category': 'General'}
+
+            self.profile_repo.get_company_by_short_name.return_value = self.mock_company
+            self.llm_query_repo.get_prompt_by_name.return_value = None  # No existe en BD
+
+            # Act
+            self.prompt_service.save_prompt('test_co', prompt_name, input_data)
+
+            # Assert
+            # Archivo escrito
+            self.mock_asset_repo.write_text.assert_called_once()
+
+            # DB update no llamado directamente porque no tenemos el objeto,
+            # confiamos en que _sync_to_configuration -> ConfigurationService maneje el ciclo.
+            self.llm_query_repo.create_or_update_prompt.assert_not_called()
+
+            # Sync llamado
+            mock_sync_config.assert_called_once()
+
+        def test_save_prompt_company_not_found(self):
+            """Prueba que save_prompt lanza excepción si la compañía no existe."""
+            self.profile_repo.get_company_by_short_name.return_value = None
+
+            with pytest.raises(IAToolkitException) as exc:
+                self.prompt_service.save_prompt('unknown', 'p', {})
+
+            assert exc.value.error_type == IAToolkitException.ErrorType.INVALID_NAME
+
+        # --- Tests para _sync_to_configuration (Lazy Import Logic) ---
+
+        @patch('iatoolkit.services.configuration_service.ConfigurationService')
+        @patch('iatoolkit.current_iatoolkit')
+        def test_sync_to_configuration_add_new(self, mock_current_toolkit, MockConfigService):
+            """
+            Prueba que _sync_to_configuration llama a add_configuration_key cuando el prompt es nuevo.
+            """
+            # Setup del Mock de inyección de dependencias
+            mock_config_instance = MockConfigService.return_value
+            mock_current_toolkit.return_value.get_injector.return_value.get.return_value = mock_config_instance
+
+            # Simular configuración actual vacía
+            mock_config_instance._load_and_merge_configs.return_value = {
+                'prompts': {'prompt_list': [], 'prompt_categories': []}
+            }
+
+            prompt_data = {'name': 'my_new_prompt', 'description': 'desc'}
+
+            # Act
+            self.prompt_service._sync_to_configuration('test_co', prompt_data)
+
+            # Assert
+            # Debe llamar a add_configuration_key porque no encontró el nombre en la lista
+            mock_config_instance.add_configuration_key.assert_called_once_with(
+                'test_co', 'prompts.prompt_list', '0', prompt_data
+            )
+            mock_config_instance.update_configuration_key.assert_not_called()
+
+        @patch('iatoolkit.services.configuration_service.ConfigurationService')
+        @patch('iatoolkit.current_iatoolkit')
+        def test_sync_to_configuration_update_existing(self, mock_current_toolkit, MockConfigService):
+            """
+            Prueba que _sync_to_configuration llama a update_configuration_key cuando el prompt ya existe.
+            """
+            # Setup
+            mock_config_instance = MockConfigService.return_value
+            mock_current_toolkit.return_value.get_injector.return_value.get.return_value = mock_config_instance
+
+            # Simular configuración con un prompt existente
+            existing_list = [{'name': 'other'}, {'name': 'target_prompt'}]
+            mock_config_instance._load_and_merge_configs.return_value = {
+                'prompts': {'prompt_list': existing_list}
+            }
+
+            prompt_data = {'name': 'target_prompt', 'description': 'updated desc'}
+
+            # Act
+            self.prompt_service._sync_to_configuration('test_co', prompt_data)
+
+            # Assert
+            # Debe llamar a update_configuration_key en el índice 1
+            mock_config_instance.update_configuration_key.assert_called_once_with(
+                'test_co', 'prompts.prompt_list.1', prompt_data
+            )
+            mock_config_instance.add_configuration_key.assert_not_called()

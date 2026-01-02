@@ -225,60 +225,91 @@ class PromptService:
             raise IAToolkitException(IAToolkitException.ErrorType.PROMPT_ERROR,
                                f'error loading prompt "{prompt_name}" content for company {company.short_name}: {str(e)}')
 
-    # En PromptService
-
     def save_prompt(self, company_short_name: str, prompt_name: str, data: dict):
         """
-        Actualiza un prompt existente o crea uno nuevo.
-        Maneja la sincronización entre:
-        1. El archivo físico .prompt (contenido)
-        2. La base de datos (búsqueda rápida)
-        3. El archivo company.yaml (definición de parámetros para compatibilidad)
+        Create or Update a prompt.
+        1. Saves the Jinja content to the .prompt file.
+        2. Updates the Metadata (params, description) in company.yaml using ConfigurationService.
+        3. Updates the Database.
         """
         company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
+                                     f"Company {company_short_name} not found")
 
-        # 1. Guardar el contenido del texto (Archivo .prompt)
+        # 1. save the phisical part of the prompt (content)
         if 'content' in data:
             filename = f"{prompt_name}.prompt"
+            filename = filename.lower().replace(' ', '_')
             self.asset_repo.write_text(company_short_name, AssetType.PROMPT, filename, data['content'])
 
-        # 2. Actualizar Metadata en Base de Datos (para reflejo inmediato en la UI)
-        # Aquí buscarías el prompt y actualizarías description, custom_fields, active, etc.
+        # 2. Sync the metadata with company.yaml (lazy import here)
+        # Extract the fields that go to the YAML
+        yaml_metadata = {
+            'name': prompt_name,
+            'description': data.get('description', ''),
+            'category': data.get('category'),
+            'order': data.get('order', 1),
+            'active': data.get('active', True),
+            'custom_fields': data.get('custom_fields', [])
+        }
+
+        self._sync_to_configuration(company_short_name, yaml_metadata)
+
+        # 3. Reflejar cambios en la BD inmediatamente (para no esperar recarga)
+        # Esto es opcional si confías en que _sync_to_configuration recargará la config,
+        # pero es más seguro actualizar la entidad actual.
         prompt_db = self.llm_query_repo.get_prompt_by_name(company, prompt_name)
-        if prompt_db:
-            if 'description' in data: prompt_db.description = data['description']
-            if 'custom_fields' in data: prompt_db.custom_fields = data['custom_fields']
-            if 'active' in data: prompt_db.active = data['active']
+        if not prompt_db:
+            # Si es nuevo, lo creamos temporalmente en BD o dejamos que el reload lo haga
+            pass
+        else:
+            prompt_db.description = yaml_metadata['description']
+            prompt_db.custom_fields = yaml_metadata['custom_fields']
+            prompt_db.active = yaml_metadata['active']
             self.llm_query_repo.create_or_update_prompt(prompt_db)
 
-        # 3. Sincronizar con company.yaml (Para mantener compatibilidad)
-        # Este es el paso crítico. Debes leer la config actual, buscar el prompt en la lista
-        # y actualizar sus campos, o agregarlo si es nuevo.
-        self._sync_update_yaml_config(company_short_name, prompt_name, data)
-
-        return prompt_db
-
-    def _sync_update_yaml_config(self, company_short_name: str, prompt_name: str, data: dict):
+    def _sync_to_configuration(self, company_short_name: str, prompt_data: dict):
         """
-        Helper para actualizar la lista de prompts dentro de company.yaml
-        usando configuration_service.
+        Usa ConfigurationService para inyectar este prompt en la lista 'prompts.prompt_list' del YAML.
         """
-        # Lazy import para evitar ciclos
+        # --- LAZY IMPORT para evitar Circular Dependency ---
         from iatoolkit import current_iatoolkit
         from iatoolkit.services.configuration_service import ConfigurationService
+
         config_service = current_iatoolkit().get_injector().get(ConfigurationService)
 
-        # 1. Obtener lista actual
-        # Nota: aquí asumimos que ya tienes un método o lógica para leer la raw config
-        # O podrías usar config_service.get_configuration(company_short_name, 'prompts')
+        # 1. Obtenemos la configuración actual cruda (sin objetos Python)
+        #    Necesitamos leer la estructura para encontrar si el prompt ya existe en la lista.
+        full_config = config_service._load_and_merge_configs(company_short_name)
 
-        # ... Lógica para encontrar el índice del prompt en la lista 'prompt_list' ...
-        # index = ...
+        prompts_config = full_config.get('prompts', {})
+        # Normalizar estructura si prompts es una lista o un dict
+        if isinstance(prompts_config, list):
+            # Estructura antigua o simple, la convertimos a dict
+            prompts_config = {'prompt_list': prompts_config, 'prompt_categories': []}
 
-        # 2. Construir la key para update_configuration_key
-        # key_path = f"prompts.prompt_list.{index}.custom_fields"
-        # config_service.update_configuration_key(company_short_name, key_path, data['custom_fields'])
-        pass
+        prompt_list = prompts_config.get('prompt_list', [])
+
+        # 2. Buscar si el prompt ya existe en la lista
+        found_index = -1
+        for i, p in enumerate(prompt_list):
+            if p.get('name') == prompt_data['name']:
+                found_index = i
+                break
+
+        # 3. Construir la ruta de actualización (key path)
+        if found_index >= 0:
+            # Actualizar existente: "prompts.prompt_list.3"
+            # Nota: prompt_data contiene keys como 'description', 'custom_fields', etc.
+            # ConfigurationService.update_configuration_key espera una clave y un valor.
+            # Podríamos actualizar todo el objeto del prompt en la lista.
+            key_path = f"prompts.prompt_list.{found_index}"
+            config_service.update_configuration_key(company_short_name, key_path, prompt_data)
+        else:
+            # Crear nuevo: Agregar a la lista
+            # Usamos el método add_configuration_key que creaste anteriormente
+            config_service.add_configuration_key(company_short_name, "prompts.prompt_list", str(len(prompt_list)), prompt_data)
 
     def get_system_prompt(self):
         try:

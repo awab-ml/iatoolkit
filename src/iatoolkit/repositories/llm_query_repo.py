@@ -54,7 +54,7 @@ class LLMQueryRepo:
             self.session.add(new_tool)
             tool = new_tool
 
-        self.session.flush()
+        self.session.commit()
         return tool
 
     def delete_tool(self, tool: Tool):
@@ -74,7 +74,7 @@ class LLMQueryRepo:
             self.session.add(new_prompt)
             prompt = new_prompt
 
-        self.session.flush()
+        self.session.commit()
         return prompt
 
     def create_or_update_prompt_category(self, new_category: PromptCategory):

@@ -59,14 +59,17 @@ class PromptApiView(MethodView):
             return jsonify({"error_message": str(e)}), 500
 
     def put(self, company_short_name, prompt_name):
-        """
-        Actualiza el prompt (texto y configuración).
-        Payload: { "content": "...", "description": "...", "custom_fields": [...] }
-        """
-        auth_result = self.auth_service.verify()
-        if not auth_result.get("success"):
-            return jsonify(auth_result), 401
+        try:
+            auth_result = self.auth_service.verify()
+            if not auth_result.get("success"):
+                return jsonify(auth_result), 401
 
-        data = request.get_json()
-        self.prompt_service.save_prompt(company_short_name, prompt_name, data)
-        return jsonify({"status": "success"})
+            data = request.get_json()
+
+            # El servicio se encarga de la magia de archivos y YAML
+            self.prompt_service.save_prompt(company_short_name, prompt_name, data)
+
+            return jsonify({"status": "success"})
+        except Exception as e:
+            logging.exception(f"Error saving prompt {prompt_name}: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
