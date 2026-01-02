@@ -86,6 +86,8 @@ ui:
     logout: "Close session"
     error_loading: "Error loading file content"
     loading: "Loading..."
+    add: "Add"
+    create: "Create"
 
   db_explorer:
     data_explorer: "Data Explorer"
@@ -107,6 +109,34 @@ ui:
     meta_description: "Description"
     meta_synonyms: "Synonyms"
     pii_sesitive: "PII Sensitive"
+
+  prompts:
+    title: "Prompts Manager"
+    subtitle: "Manage and test your AI personas and templates"
+    library: "Prompt Library"
+    new_btn: "New"
+    filter_placeholder: "Filter prompts..."
+    select_prompt: "Select a prompt"
+    toggle_settings: "Toggle Variables & Config"
+    settings_btn: "Settings"
+    save_btn: "Save"
+    tab_editor: "Editor"
+    tab_playground: "Playground"
+    config_title: "Config"
+    desc_label: "Description"
+    desc_placeholder: "Describe this prompt..."
+    vars_label: "Input Variables"
+    no_vars: "No inputs defined"
+    playground_inputs: "Variables & Inputs"
+    no_vars_detected: "No variables detected in prompt template."
+    model_override: "Model Override (Optional)"
+    default_model: "Default (from config)"
+    run_btn: "Run"
+    output_placeholder: "Output will appear here..."
+    new_modal_title: "Create New Prompt"
+    name_label: "Name (Slug)"
+    name_help: "Use lowercase, numbers, and underscores only."
+    category_label: "Category"
 
   config:
     editor_description: "IAToolkit configuration file"

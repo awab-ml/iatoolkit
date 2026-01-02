@@ -83,6 +83,9 @@ ui:
     load_configuration: "Guardar configuración"
     goto_chat: "Ir al chat"
     logout: "Cerrar sesión"
+    add: "Agregar"
+    create: "Crear"
+
 
   db_explorer:
     data_explorer: "Explorador de datos"
@@ -104,6 +107,34 @@ ui:
     meta_description: "Descripción"
     meta_synonyms: "Sinonimos"
     pii_sesitive: "IP Sensible"
+
+  prompts:
+    title: "Gestor de Prompts"
+    subtitle: "Gestiona y prueba tus plantillas y personas de IA"
+    library: "Biblioteca de Prompts"
+    new_btn: "Nuevo"
+    filter_placeholder: "Filtrar prompts..."
+    select_prompt: "Selecciona un prompt"
+    toggle_settings: "Alternar Variables y Configuración"
+    settings_btn: "Ajustes"
+    save_btn: "Guardar"
+    tab_editor: "Editor"
+    tab_playground: "Playground"
+    config_title: "Configuración"
+    desc_label: "Descripción"
+    desc_placeholder: "Describe este prompt..."
+    vars_label: "Variables de Entrada"
+    no_vars: "Sin variables definidas"
+    playground_inputs: "Variables y Entradas"
+    no_vars_detected: "No se detectaron variables en la plantilla."
+    model_override: "Modelo Específico (Opcional)"
+    default_model: "Por defecto (según config)"
+    run_btn: "Ejecutar"
+    output_placeholder: "El resultado aparecerá aquí..."
+    new_modal_title: "Crear Nuevo Prompt"
+    name_label: "Nombre (Slug)"
+    name_help: "Solo minúsculas, números y guiones bajos."
+    category_label: "Categoría"
 
   config:
     editor_description: "Editor de configuración"
