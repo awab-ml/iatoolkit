@@ -38,13 +38,18 @@ MOCK_VALID_CONFIG = {
         'description': 'Gets stock price',
         'params': {'type': 'object'}
     }],
-    'prompt_categories': ['General'],
-    'prompts': [{
-        'category': 'General',
-        'name': 'sales_report',
-        'description': 'Generates a sales report',
-        'order': 1
-    }],
+
+    'prompts': {
+        'prompt_categories': ['General', 'official'],
+        'prompt_list': [
+            {
+                'category': 'General',
+                'name': 'sales_report',
+                'description': 'Generates a sales report',
+                'order': 1
+            }
+        ]
+    },
     'parameters': {
         'cors_origin': ['https://acme.com'],
         'user_feedback': {
@@ -175,8 +180,8 @@ class TestConfigurationService:
         # 3. Verify PromptService delegation
         mock_prompt_service.sync_company_prompts.assert_called_once_with(
             company_short_name=self.COMPANY_NAME,
-            prompts_config=MOCK_VALID_CONFIG['prompts'],
-            categories_config=MOCK_VALID_CONFIG['prompt_categories']
+            prompt_list=MOCK_VALID_CONFIG['prompts']['prompt_list'],
+            categories_config=MOCK_VALID_CONFIG['prompts']['prompt_categories']
         )
 
     def test_get_configuration_uses_cache_on_second_call(self):
@@ -257,7 +262,7 @@ class TestConfigurationService:
         mock_tool_service.sync_company_tools.assert_called_once_with('minimal_co', [])
         mock_prompt_service.sync_company_prompts.assert_called_once_with(
             company_short_name='minimal_co',
-            prompts_config=[],
+            prompt_list=[],
             categories_config=[]
         )
 

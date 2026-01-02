@@ -34,14 +34,14 @@ class PromptService:
         self.profile_repo = profile_repo
         self.i18n_service = i18n_service
 
-    def sync_company_prompts(self, company_short_name: str, prompts_config: list, categories_config: list):
+    def sync_company_prompts(self, company_short_name: str, prompt_list: list, categories_config: list):
         """
         Synchronizes prompt categories and prompts from YAML config to Database.
         Strategies:
         - Categories: Create or Update existing based on name.
         - Prompts: Create or Update existing based on name. Soft-delete or Delete unused.
         """
-        if not prompts_config:
+        if not prompt_list:
             return
 
         company = self.profile_repo.get_company_by_short_name(company_short_name)
@@ -66,7 +66,7 @@ class PromptService:
             # 2. Sync Prompts
             defined_prompt_names = set()
 
-            for prompt_data in prompts_config:
+            for prompt_data in prompt_list:
                 category_name = prompt_data.get('category')
                 if not category_name or category_name not in category_map:
                     logging.warning(

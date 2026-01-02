@@ -374,12 +374,11 @@ class ConfigurationService:
         from iatoolkit.services.prompt_service import PromptService
         prompt_service = current_iatoolkit().get_injector().get(PromptService)
 
-        prompts_config = config.get('prompts', {})
-
+        prompt_list, categories_config = self._get_prompt_config(config)
         prompt_service.sync_company_prompts(
             company_short_name=company_short_name,
-            prompts_config=prompts_config.get('prompt_list', []),
-            categories_config=prompts_config.get('prompt_categories', []),
+            prompt_list=prompt_list,
+            categories_config=categories_config,
         )
 
     def _register_knowledge_base(self, company_short_name: str, config: dict):
@@ -462,10 +461,9 @@ class ConfigurationService:
                 add_error(f"tools[{i}]", "'params' key must be a dictionary.")
 
         # 6. Prompts
-        prompt_list = config.get("prompts", {}).get("prompt_list", [])
-        prompt_categories = config.get("prompts", {}).get("prompt_categories", [])
+        prompt_list, categories_config = self._get_prompt_config(config)
 
-        category_set = set(prompt_categories)
+        category_set = set(categories_config)
         for i, prompt in enumerate(prompt_list):
             prompt_name = prompt.get("name")
             if not prompt_name:
@@ -529,4 +527,15 @@ class ConfigurationService:
             logging.error(error_summary)
 
         return errors
+
+    def _get_prompt_config(self, config):
+        prompts_config = config.get('prompts', {})
+        if isinstance(prompts_config, dict):
+            prompt_list = prompts_config.get('prompt_list', [])
+            categories_config = prompts_config.get('prompt_categories', [])
+        else:
+            prompt_list = config.get('prompts', [])
+            categories_config = config.get('prompt_categories', [])
+
+        return prompt_list, categories_config
 
