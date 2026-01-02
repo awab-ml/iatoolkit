@@ -294,8 +294,10 @@ class Prompt(Base):
     order = Column(Integer, nullable=True, default=0)
     category_id = Column(Integer, ForeignKey('iat_prompt_categories.id'), nullable=True)
     custom_fields = Column(JSON, nullable=False, default=[])
-
     created_at = Column(DateTime, default=datetime.now)
+    def to_dict(self):
+        return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}
+
 
     company = relationship("Company", back_populates="prompts")
     category = relationship("PromptCategory", back_populates="prompts")

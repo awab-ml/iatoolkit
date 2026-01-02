@@ -85,9 +85,16 @@ def register_views(app):
     # can be used also for executing iatoolkit prompts
     app.add_url_rule('/<company_short_name>/api/llm_query', view_func=LLMQueryApiView.as_view('llm_query_api'))
 
-    # open the promt directory
-    app.add_url_rule('/<company_short_name>/api/prompts', view_func=PromptApiView.as_view('prompt'))
+    # open the promt directory and specific prompt management
+    prompt_view = PromptApiView.as_view('prompt')
+    app.add_url_rule('/<company_short_name>/api/prompts',
+                     view_func=prompt_view,
+                     methods=['GET'],
+                     defaults={'prompt_name': None})
 
+    app.add_url_rule('/<company_short_name>/api/prompts/<prompt_name>',
+                     view_func=prompt_view,
+                     methods=['GET', 'PUT'])
     # toolbar buttons
     app.add_url_rule('/<company_short_name>/api/feedback', view_func=UserFeedbackApiView.as_view('feedback'))
     app.add_url_rule('/<company_short_name>/api/history', view_func=HistoryApiView.as_view('history'))

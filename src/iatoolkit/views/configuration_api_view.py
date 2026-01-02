@@ -62,7 +62,7 @@ class ConfigurationApiView(MethodView):
         Body: { "key": "llm.model", "value": "gpt-4" }
         """
         try:
-            auth_result = self.auth_service.verify(anonymous=False) # Require valid user for updates
+            auth_result = self.auth_service.verify()
             if not auth_result.get("success"):
                 return jsonify(auth_result), 401
 

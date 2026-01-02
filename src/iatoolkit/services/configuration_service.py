@@ -38,41 +38,11 @@ class ConfigurationService:
         if company_short_name not in self._loaded_configs:
             self._loaded_configs[company_short_name] = self._load_and_merge_configs(company_short_name)
 
-    def get_configuration(self, company_short_name: str, content_key: str):
-        """
-        Public method to provide a specific section of a company's configuration.
-        It uses a cache to avoid reading files from disk on every call.
-        """
-        self._ensure_config_loaded(company_short_name)
-        return self._loaded_configs[company_short_name].get(content_key)
-
-    def get_llm_configuration(self, company_short_name: str):
-        """
-        Convenience helper to obtain the 'llm' configuration block for a company.
-        Kept separate from get_configuration() to avoid coupling tests that
-        assert the number of calls to get_configuration().
-        """
-        default_llm_model = None
-        available_llm_models = []
-        self._ensure_config_loaded(company_short_name)
-        llm_config = self._loaded_configs[company_short_name].get("llm")
-        if llm_config:
-            default_llm_model = llm_config.get("model")
-            available_llm_models = llm_config.get('available_models') or []
-
-        # fallback: if no explicit list of models is provided, use the default model
-        if not available_llm_models and default_llm_model:
-            available_llm_models = [{
-                "id": default_llm_model,
-                "label": default_llm_model,
-                "description": "Modelo por defecto configurado para esta compañía."
-            }]
-        return default_llm_model, available_llm_models
-
     def load_configuration(self, company_short_name: str):
         """
         Main entry point for configuring a company instance.
         This method is invoked by the dispatcher for each registered company.
+        And for the configurator, for editing the configuration of a company.
         """
         logging.info(f"⚙️  Starting configuration for company '{company_short_name}'...")
 
@@ -96,6 +66,14 @@ class ConfigurationService:
 
         logging.info(f"✅ Company '{company_short_name}' configured successfully.")
         return config, errors
+
+    def get_configuration(self, company_short_name: str, content_key: str):
+        """
+        Public method to provide a specific section of a company's configuration.
+        It uses a cache to avoid reading files from disk on every call.
+        """
+        self._ensure_config_loaded(company_short_name)
+        return self._loaded_configs[company_short_name].get(content_key)
 
     def update_configuration_key(self, company_short_name: str, key: str, value) -> tuple[dict, list[str]]:
         """
@@ -186,90 +164,12 @@ class ConfigurationService:
 
         return config, []
 
-
     def validate_configuration(self, company_short_name: str) -> list[str]:
         """
         Public method to trigger validation of the current configuration.
         """
         config = self._load_and_merge_configs(company_short_name)
         return self._validate_configuration(company_short_name, config)
-
-    def _set_nested_value(self, data: dict, key: str, value):
-        """
-        Helper to set a value in a nested dictionary or list using dot notation (e.g. 'llm.model', 'tools.0.name').
-        Handles traversal through both dictionaries and lists.
-        """
-        keys = key.split('.')
-        current = data
-
-        # Traverse up to the parent of the target key
-        for i, k in enumerate(keys[:-1]):
-            if isinstance(current, dict):
-                # If it's a dict, we can traverse or create the path
-                current = current.setdefault(k, {})
-            elif isinstance(current, list):
-                # If it's a list, we MUST use an integer index
-                try:
-                    idx = int(k)
-                    current = current[idx]
-                except (ValueError, IndexError) as e:
-                    raise ValueError(
-                        f"Invalid path: cannot access index '{k}' in list at '{'.'.join(keys[:i + 1])}'") from e
-            else:
-                raise ValueError(
-                    f"Invalid path: '{k}' is not a container (got {type(current)}) at '{'.'.join(keys[:i + 1])}'")
-
-        # Set the final value
-        last_key = keys[-1]
-        if isinstance(current, dict):
-            current[last_key] = value
-        elif isinstance(current, list):
-            try:
-                idx = int(last_key)
-                current[idx] = value
-            except (ValueError, IndexError) as e:
-                raise ValueError(f"Invalid path: cannot assign to index '{last_key}' in list") from e
-        else:
-            raise ValueError(f"Cannot assign value to non-container type {type(current)} at '{key}'")
-
-    def _load_and_merge_configs(self, company_short_name: str) -> dict:
-        """
-        Loads the main company.yaml and merges data from supplementary files
-        specified in the 'content_files' section using AssetRepository.
-        """
-        main_config_filename = "company.yaml"
-
-        # verify existence of the main configuration file
-        if not self.asset_repo.exists(company_short_name, AssetType.CONFIG, main_config_filename):
-            # raise FileNotFoundError(f"Main configuration file not found: {main_config_filename}")
-            logging.exception(f"Main configuration file not found: {main_config_filename}")
-
-            # return the minimal configuration needed for starting the IAToolkit
-            # this is a for solving a chicken/egg problem when trying to migrate the configuration
-            # from filesystem to database in enterprise installation
-            # see create_assets cli command in enterprise-iatoolkit)
-            return {
-                'id': company_short_name,
-                'name': company_short_name,
-                'llm': {'model': 'gpt-5', 'provider_api_keys': {'openai':''} },
-                }
-
-        # read text and parse
-        yaml_content = self.asset_repo.read_text(company_short_name, AssetType.CONFIG, main_config_filename)
-        config = self.utility.load_yaml_from_string(yaml_content)
-        if not config:
-            return {}
-
-        # Load and merge supplementary content files (e.g., onboarding_cards)
-        for key, filename in config.get('help_files', {}).items():
-            if self.asset_repo.exists(company_short_name, AssetType.CONFIG, filename):
-                supp_content = self.asset_repo.read_text(company_short_name, AssetType.CONFIG, filename)
-                config[key] = self.utility.load_yaml_from_string(supp_content)
-            else:
-                logging.warning(f"⚠️  Warning: Content file not found: {filename}")
-                config[key] = None
-
-        return config
 
     def _register_company_database(self, config: dict) -> Company:
         # register the company in the database: create_or_update logic
@@ -392,7 +292,6 @@ class ConfigurationService:
 
         # sync collection types in database
         knowledge_base.sync_collection_types(company_short_name, categories_config)
-
 
     def _validate_configuration(self, company_short_name: str, config: dict):
         """
@@ -527,6 +426,108 @@ class ConfigurationService:
             logging.error(error_summary)
 
         return errors
+
+
+    def _set_nested_value(self, data: dict, key: str, value):
+        """
+        Helper to set a value in a nested dictionary or list using dot notation (e.g. 'llm.model', 'tools.0.name').
+        Handles traversal through both dictionaries and lists.
+        """
+        keys = key.split('.')
+        current = data
+
+        # Traverse up to the parent of the target key
+        for i, k in enumerate(keys[:-1]):
+            if isinstance(current, dict):
+                # If it's a dict, we can traverse or create the path
+                current = current.setdefault(k, {})
+            elif isinstance(current, list):
+                # If it's a list, we MUST use an integer index
+                try:
+                    idx = int(k)
+                    current = current[idx]
+                except (ValueError, IndexError) as e:
+                    raise ValueError(
+                        f"Invalid path: cannot access index '{k}' in list at '{'.'.join(keys[:i + 1])}'") from e
+            else:
+                raise ValueError(
+                    f"Invalid path: '{k}' is not a container (got {type(current)}) at '{'.'.join(keys[:i + 1])}'")
+
+        # Set the final value
+        last_key = keys[-1]
+        if isinstance(current, dict):
+            current[last_key] = value
+        elif isinstance(current, list):
+            try:
+                idx = int(last_key)
+                current[idx] = value
+            except (ValueError, IndexError) as e:
+                raise ValueError(f"Invalid path: cannot assign to index '{last_key}' in list") from e
+        else:
+            raise ValueError(f"Cannot assign value to non-container type {type(current)} at '{key}'")
+
+    def get_llm_configuration(self, company_short_name: str):
+        """
+        Convenience helper to obtain the 'llm' configuration block for a company.
+        Kept separate from get_configuration() to avoid coupling tests that
+        assert the number of calls to get_configuration().
+        """
+        default_llm_model = None
+        available_llm_models = []
+        self._ensure_config_loaded(company_short_name)
+        llm_config = self._loaded_configs[company_short_name].get("llm")
+        if llm_config:
+            default_llm_model = llm_config.get("model")
+            available_llm_models = llm_config.get('available_models') or []
+
+        # fallback: if no explicit list of models is provided, use the default model
+        if not available_llm_models and default_llm_model:
+            available_llm_models = [{
+                "id": default_llm_model,
+                "label": default_llm_model,
+                "description": "Modelo por defecto configurado para esta compañía."
+            }]
+        return default_llm_model, available_llm_models
+
+
+    def _load_and_merge_configs(self, company_short_name: str) -> dict:
+        """
+        Loads the main company.yaml and merges data from supplementary files
+        specified in the 'content_files' section using AssetRepository.
+        """
+        main_config_filename = "company.yaml"
+
+        # verify existence of the main configuration file
+        if not self.asset_repo.exists(company_short_name, AssetType.CONFIG, main_config_filename):
+            # raise FileNotFoundError(f"Main configuration file not found: {main_config_filename}")
+            logging.exception(f"Main configuration file not found: {main_config_filename}")
+
+            # return the minimal configuration needed for starting the IAToolkit
+            # this is a for solving a chicken/egg problem when trying to migrate the configuration
+            # from filesystem to database in enterprise installation
+            # see create_assets cli command in enterprise-iatoolkit)
+            return {
+                'id': company_short_name,
+                'name': company_short_name,
+                'llm': {'model': 'gpt-5', 'provider_api_keys': {'openai':''} },
+                }
+
+        # read text and parse
+        yaml_content = self.asset_repo.read_text(company_short_name, AssetType.CONFIG, main_config_filename)
+        config = self.utility.load_yaml_from_string(yaml_content)
+        if not config:
+            return {}
+
+        # Load and merge supplementary content files (e.g., onboarding_cards)
+        for key, filename in config.get('help_files', {}).items():
+            if self.asset_repo.exists(company_short_name, AssetType.CONFIG, filename):
+                supp_content = self.asset_repo.read_text(company_short_name, AssetType.CONFIG, filename)
+                config[key] = self.utility.load_yaml_from_string(supp_content)
+            else:
+                logging.warning(f"⚠️  Warning: Content file not found: {filename}")
+                config[key] = None
+
+        return config
 
     def _get_prompt_config(self, config):
         prompts_config = config.get('prompts', {})
