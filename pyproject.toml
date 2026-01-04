@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iatoolkit"
-dynamic = ["version", "dependencies"]
+dynamic = ["version"]
 requires-python = ">=3.12"
 description = "IAToolkit"
 readme = "readme.md"
@@ -21,7 +21,6 @@ exclude = ["tests*", "*/tests*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "iatoolkit.__version__" }
-dependencies = { file = ["requirements.txt"] }
 
 [tool.setuptools.package-data]
 iatoolkit = ["system_prompts/*.prompt", "templates/**/*", "static/**/*", "locales/*.yaml"]
