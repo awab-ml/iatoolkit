@@ -179,7 +179,7 @@ ui:
     delete_message: "This action cannot be undone. The file will be permanently removed."
     delete_button: "Delete"
     delete_cancel: "Cancel"
-    target_collection: "Target collection"
+    target_collection: "Collection"
     select_collection_placeholder: "Select a collection"
     collection_required: "Collection is required"
     collection: "Collection"
