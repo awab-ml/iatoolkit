@@ -88,6 +88,12 @@ ui:
     add: "Add"
     create: "Create"
     delete: "Delete"
+    add_new: "Add new"
+    category_name_placeholder: "Category name"
+    items: "Items"
+    drag_drop_hint: "Use arrows to reorder items."
+    current_items: "Current items"
+    manage: "Manage"
 
 
   db_explorer:
@@ -181,8 +187,10 @@ ui:
     delete_cancel: "Cancel"
     target_collection: "Collection"
     select_collection_placeholder: "Select a collection"
+    select_collection: "Select a collection"
     collection_required: "Collection is required"
     collection: "Collection"
+    manage_collections: "Manage collections"
     all_collections: "All collections"
 
   tooltips:
@@ -350,7 +358,6 @@ js_messages:
   db_created: "Created"
   db_last_access: "Last access"
   db_filename: "Filename"
-  db_user: "User"
   db_status: "Status"
   db_collection: "Collection"
   editor_no_file_selected: "No file selected"
@@ -358,6 +365,8 @@ js_messages:
   cant_load_company: "Could not load company.yaml"
   config_saved: "Configuration saved successfully."
   config_error: "Error saving configuration."
+  all_collections: "All collections"
+
 
 
 

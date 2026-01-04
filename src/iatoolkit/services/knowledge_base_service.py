@@ -382,26 +382,48 @@ class KnowledgeBaseService:
     def sync_collection_types(self, company_short_name: str, categories_config: list):
         """
         This should be called during company initialization or configuration reload.
+        Syncs DB collection types with the provided list.
+        Also updates the configuration YAML.
         """
         company = self.profile_service.get_company_by_short_name(company_short_name)
         if not company:
             raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
-                            f'Company {company_short_name} not found')
-
+                                     f'Company {company_short_name} not found')
 
         session = self.document_repo.session
+
+        # 1. Get existing types
         existing_types = session.query(CollectionType).filter_by(company_id=company.id).all()
         existing_names = {ct.name: ct for ct in existing_types}
 
+        # 2. Add new types
+        current_config_names = set()
         for cat_name in categories_config:
+            current_config_names.add(cat_name)
             if cat_name not in existing_names:
                 new_type = CollectionType(company_id=company.id, name=cat_name)
                 session.add(new_type)
 
-        # Opcional: Eliminar los que ya no están en el config?
-        # Por seguridad de datos, mejor no borrar automáticamente, o marcarlos inactivos.
+        # 3. Delete types not in config
+        # Note: This might cascade delete documents depending on FK setup.
+        # Assuming safe deletion is desired here to match "Sync" behavior.
+        for existing_ct in existing_types:
+            if existing_ct.name not in current_config_names:
+                session.delete(existing_ct)
 
         session.commit()
+
+        # 4. Update Configuration YAML
+        # Lazy import to avoid circular dependency
+        from iatoolkit import current_iatoolkit
+        from iatoolkit.services.configuration_service import ConfigurationService
+        config_service = current_iatoolkit().get_injector().get(ConfigurationService)
+
+        config_service.update_configuration_key(
+            company_short_name,
+            "knowledge_base.collections",
+            categories_config
+        )
 
     def get_collection_names(self, company_short_name: str) -> List[str]:
         """

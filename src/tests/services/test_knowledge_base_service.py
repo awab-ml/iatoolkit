@@ -5,8 +5,8 @@
 
 import pytest
 import base64
-from unittest.mock import MagicMock, call
-from datetime import datetime
+from unittest.mock import MagicMock, patch
+from iatoolkit import current_iatoolkit
 
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.repositories.document_repo import DocumentRepo
@@ -447,7 +447,8 @@ class TestKnowledgeBaseService:
 
         assert exc.value.error_type == IAToolkitException.ErrorType.FILE_FORMAT_ERROR
 
-    def test_sync_collection_types_creates_new_types(self):
+    @pytest.mark.parametrize("categories", [['Legal', 'Technical']])
+    def test_sync_collection_types_creates_new_types(self, categories):
         """
         GIVEN configuration has collection categories
         WHEN sync_collection_types is called
@@ -460,18 +461,30 @@ class TestKnowledgeBaseService:
         existing_type = CollectionType(name='Legal', company_id=self.company.id)
         self.mock_session.query.return_value.filter_by.return_value.all.return_value = [existing_type]
 
-        # Act
-        self.service.sync_collection_types('test_company', ['Legal', 'Technical'])
+        # Mock ConfigurationService via injector
+        # Patch where it's imported from, since it's a lazy import inside the method
+        with patch('iatoolkit.current_iatoolkit') as mock_toolkit:
+            mock_config_service = MagicMock()
+            mock_toolkit.return_value.get_injector.return_value.get.return_value = mock_config_service
 
-        # Assert
-        # Should add 'Technical'
-        self.mock_session.add.assert_called_once()
-        added_obj = self.mock_session.add.call_args[0][0]
-        assert isinstance(added_obj, CollectionType)
-        assert added_obj.name == 'Technical'
-        assert added_obj.company_id == self.company.id
-        self.mock_session.commit.assert_called()
+            # Act
+            self.service.sync_collection_types('test_company', categories)
 
+            # Assert
+            # Should add 'Technical'
+            self.mock_session.add.assert_called_once()
+            added_obj = self.mock_session.add.call_args[0][0]
+            assert isinstance(added_obj, CollectionType)
+            assert added_obj.name == 'Technical'
+            assert added_obj.company_id == self.company.id
+            self.mock_session.commit.assert_called()
+
+            # Verify ConfigService call
+            mock_config_service.update_configuration_key.assert_called_once_with(
+                'test_company',
+                "knowledge_base.collections",
+                categories
+            )
     def test_get_collection_names_success(self):
         """Should return a list of collection names for the given company."""
         # Arrange

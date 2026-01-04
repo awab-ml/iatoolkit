@@ -89,7 +89,7 @@ def register_views(app):
     # Categories Endpoint
     app.add_url_rule('/<company_short_name>/api/categories',
                      view_func=CategoriesApiView.as_view('categories_api'),
-                     methods=['GET'])
+                     methods=['GET', 'POST'])
 
     # open the promt directory and specific prompt management
     prompt_view = PromptApiView.as_view('prompt')

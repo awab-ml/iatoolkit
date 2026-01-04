@@ -10,6 +10,7 @@ from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.repositories.models import PromptType, Company, PromptCategory
+from iatoolkit.services.prompt_service import PromptService
 
 class TestCategoriesView:
     @staticmethod
@@ -27,6 +28,7 @@ class TestCategoriesView:
         self.kb_service = MagicMock(spec=KnowledgeBaseService)
         self.llm_query_repo = MagicMock(spec=LLMQueryRepo)
         self.configuration_service = MagicMock(spec=ConfigurationService)
+        self.prompt_service = MagicMock(spec=PromptService)  # Added PromptService mock
 
         # Mock Session for direct query
         self.mock_session = MagicMock()
@@ -38,12 +40,14 @@ class TestCategoriesView:
         self.mock_company = Company(id=1, short_name='test_co')
         self.profile_service.get_company_by_short_name.return_value = self.mock_company
 
+        # Updated View setup with PromptService
         view = CategoriesApiView.as_view('categories',
                                          auth_service=self.auth_service,
                                          profile_service=self.profile_service,
                                          knowledge_base_service=self.kb_service,
                                          configuration_service=self.configuration_service,
-                                         llm_query_repo=self.llm_query_repo)
+                                         llm_query_repo=self.llm_query_repo,
+                                         prompt_service=self.prompt_service)
 
         self.app.add_url_rule('/<company_short_name>/api/categories', view_func=view)
 
@@ -82,3 +86,32 @@ class TestCategoriesView:
         assert "llm_models" in data
         assert "gpt-4" in data["llm_models"]
         assert "claude-3" in data["llm_models"]
+
+    def test_post_sync_categories(self):
+        """
+        Tests the POST endpoint to sync categories (collections and prompt categories).
+        """
+        payload = {
+            "collection_types": ["HR Docs", "Legal"],
+            "prompt_categories": ["Creative", "Coding", "Analysis"]
+        }
+
+        # Act
+        response = self.client.post(f'/{self.company_short_name}/api/categories', json=payload)
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json["status"] == "success"
+
+        # 1. Verify sync_collection_types call
+        self.kb_service.sync_collection_types.assert_called_once_with(
+            self.company_short_name,
+            ["HR Docs", "Legal"]
+        )
+
+        # 2. Verify sync_prompt_categories call
+        # Now we verify that the service method is called, instead of checking repo calls directly
+        self.prompt_service.sync_prompt_categories.assert_called_once_with(
+            self.company_short_name,
+            ["Creative", "Coding", "Analysis"]
+        )

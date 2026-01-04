@@ -482,3 +482,58 @@ class PromptService:
             # config_service.remove_list_item(company_short_name, "prompts.prompt_list", found_index)
 
 
+    def sync_prompt_categories(self, company_short_name: str, categories_config: list):
+        """
+        Syncs only the prompt categories based on a simple list of names.
+        The order in the list determines the 'order' field in DB.
+        Removes categories not present in the list.
+        Finally, updates the YAML configuration.
+        """
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
+                                     f'Company {company_short_name} not found')
+
+        try:
+            processed_categories_ids = []
+
+            # 1. Update/Create Categories
+            for idx, cat_name in enumerate(categories_config):
+                # Order is 0-based index or 1-based, consistent with current usage (seems 0 or 1 is fine, usually 0 for arrays)
+                new_cat = PromptCategory(
+                    company_id=company.id,
+                    name=cat_name,
+                    order=idx
+                )
+                persisted_cat = self.llm_query_repo.create_or_update_prompt_category(new_cat)
+                processed_categories_ids.append(persisted_cat.id)
+
+            # 2. Delete missing categories
+            # We fetch all categories for the company and delete those not in processed_ids
+            all_categories = self.llm_query_repo.get_all_categories(company.id)
+            for cat in all_categories:
+                if cat.id not in processed_categories_ids:
+                    # Depending on logic, we might want to check if they have prompts assigned.
+                    # Usually, sync logic implies "force state", so we delete.
+                    # SQLAlchemy cascading might handle prompts or set them to null depending on model config.
+                    self.llm_query_repo.session.delete(cat)
+
+            self.llm_query_repo.commit()
+
+            # 3. Update Configuration YAML
+            # Lazy import to avoid circular dependency
+            from iatoolkit import current_iatoolkit
+            from iatoolkit.services.configuration_service import ConfigurationService
+            config_service = current_iatoolkit().get_injector().get(ConfigurationService)
+
+            # We update the whole list at once
+            config_service.update_configuration_key(
+                company_short_name,
+                "prompts.prompt_categories",
+                categories_config
+            )
+
+        except Exception as e:
+            self.llm_query_repo.rollback()
+            logging.exception(f"Error syncing prompt categories: {e}")
+            raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR, str(e))

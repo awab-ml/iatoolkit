@@ -85,6 +85,13 @@ ui:
     add: "Agregar"
     create: "Crear"
     delete: "Borrar"
+    add_new: "Agregar nuevo"
+    category_name_placeholder: "nombre de categoria"
+    items: "Items"
+    drag_drop_hint: "Utiliza las flechas para ordenar items.."
+    current_items: "items actuales"
+    manage: "Administrar"
+
 
   db_explorer:
     data_explorer: "Explorador de datos"
@@ -179,6 +186,8 @@ ui:
     collection_required: "Debe seleccionar una categoría"
     all_collections: "Todas las categorías"
     collection: "Categoría"
+    manage_collections: "Administra collections"
+    select_collection: "Selecciona una categorìa"
 
 
   tooltips:
@@ -340,7 +349,6 @@ js_messages:
   search_placeholder: "Buscar usuarios..."
   showing: "Mostrando"
   records: "Registros"
-  db_user: "Usuario"
   db_role: "Rol"
   db_verified: "Verificado"
   db_collection: "Colección"
@@ -354,6 +362,8 @@ js_messages:
   cant_load_company: "No puede cargarcompany.yaml"
   config_saved: "Configuración guardada correctamente."
   config_error: "Error guardando configuración"
+  all_collections: "Todas las colecciones"
+
 
 
 

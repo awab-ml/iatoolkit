@@ -3,10 +3,11 @@
 #
 # IAToolkit is open source software.
 
-from flask import jsonify
+from flask import jsonify, request
 from flask.views import MethodView
 from injector import inject
 from iatoolkit.services.auth_service import AuthService
+from iatoolkit.services.prompt_service import PromptService
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
@@ -25,12 +26,15 @@ class CategoriesApiView(MethodView):
                  profile_service: ProfileService,
                  configuration_service: ConfigurationService,
                  knowledge_base_service: KnowledgeBaseService,
-                 llm_query_repo: LLMQueryRepo):
+                 llm_query_repo: LLMQueryRepo,
+                 prompt_service: PromptService):
         self.auth_service = auth_service
         self.profile_service = profile_service
         self.knowledge_base_service = knowledge_base_service
         self.llm_query_repo = llm_query_repo
         self.configuration_service = configuration_service
+        self.prompt_service = prompt_service
+
 
     def get(self, company_short_name):
         try:
@@ -68,4 +72,40 @@ class CategoriesApiView(MethodView):
 
         except Exception as e:
             logging.exception(f"Error fetching categories for {company_short_name}: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    def post(self, company_short_name):
+        try:
+            # 1. Verify Authentication
+            auth_result = self.auth_service.verify()
+            if not auth_result.get("success"):
+                return jsonify(auth_result), 401
+
+            # 2. Get Company
+            company = self.profile_service.get_company_by_short_name(company_short_name)
+            if not company:
+                return jsonify({"error": "Company not found"}), 404
+
+            # 3. Parse Request
+            data = request.get_json() or {}
+
+            # 4. Sync Collection Types
+            # The service expects a list of names strings
+            if 'collection_types' in data:
+                self.knowledge_base_service.sync_collection_types(
+                    company_short_name,
+                    data.get('collection_types', [])
+                )
+
+            # 5. Sync Prompt Categories
+            if 'prompt_categories' in data:
+                self.prompt_service.sync_prompt_categories(
+                    company_short_name,
+                    data.get('prompt_categories', [])
+                )
+
+            return jsonify({"status": "success", "message": "Categories synchronized successfully"}), 200
+
+        except Exception as e:
+            logging.exception(f"Error syncing categories for {company_short_name}: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
