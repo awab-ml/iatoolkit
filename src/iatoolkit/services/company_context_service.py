@@ -186,14 +186,28 @@ class CompanyContextService:
                             f"The meaning of each field in this table is detailed in the **`{schema_object_name}`** object."
                         )
 
-                    for col in table_data.get('columns', []):
-                        name = col["name"]
-                        if name in final_exclude_columns:
+                    # Adaptador: Normalizar columnas ya sea que vengan como Lista (Driver) o Diccionario (YAML guardado)
+                    raw_columns = table_data.get('columns', [])
+                    columns_iterable = []
+
+                    if isinstance(raw_columns, dict):
+                        for col_key, col_val in raw_columns.items():
+                            # Si es diccionario, usamos la clave como nombre si no viene explícito dentro
+                            c_data = col_val.copy() if isinstance(col_val, dict) else {}
+                            if 'name' not in c_data:
+                                c_data['name'] = col_key
+                            columns_iterable.append(c_data)
+                    elif isinstance(raw_columns, list):
+                        columns_iterable = raw_columns
+
+                    for col in columns_iterable:
+                        name = col.get("name")
+                        if not name or name in final_exclude_columns:
                             continue
 
                         json_dict["fields"].append({
                             "name": name,
-                            "type": col["type"]
+                            "type": col.get("type", "unknown")
                         })
 
                     # Append as string representation of dict (consistent with previous behavior)

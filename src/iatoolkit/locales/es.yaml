@@ -1,5 +1,12 @@
 # locales/es.yaml
 ui:
+  common:
+    actions: "Acciones"
+    save: "Guardar"
+    cancel: "Cancelar"
+    apply: "Aplicar Cambios"
+    discard_changes: "Descartar Cambios"
+
   login_widget:
     title: "Iniciar Sesión"
     welcome_message: "Ingresa tus credenciales o registrate para acceder a la plataforma."
@@ -192,6 +199,25 @@ ui:
     collection: "Categoría"
     manage_collections: "Administra collections"
     select_collection: "Selecciona una categorìa"
+
+  json_editor:
+    title: "Editor de Esquema JSON"
+    subtitle: "Define la estructura y metadatos para este campo JSON"
+    field_name: "Nombre del Campo"
+    type: "Tipo de Dato"
+    description: "Descripción"
+    empty_schema: "Aún no hay campos definidos."
+    add_root: "Agregar Campo Raíz"
+    add_field: "Agregar Campo"
+    types:
+      string: "Texto (String)"
+      integer: "Entero"
+      number: "Número (Decimal)"
+      boolean: "Booleano"
+      object: "Objeto (Mapa)"
+      array: "Lista (Array)"
+      jsonb: "JSON Crudo"
+
 
 
   tooltips:

@@ -1,5 +1,13 @@
 # Language: English
 ui:
+  common:
+    actions: "Actions"
+    save: "Save"
+    cancel: "Cancel"
+    apply: "Apply Changes"
+    discard_changes: "Discard Changes"
+
+
   login_widget:
     title: "Sign In"
     welcome_message: "Enter your credentials or register to access this platform."
@@ -194,6 +202,26 @@ ui:
     collection: "Collection"
     manage_collections: "Manage collections"
     all_collections: "All collections"
+
+  json_editor:
+    title: "JSON Schema Editor"
+    subtitle: "Define the structure and metadata for this JSON field"
+    field_name: "Field Name"
+    type: "Data Type"
+    description: "Description"
+    empty_schema: "No fields defined yet."
+    add_root: "Add Root Field"
+    add_field: "Add Field"
+    types:
+      string: "String"
+      integer: "Integer"
+      number: "Number"
+      boolean: "Boolean"
+      object: "Object (Map)"
+      array: "Array (List)"
+      jsonb: "JSON Raw"
+
+
 
   tooltips:
     history: "History of my queries"
