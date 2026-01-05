@@ -157,42 +157,6 @@ class Utility:
             schema = yaml.safe_load(f)
         return schema
 
-    def validate_schema_structure(self, schema: dict) -> list[str]:
-        """
-        Valida que el diccionario cumpla con el formato oficial:
-        { table_name: { columns: { col_name: { type: ..., properties: ... } } } }
-        """
-        errors = []
-        if not schema or not isinstance(schema, dict):
-            return ["El esquema está vacío o no es válido."]
-
-        if len(schema) != 1:
-            return ["El esquema debe tener exactamente una clave raíz (el nombre de la tabla)."]
-
-        root_key = list(schema.keys())[0]
-        root_data = schema[root_key]
-
-        if not isinstance(root_data, dict):
-            return [f"El contenido de '{root_key}' debe ser un diccionario."]
-
-            # Validar sección 'columns'
-        columns = table_content.get('columns')
-        if not columns:
-            if not table_content.get('properties') and not table_content.get('fields'):
-                errors.append(f"Falta la sección 'columns' dentro de la tabla '{table_name}'.")
-
-        # CAMBIO: Permitir listas pero reportar como advertencia no bloqueante si quisieras,
-        # o simplemente rechazarlo si quieres ser estricto.
-        # Dado que admin_schema_view ya lo convierte, aquí podríamos ser estrictos para
-        # indicar que el ARCHIVO físico está mal, aunque el sistema lo tolere.
-        elif isinstance(columns, list):
-            # Retornamos esto como un error de formato, pero el View sabrá manejarlo.
-            return [f"⚠️ Legacy Format: 'columns' es una lista en '{table_name}'. Se convertirá automáticamente."]
-
-        elif not isinstance(columns, dict):
-            errors.append(f"La sección 'columns' de '{table_name}' debe ser un diccionario.")
-
-        return errors
 
     def generate_schema_table(self, schema: dict) -> str:
         """
@@ -215,15 +179,15 @@ class Utility:
         # Prioridad: columns > properties > fields
         properties = root_data.get('columns', root_data.get('properties', root_data.get('fields', {})))
 
-        output = [f"### Objeto: `{root_name}`"]
+        output = [f"\n### Objeto: `{root_name}`"]
 
         if root_description:
             # Limpiar saltos de línea para visualización limpia
             clean_desc = root_description.replace('\n', ' ').strip()
-            output.append(f"\n{clean_desc}")
+            output.append(f"##Descripción:  {clean_desc}")
 
         if properties:
-            output.append("\n**Estructura de Datos:**")
+            output.append("**Estructura de Datos:**")
             # Usamos indent_level 0 para las columnas principales
             output.append(self._format_json_schema(properties, 0))
         else:
@@ -305,124 +269,6 @@ class Utility:
             raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                      f"Failed to generate YAML: {e}")
 
-    def generate_context_for_schema(self, entity_name: str, schema_file: str = None, schema: dict = {}) -> str:
-        if not schema_file and not schema:
-            raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
-                               f'No se pudo obtener schema de la entidad: {entity_name}')
-
-        try:
-            if schema_file:
-                schema = self.load_schema_from_yaml(schema_file)
-            table_schema = self.generate_schema_table(schema)
-            return table_schema
-        except Exception as e:
-            logging.exception(e)
-            raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
-                               f'No se pudo leer el schema de la entidad: {entity_name}') from e
-
-
-    def generate_schema_table(self, schema: dict) -> str:
-        """
-        Genera documentación Markdown estandarizada soportando 'columns' como lista o dict.
-        """
-        if not schema or not isinstance(schema, dict):
-            return ""
-
-        # Detección de raíz (Wrapper) vs Estructura Plana
-        keys = list(schema.keys())
-        if not keys: return ""
-
-        # Heurística: Si hay múltiples claves y no parecen metadatos de JSON Schema (type, properties),
-        # asumimos que es una definición plana de campos (ej: {"field1":..., "field2":...})
-        if len(keys) > 1 and 'type' not in keys and 'properties' not in keys:
-            return self._format_json_schema(schema, 0)
-
-        root_name = keys[0]
-        root_data = schema[root_name]
-
-        # Si el root_data no es dict, quizás el schema es plano (ej: lista de columnas directa)
-        # Pero asumimos el formato estándar: { table: { ... } }
-        if not isinstance(root_data, dict):
-            # Fallback para estructuras extrañas o planas
-            return self._format_json_schema(schema, 0)
-
-        # Heurística 2: Si es una sola clave pero el contenido parece un campo simple (tiene type y no estructura de hijos)
-        # ej: {"field1": {"type": "string"}} -> debe renderizarse como campo, no como tabla.
-        has_structure = any(k in root_data for k in ['columns', 'properties', 'fields'])
-        if 'type' in root_data and not has_structure:
-            return self._format_json_schema(schema, 0)
-
-        description = root_data.get('description', '')
-
-        # Extracción inteligente: columns > properties > fields
-        props_source = root_data.get('columns', root_data.get('properties', root_data.get('fields')))
-
-        output = [f"### Objeto: `{root_name}`"]
-
-        if description:
-            output.append(f"\n{description.strip()}")
-
-        if props_source:
-            output.append("\n**Estructura de Datos:**")
-            output.append(self._format_json_schema(props_source, 0))
-        else:
-            output.append("\n_Sin definición de estructura._")
-
-        return "\n".join(output)
-
-    def _format_json_schema(self, properties: dict | list, indent_level: int) -> str:
-        output = []
-        indent_str = '  ' * indent_level
-
-        if not properties:
-            return ""
-
-        # Normalizar entrada: Lista vs Dict
-        items_iterable = []
-
-        if isinstance(properties, dict):
-            items_iterable = properties.items()
-        elif isinstance(properties, list):
-            # Adaptar lista [{'name': 'x', ...}] a tuplas ('x', {...})
-            for item in properties:
-                if isinstance(item, dict):
-                    name = item.get('name', 'unknown')
-                    items_iterable.append((name, item))
-
-        for name, details in items_iterable:
-            if not isinstance(details, dict): continue
-
-            description = details.get('description', '')
-            data_type = details.get('type', 'any')
-
-            # Normalización visual
-            if data_type and str(data_type).lower() == 'jsonb':
-                data_type = 'object'
-
-            line = f"{indent_str}- **`{name}`**"
-            if data_type:
-                line += f" ({data_type})"
-            if description:
-                clean_desc = description.replace('\n', ' ').strip()
-                line += f": {clean_desc}"
-
-            output.append(line)
-
-            # Recursividad: buscar hijos
-            children = details.get('properties', details.get('fields', details.get('columns')))
-
-            # Caso Array
-            if not children and details.get('items'):
-                items = details['items']
-                if isinstance(items, dict):
-                    if items.get('description'):
-                        output.append(f"{indent_str}  _Items: {items['description']}_")
-                    children = items.get('properties', items.get('fields'))
-
-            if children:
-                output.append(self._format_json_schema(children, indent_level + 1))
-
-        return "\n".join(output)
 
     def load_markdown_context(self, filepath: str) -> str:
         with open(filepath, 'r', encoding='utf-8') as f:

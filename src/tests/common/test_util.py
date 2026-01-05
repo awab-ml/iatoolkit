@@ -173,43 +173,57 @@ class TestUtil:
 
     def test_generate_llm_context(self):
         """Test generación de contexto LLM con schema que incluye listas y subcampos."""
-        entity_name = "test_entity"
-        client_json = {"field1": "valor1", "field2": 2}
+        # Se estructura el schema con una raíz 'TestEntity' como espera generate_schema_table
         schema = {
-            "field1": {
-                "type": "string",
-                "description": "Descripción del campo 1"
-            },
-            "field2": {
-                "type": "integer",
-                "description": "Descripción del campo 2",
-                "values": ["1", "2", "3"]
-            },
-            "field3": {
-                "type": "list",
-                "description": "Descripción del campo 3 (lista de objetos)",
-                "item_structure": {
-                    "subfield1": {
+            "TestEntity": {
+                "description": "Descripción de la entidad",
+                "properties": {
+                    "field1": {
                         "type": "string",
-                        "description": "Descripción de subcampo 1"
+                        "description": "Descripción del campo 1"
                     },
-                    "subfield2": {
-                        "type": "boolean",
-                        "description": "Descripción de subcampo 2"
+                    "field2": {
+                        "type": "integer",
+                        "description": "Descripción del campo 2",
+                        "values": ["1", "2", "3"]
+                    },
+                    "field3": {
+                        "type": "list",
+                        "description": "Descripción del campo 3 (lista de objetos)",
+                        # Se usa 'items' -> 'properties' compatible con util.py
+                        "items": {
+                            "properties": {
+                                "subfield1": {
+                                    "type": "string",
+                                    "description": "Descripción de subcampo 1"
+                                },
+                                "subfield2": {
+                                    "type": "boolean",
+                                    "description": "Descripción de subcampo 2"
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
+        # Se ajusta la expectativa para incluir los headers y la indentación correcta de subcampos
         expected_schema = "\n".join([
+            "\n### Objeto: `TestEntity`",
+            "##Descripción:  Descripción de la entidad",
+            "**Estructura de Datos:**",
             "- **`field1`** (string): Descripción del campo 1",
             "- **`field2`** (integer): Descripción del campo 2",
-            '- **`field3`** (list): Descripción del campo 3 (lista de objetos)',
+            "- **`field3`** (list): Descripción del campo 3 (lista de objetos)",
+            "  - **`subfield1`** (string): Descripción de subcampo 1",
+            "  - **`subfield2`** (boolean): Descripción de subcampo 2"
         ])
 
         # now check the schema
-        schema_context = self.util.generate_context_for_schema(entity_name, schema=schema)
+        schema_context = self.util.generate_schema_table(schema=schema)
         assert schema_context.strip() == expected_schema.strip()
+
 
     def test_markdown_context(self):
         md_content = "ejemplo de md context"

@@ -218,8 +218,6 @@ ui:
       array: "Lista (Array)"
       jsonb: "JSON Crudo"
 
-
-
   tooltips:
     history: "Historial con mis consultas"
     reload_context: "Forzar Recarga de Contexto"
