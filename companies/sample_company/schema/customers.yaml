@@ -1,0 +1,50 @@
+customers:
+  description: tabla de clientes
+  columns:
+    customerid:
+      type: VARCHAR(10)
+      pk: true
+    companyname:
+      type: VARCHAR(255)
+      description: empresa
+    contactname:
+      type: VARCHAR(255)
+      description: nombre de contacto
+    contacttitle:
+      type: VARCHAR(100)
+      description: titulo del contacto
+    address:
+      type: VARCHAR(255)
+    city:
+      type: VARCHAR(100)
+    region:
+      type: VARCHAR(50)
+    postalcode:
+      type: VARCHAR(20)
+    country:
+      type: VARCHAR(100)
+    phone:
+      type: VARCHAR(50)
+    family:
+      description: estructura de la familia del cliente
+      type: object
+      properties:
+        descr:
+          family_group: descripción del grupo familiar
+          type: string
+        hijos:
+          description: nombre de los hijos
+          properties:
+            direccion:
+              description: direccion del familiar
+              type: string
+            edad:
+              description: edad del hijo
+              type: number
+            nombre_hijo:
+              description: nombre
+              type: string
+          type: array
+        num_in:
+          description: numero de integrantes
+          type: number
