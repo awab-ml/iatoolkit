@@ -77,7 +77,7 @@ class BaseLoginView(MethodView):
             # LLM configuration: default model and availables
             default_llm_model, available_llm_models = self.config_service.get_llm_configuration(company_short_name)
 
-            prompts = self.prompt_service.get_user_prompts(company_short_name)
+            prompts = self.prompt_service.get_prompts(company_short_name)
 
             # Get the entire 'js_messages' block in the correct language.
             js_translations = self.i18n_service.get_translation_block('js_messages')

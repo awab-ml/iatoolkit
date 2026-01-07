@@ -58,6 +58,7 @@ class IAToolkit:
         self._injector = Injector()         # init empty injector
         self.version = IATOOLKIT_VERSION
         self.license = "Community Edition"
+        self.is_community = True
 
     @classmethod
     def get_instance(cls) -> 'IAToolkit':

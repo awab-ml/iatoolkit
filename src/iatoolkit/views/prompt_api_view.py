@@ -58,7 +58,7 @@ class PromptApiView(MethodView):
                 include_all = request.args.get('all', 'false').lower() == 'true'
 
                 # return prompts based on filter
-                return jsonify(self.prompt_service.get_user_prompts(company_short_name, include_all=include_all))
+                return jsonify(self.prompt_service.get_prompts(company_short_name, include_all=include_all))
 
         except Exception as e:
             logging.exception(

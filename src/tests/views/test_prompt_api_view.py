@@ -70,7 +70,7 @@ class TestPromptView:
 
         assert response.status_code == 401
         assert response.json['error_message'] == 'Authentication token is invalid'
-        self.prompt_service.get_user_prompts.assert_not_called()
+        self.prompt_service.get_prompts.assert_not_called()
 
     def test_get_list_success(self):
         """Test a successful request to retrieve all prompts."""
@@ -80,17 +80,17 @@ class TestPromptView:
             ]
         }
         # Check default call
-        self.prompt_service.get_user_prompts.return_value = mock_response
+        self.prompt_service.get_prompts.return_value = mock_response
         response = self.client.get(self.base_url)
         assert response.status_code == 200
-        self.prompt_service.get_user_prompts.assert_called_with(self.company_short_name, include_all=False)
+        self.prompt_service.get_prompts.assert_called_with(self.company_short_name, include_all=False)
 
     def test_get_list_admin_all(self):
         """Test retrieving all prompts (admin view)."""
-        self.prompt_service.get_user_prompts.return_value = {}
+        self.prompt_service.get_prompts.return_value = {}
         response = self.client.get(f"{self.base_url}?all=true")
         assert response.status_code == 200
-        self.prompt_service.get_user_prompts.assert_called_with(self.company_short_name, include_all=True)
+        self.prompt_service.get_prompts.assert_called_with(self.company_short_name, include_all=True)
 
     # --- POST Tests ---
     def test_post_create_prompt(self):

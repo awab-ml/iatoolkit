@@ -48,7 +48,7 @@ class ChatView(MethodView):
             branding_data = self.branding_service.get_company_branding(company_short_name)
             onboarding_cards = self.config_service.get_configuration(company_short_name, 'onboarding_cards')
             default_llm_model, available_llm_models = self.config_service.get_llm_configuration(company_short_name)
-            prompts = self.prompt_service.get_user_prompts(company_short_name)
+            prompts = self.prompt_service.get_prompts(company_short_name)
             js_translations = self.i18n_service.get_translation_block('js_messages')
 
             return render_template(

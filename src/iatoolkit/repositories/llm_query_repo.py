@@ -99,15 +99,16 @@ class LLMQueryRepo:
 
     def get_prompts(self, company: Company, include_all: bool = False) -> list[Prompt]:
         if include_all:
-            # Include all  prompts: company, system, agent
+            # Include all prompts (for the prompt admin dashboard)
             return self.session.query(Prompt).filter(
                 Prompt.company_id == company.id,
             ).all()
         else:
-            # Only company prompts, excluding system (default behavior for end users)
+            # Only active company prompts (default behavior for end users)
             return self.session.query(Prompt).filter(
                 Prompt.company_id == company.id,
-                Prompt.prompt_type == PromptType.COMPANY.value
+                Prompt.prompt_type == PromptType.COMPANY.value,
+                Prompt.active == True
             ).all()
 
     def get_prompt_by_name(self, company: Company, prompt_name: str):

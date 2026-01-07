@@ -151,7 +151,7 @@ class TestLoginView:
         self.profile_service.get_current_session_info.return_value = {
             "user_identifier": self.user_identifier
         }
-        self.prompt_service.get_user_prompts.return_value = [{"id": "p1"}]
+        self.prompt_service.get_prompts.return_value = [{"id": "p1"}]
         self.branding_service.get_company_branding.return_value = {"logo": "x.png"}
         self.config_service.get_configuration.return_value = [{"title": "card1"}]
 
@@ -165,7 +165,7 @@ class TestLoginView:
             company_short_name=self.company_short_name,
             user_identifier=self.user_identifier,
         )
-        self.prompt_service.get_user_prompts.assert_called_once_with(self.company_short_name)
+        self.prompt_service.get_prompts.assert_called_once_with(self.company_short_name)
         self.branding_service.get_company_branding.assert_called_once()
         self.config_service.get_configuration.assert_called_once()
 
@@ -207,7 +207,7 @@ class TestLoginView:
         # JWT válido
         self.jwt_service.validate_chat_jwt.return_value = {"user_identifier": self.user_identifier}
         # Datos auxiliares
-        self.prompt_service.get_user_prompts.return_value = [{"id": "p1"}]
+        self.prompt_service.get_prompts.return_value = [{"id": "p1"}]
         self.branding_service.get_company_branding.return_value = {"logo": "x.png"}
         self.config_service.get_configuration.return_value = [{"title": "card1"}]
 
@@ -224,7 +224,7 @@ class TestLoginView:
             company_short_name=self.company_short_name,
             user_identifier=self.user_identifier,
         )
-        self.prompt_service.get_user_prompts.assert_called_once_with(self.company_short_name)
+        self.prompt_service.get_prompts.assert_called_once_with(self.company_short_name)
         self.branding_service.get_company_branding.assert_called_once()
         self.config_service.get_configuration.assert_called_once()
 

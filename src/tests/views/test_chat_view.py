@@ -110,7 +110,7 @@ class TestChatView:
         self.mock_branding_service.get_company_branding.return_value = {"logo": "logo.png"}
         self.mock_config_service.get_configuration.return_value = [{"title": "Card 1"}]
         self.mock_config_service.get_llm_configuration.return_value = ("gpt-4", [])
-        self.mock_prompt_service.get_user_prompts.return_value = [{"name": "prompt1"}]
+        self.mock_prompt_service.get_prompts.return_value = [{"name": "prompt1"}]
 
         with patch("iatoolkit.views.chat_view.render_template") as mock_rt:
             mock_rt.return_value = "CHAT_HTML"
@@ -142,7 +142,7 @@ class TestChatView:
             'company_short_name': self.company_short_name
         }
         # Simulate error in a service
-        self.mock_prompt_service.get_user_prompts.side_effect = Exception("DB Error")
+        self.mock_prompt_service.get_prompts.side_effect = Exception("DB Error")
 
         with patch("iatoolkit.views.chat_view.render_template") as mock_rt:
             mock_rt.return_value = "ERROR_HTML", 500
