@@ -7,9 +7,9 @@ import logging
 from typing import Dict, List, Optional
 from iatoolkit.infra.llm_response import LLMResponse, ToolCall, Usage
 from iatoolkit.common.exceptions import IAToolkitException
-import html
 from typing import List
 import mimetypes
+import re
 
 
 class OpenAIAdapter:
@@ -114,26 +114,126 @@ class OpenAIAdapter:
 
     def _map_openai_response(self, openai_response) -> LLMResponse:
         """Mapear respuesta de OpenAI a estructura común"""
-        # Mapear tool calls
-        tool_calls = []
-        if hasattr(openai_response, 'output') and openai_response.output:
-            for tool_call in openai_response.output:
-                if hasattr(tool_call, 'type') and tool_call.type == "function_call":
-                    tool_calls.append(ToolCall(
-                        call_id=getattr(tool_call, 'call_id', ''),
-                        type=tool_call.type,
-                        name=getattr(tool_call, 'name', ''),
-                        arguments=getattr(tool_call, 'arguments', '{}')
-                    ))
+        tool_calls: List[ToolCall] = []
+        content_parts: List[Dict] = []
+        output_text = ""
 
-        # Mapear usage
+        print(f'openai_response.output: {openai_response.output}')
+        output_items = getattr(openai_response, 'output', []) or []
+
+        def _extract_markdown_images(text: str) -> None:
+            # Pattern: ![Alt](https://...)
+            markdown_images = re.findall(r'!\[([^\]]*)\]\((https?://[^)]+)\)', text or "")
+            for _alt_text, url in markdown_images:
+                content_parts.append({
+                    "type": "image",
+                    "source": {
+                        "type": "url",
+                        "media_type": "image/webp",
+                        "url": url
+                    }
+                })
+
+        for item in output_items:
+            item_type = getattr(item, 'type', '')
+
+            # 1) Tool calls (Responses API)
+            if item_type == "function_call":
+                tool_calls.append(ToolCall(
+                    call_id=getattr(item, 'call_id', ''),
+                    type=item_type,
+                    name=getattr(item, 'name', ''),
+                    arguments=getattr(item, 'arguments', '{}')
+                ))
+                continue
+
+            # 2) Mensajes (lo más común en Responses API)
+            if item_type == "message":
+                msg_content = getattr(item, "content", None) or []
+                for part in msg_content:
+                    part_type = getattr(part, "type", "") or ""
+
+                    # 2.A) Texto
+                    if part_type in ("output_text", "text"):
+                        text_content = getattr(part, "text", "") or ""
+                        if text_content:
+                            _extract_markdown_images(text_content)
+                            output_text += text_content
+                            content_parts.append({"type": "text", "text": text_content})
+
+                    # 2.B) Imagen (puede venir como URL o base64 según el SDK/endpoint)
+                    elif part_type in ("output_image", "image"):
+                        # Algunas variantes comunes:
+                        # - part.image_url (string URL)
+                        # - part.url
+                        # - part.b64_json (base64)
+                        image_url = getattr(part, "image_url", None) or getattr(part, "url", None)
+                        b64 = getattr(part, "b64_json", None) or getattr(part, "image", None) or getattr(part, "data", None)
+
+                        # mime_type a veces viene, a veces no
+                        mime_type = getattr(part, "media_type", None) or getattr(part, "mime_type", None) or "image/png"
+
+                        if image_url:
+                            content_parts.append({
+                                "type": "image",
+                                "source": {
+                                    "type": "url",
+                                    "media_type": mime_type,
+                                    "url": image_url
+                                }
+                            })
+                            output_text += "\n[Imagen Generada]\n"
+                        elif b64:
+                            content_parts.append({
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": b64
+                                }
+                            })
+                            output_text += "\n[Imagen Generada]\n"
+
+                continue
+
+            # 3) Compatibilidad hacia atrás: ítems planos "text"
+            if item_type == "text":
+                text_content = getattr(item, 'text', '') or ""
+                if text_content:
+                    _extract_markdown_images(text_content)
+                    output_text += text_content
+                    content_parts.append({"type": "text", "text": text_content})
+                continue
+
+            # 4) Compatibilidad hacia atrás: ítems planos "image"
+            if item_type == "image":
+                base64_data = getattr(item, 'image', '') or getattr(item, 'data', '')
+                mime_type = getattr(item, 'media_type', 'image/png')
+                if base64_data:
+                    content_parts.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mime_type,
+                            "data": base64_data
+                        }
+                    })
+                    output_text += "\n[Imagen Generada]\n"
+                continue
+
+        # Fallback: Si no se extrajo texto, probamos output_text directo
+        if not output_text:
+            output_text = getattr(openai_response, 'output_text', '') or ""
+            if output_text and not content_parts:
+                _extract_markdown_images(output_text)
+                content_parts.append({"type": "text", "text": output_text})
+
         usage = Usage(
             input_tokens=openai_response.usage.input_tokens if openai_response.usage else 0,
             output_tokens=openai_response.usage.output_tokens if openai_response.usage else 0,
             total_tokens=openai_response.usage.total_tokens if openai_response.usage else 0
         )
 
-        # Reasoning content extracted from Responses output items (type="reasoning")
         reasoning_list = self._extract_reasoning_content(openai_response)
         reasoning_str = "\n".join(reasoning_list)
 
@@ -141,10 +241,11 @@ class OpenAIAdapter:
             id=openai_response.id,
             model=openai_response.model,
             status=openai_response.status,
-            output_text=getattr(openai_response, 'output_text', ''),
+            output_text=output_text,
             output=tool_calls,
             usage=usage,
-            reasoning_content=reasoning_str
+            reasoning_content=reasoning_str,
+            content_parts=content_parts
         )
 
     def _extract_reasoning_content(self, openai_response) -> List[str]:

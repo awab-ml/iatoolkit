@@ -33,3 +33,26 @@ class S3Connector(FileConnector):
     def get_file_content(self, file_path: str) -> bytes:
         response = self.s3.get_object(Bucket=self.bucket, Key=file_path)
         return response['Body'].read()
+
+    def upload_file(self, file_path: str, content: bytes, content_type: str = None) -> None:
+        # If the path doesn't start with the prefix, add it (optional, depends on your logic)'
+        # Assuming file_path is either a full path or relative to the root of the bucket for flexibility
+        full_path = file_path
+
+        extra_args = {}
+        if content_type:
+            extra_args['ContentType'] = content_type
+
+        self.s3.put_object(
+            Bucket=self.bucket,
+            Key=full_path,
+            Body=content,
+            **extra_args
+        )
+
+    def generate_presigned_url(self, file_path: str, expiration: int = 3600) -> str:
+        return self.s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': self.bucket, 'Key': file_path},
+            ExpiresIn=expiration
+        )

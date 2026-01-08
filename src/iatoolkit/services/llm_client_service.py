@@ -21,6 +21,7 @@ import re
 import tiktoken
 from typing import Dict, Optional, List
 from iatoolkit.services.dispatcher_service import Dispatcher
+from iatoolkit.services.storage_service import StorageService
 
 CONTEXT_ERROR_MESSAGE = 'Tu consulta supera el límite de contexto, utiliza el boton de recarga de contexto.'
 
@@ -33,11 +34,13 @@ class llmClient:
                  llmquery_repo: LLMQueryRepo,
                  llm_proxy: LLMProxy,
                  model_registry: ModelRegistry,
+                 storage_service: StorageService,
                  util: Utility
                  ):
         self.llmquery_repo = llmquery_repo
         self.llm_proxy = llm_proxy
         self.model_registry = model_registry
+        self.storage_service = storage_service
         self.util = util
         self._dispatcher = None # Cache for the lazy-loaded dispatcher
 
@@ -166,7 +169,7 @@ class llmClient:
                         error_message = f"Dispatch error en {function_name} con args {args} -******- {str(e)}"
                         raise IAToolkitException(IAToolkitException.ErrorType.CALL_ERROR, error_message)
 
-                    # add  the return value into the list of messages
+                    # add the return value into the list of messages
                     input_messages.append({
                         "type": "function_call_output",
                         "call_id": tool_call.call_id,
@@ -204,6 +207,10 @@ class llmClient:
                     images=images,
                 )
                 stats_fcall = self.add_stats(stats_fcall, self.get_stats(response))
+
+            # --- IMAGE PROCESSING ---
+            # before save or respond, upload the images to S3 and clean content_parts
+            self._process_generated_images(response, company.short_name)
 
             # save the statistices
             stats['response_time']=int(time.time() - start_time)
@@ -243,6 +250,7 @@ class llmClient:
                 'query_id': query.id,
                 'model': model,
                 'reasoning_content': final_reasoning,
+                'content_parts': response.content_parts
             }
         except SQLAlchemyError as db_error:
             # rollback
@@ -298,6 +306,50 @@ class llmClient:
             raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
 
         return response.id
+
+    def _process_generated_images(self, response, company_short_name: str):
+        """
+        Traverse content_parts, detect images in Base64, upload to S3 and update content_parts.
+        """
+        if not response.content_parts:
+            return
+
+        for part in response.content_parts:
+            if part.get('type') == 'image':
+                source = part.get('source', {})
+                if source.get('type') in ['base64', 'url']:
+                    try:
+                        if source.get('type') == 'url':
+                            url = source.get('url')
+                            storage_key = None
+                        else:
+                            # upload image to S3
+                            result = self.storage_service.store_generated_image(
+                                company_short_name,
+                                source.get('data'),
+                                source.get('media_type', 'image/png')
+                            )
+                            url = result['url']
+                            storage_key = result['storage_key']
+
+                        # Update content_part: Now it's a remote reference, not base64 anymore.
+                        # We keep 'url' for the frontend to display it itself, and storage_key for internal reference.
+                        part['source'] = {
+                            'type': 'url',
+                            'url': url,
+                            'storage_key': storage_key,
+                            'media_type': source.get('media_type')
+                        }
+
+                        # clean data
+                        logging.info(f"Imagen procesada y subida: {url}")
+
+                    except Exception as e:
+                        logging.error(f"Fallo al subir imagen generada: {e}")
+
+                        # Fallback: keep the base64 and signal the error
+                        part['error'] = "Failed to upload image"
+
 
     def decode_response(self, response) -> dict:
         message = response.output_text

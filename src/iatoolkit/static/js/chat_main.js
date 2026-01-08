@@ -58,7 +58,6 @@ $(document).ready(function () {
 
 });
 
-
 /**
  * Main function to handle sending a chat message.
  */
@@ -93,12 +92,10 @@ const handleChatMessage = async function () {
             if (paramsString) { displayMessage += `: ${paramsString}`; }
         }
 
-        // Simplificado: Si no hay mensaje, el 'finally' se encargará de limpiar.
         if (!displayMessage) {
             return;
         }
 
-        // Obtener archivos ANTES de mostrar el mensaje para poder renderizarlos
         const files = window.filePond.getFiles();
 
         displayUserMessage(displayMessage, isEditable, question, files);
@@ -114,59 +111,18 @@ const handleChatMessage = async function () {
             files: filesBase64.map(f => ({ filename: f.name, content: f.base64 })),
             user_identifier: window.user_identifier,
             model: (window.currentLlmModel || window.defaultLlmModel || '')
-
         };
 
         const responseData = await callToolkit("/api/llm_query", data, "POST");
-        if (responseData && responseData.answer) {
-                // CAMBIO:  contenedor principal para la respuesta del bot
-                const botMessageContainer = $('<div>').addClass('bot-message-container');
 
-                // 1. Si hay reasoning_content, agregar el acordeón colapsable
-                if (responseData.reasoning_content) {
-                    const uniqueId = 'reasoning-' + Date.now(); // ID único para el collapse
+        // Delegamos el procesamiento de la respuesta a la nueva función
+        processBotResponse(responseData);
 
-                    const reasoningBlock = $(`
-                            <div class="reasoning-block">
-                                <button class="reasoning-toggle btn btn-sm btn-link text-decoration-none p-0"
-                                    type="button"
-                                    data-bs-toggle="collapse"
-                                    data-bs-target="#${uniqueId}"
-                                    aria-expanded="false"
-                                    aria-controls="${uniqueId}">
-                                    <i class="bi bi-lightbulb me-1"></i> ${t_js('show_reasoning')}
-                                </button>
-                        
-                                <div class="collapse mt-2" id="${uniqueId}">
-                                    <div class="reasoning-card">
-                                        ${responseData.reasoning_content}
-                                    </div>
-                                </div>
-                            </div>
-                        `);
-                    botMessageContainer.append(reasoningBlock);
-                }
-
-                // 2. Agregar la respuesta final
-                const answerSection = $('<div>').addClass('answer-section llm-output').append(responseData.answer);
-                botMessageContainer.append(answerSection);
-
-                // 3. Mostrar el contenedor completo
-                displayBotMessage(botMessageContainer);
-
-        }
     } catch (error) {
         if (error.name === 'AbortError') {
-
-            // Usando jQuery estándar para construir el elemento ---
-            const icon = $('<i>').addClass('bi bi-stop-circle me-2'); // Icono sin "fill" para un look más ligero
+            const icon = $('<i>').addClass('bi bi-stop-circle me-2');
             const textSpan = $('<span>').text('La generación de la respuesta ha sido detenida.');
-
-            const abortMessage = $('<div>')
-                .addClass('system-message')
-                .append(icon)
-                .append(textSpan);
-
+            const abortMessage = $('<div>').addClass('system-message').append(icon).append(textSpan);
             displayBotMessage(abortMessage);
         } else {
             console.error("Error in handleChatMessage:", error);
@@ -174,16 +130,77 @@ const handleChatMessage = async function () {
             displayBotMessage(errorSection);
         }
     } finally {
-        // Este bloque se ejecuta siempre, garantizando que el estado se limpie.
         isRequestInProgress = false;
         hideSpinner();
         toggleSendStopButtons(false);
         updateSendButtonState();
         if (window.filePond) {
-             window.filePond.removeFiles();
+            window.filePond.removeFiles();
         }
     }
 };
+
+/**
+ * Processes the response data from the LLM and displays it in the chat.
+ * Handles multimodal content: uses 'answer' for text (HTML) and 'content_parts' for images.
+ * @param {object} responseData - The JSON response from the server.
+ */
+function processBotResponse(responseData) {
+    if (!responseData || (!responseData.answer && !responseData.content_parts)) {
+        return;
+    }
+
+    const botMessageContainer = $('<div>').addClass('bot-message-container');
+
+    // 1. Si hay reasoning_content, agregar el acordeón colapsable
+    if (responseData.reasoning_content) {
+        const uniqueId = 'reasoning-' + Date.now();
+        const reasoningBlock = $(`
+                <div class="reasoning-block">
+                    <button class="reasoning-toggle btn btn-sm btn-link text-decoration-none p-0"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#${uniqueId}"
+                        aria-expanded="false" aria-controls="${uniqueId}">
+                        <i class="bi bi-lightbulb me-1"></i> ${t_js('show_reasoning')}
+                    </button>
+                    <div class="collapse mt-2" id="${uniqueId}">
+                        <div class="reasoning-card">${responseData.reasoning_content}</div>
+                    </div>
+                </div>
+            `);
+        botMessageContainer.append(reasoningBlock);
+    }
+
+    // 2. Agregar la respuesta final
+    const answerSection = $('<div>').addClass('answer-section llm-output');
+
+    // A. Texto: Usamos 'answer' porque contiene el HTML procesado y limpio del backend.
+    // Evitamos usar content_parts[type=text] porque contiene el JSON crudo del LLM.
+    if (responseData.answer) {
+        answerSection.append(responseData.answer);
+    }
+
+    // B. Imágenes: Iteramos content_parts buscando SOLO imágenes para adjuntarlas.
+    if (responseData.content_parts && responseData.content_parts.length > 0) {
+        responseData.content_parts.forEach(part => {
+            if (part.type === 'image' && part.source && part.source.url) {
+                const imgContainer = $('<div>').addClass('image-part my-3 text-center');
+                const img = $('<img>')
+                    .attr('src', part.source.url)
+                    .addClass('img-fluid rounded shadow-sm border')
+                    .css({'max-height': '400px', 'cursor': 'pointer'})
+                    .on('click', () => window.open(part.source.url, '_blank'));
+
+                imgContainer.append(img);
+                answerSection.append(imgContainer);
+            }
+        });
+    }
+
+    botMessageContainer.append(answerSection);
+
+    // 3. Mostrar el contenedor completo
+    displayBotMessage(botMessageContainer);
+}
 
 
 /**

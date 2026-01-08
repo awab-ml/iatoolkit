@@ -171,13 +171,21 @@ class TestQueryService:
 
         self.mock_history_manager.populate_request_params.side_effect = populate_side_effect
 
-        # Simular respuesta válida del LLM
-        self.mock_llm_client.invoke.return_value = {'valid_response': True, 'answer': 'Hello'}
+        # Simular respuesta válida del LLM incluyendo content_parts
+        mock_response = {
+            'valid_response': True,
+            'answer': 'Hello',
+            'content_parts': [
+                {'type': 'text', 'text': 'Hello'},
+                {'type': 'image', 'source': {'url': 'https://s3...'}}
+            ]
+        }
+        self.mock_llm_client.invoke.return_value = mock_response
 
-        self.service.llm_query(company_short_name=MOCK_COMPANY_SHORT_NAME,
-                               user_identifier=str(MOCK_LOCAL_USER_ID),
-                               question="Hi",
-                               model='gpt-test')
+        result = self.service.llm_query(company_short_name=MOCK_COMPANY_SHORT_NAME,
+                                        user_identifier=str(MOCK_LOCAL_USER_ID),
+                                        question="Hi",
+                                        model='gpt-test')
 
         # 1. Verifica que se llamó a populate_request_params con un Handle
         self.mock_history_manager.populate_request_params.assert_called_once()
@@ -192,6 +200,11 @@ class TestQueryService:
         assert kwargs['previous_response_id'] == 'existing_id'
         assert kwargs['context_history'] is None
         assert kwargs['images'] == []
+
+        # 3. Verificar que content_parts se propaga correctamente
+        assert 'content_parts' in result
+        assert len(result['content_parts']) == 2
+        assert result['content_parts'][1]['source']['url'] == 'https://s3...'
 
     def test_llm_query_rebuilds_context_if_missing(self):
         """Prueba que llm_query reconstruye el contexto automáticamente si populate_request_params lo indica."""

@@ -239,12 +239,20 @@ class DeepseekAdapter:
 
         # If the model produced tool calls, fills this list
         tool_calls_out: List[ToolCall] = []
+        content_parts: List[Dict] = []  # Initialize content_parts
 
         tool_calls = getattr(message, "tool_calls", None) or []
         if not tool_calls:
             # No tool calls: standard assistant message
             output_text = getattr(message, "content", "") or ""
             status = "completed"
+
+            # Fill content_parts for text response
+            if output_text:
+                content_parts.append({
+                    "type": "text",
+                    "text": output_text
+                })
 
         else:
             logging.debug(f"[DeepSeek] RAW tool_calls: {tool_calls}")
@@ -281,5 +289,6 @@ class DeepseekAdapter:
             output_text=output_text,
             output=tool_calls_out,
             usage=usage,
-            reasoning_content=reasoning_content
+            reasoning_content=reasoning_content,
+            content_parts=content_parts  # Pass content_parts
         )

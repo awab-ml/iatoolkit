@@ -34,6 +34,9 @@ class LLMResponse:
     usage: Usage
     reasoning_content: str = None # campo opcional para Chain of Thought
 
+    # ordered list of content blocks (text and image mixed)
+    # Example: [{"type": "text", "text": "..."}, {"type": "image", "source": {"type": "base64", "data": "..."}}]
+    content_parts: List[Dict] = None
 
     def __post_init__(self):
         """Asegura que output sea una lista"""
@@ -42,4 +45,14 @@ class LLMResponse:
 
         if self.reasoning_content is None:
             self.reasoning_content = ""
+
+        if self.content_parts is None:
+            self.content_parts = []
+
+            # if the response has legacy text and no content parts, create a default text part
+            if self.output_text:
+                self.content_parts.append({
+                    "type": "text",
+                    "text": self.output_text
+                })
 

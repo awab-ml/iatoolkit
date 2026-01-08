@@ -174,3 +174,47 @@ class TestOpenAIAdapter:
         assert call_kwargs['tool_choice'] == 'none'
         assert call_kwargs['text'] == {'some': 'text'}
         assert call_kwargs['reasoning'] == {'some': 'reasoning'}
+
+    def test_create_response_with_generated_image(self):
+        """Prueba que procesa una imagen generada en la respuesta."""
+        # Arrange
+        mock_response = MagicMock()
+        mock_response.id = 'resp-img'
+        mock_response.model = 'gpt-4'
+        mock_response.status = 'completed'
+        mock_response.output_text = ''
+        mock_response.usage = None
+
+        # Simulamos output_items mixtos: texto + imagen
+        text_item = MagicMock()
+        text_item.type = 'text'
+        text_item.text = 'Here is the image:'
+
+        image_item = MagicMock()
+        image_item.type = 'image'
+        image_item.image = 'BASE64DATA' # Simula el contenido binario
+        image_item.media_type = 'image/png'
+
+        mock_response.output = [text_item, image_item]
+
+        self.mock_openai_client.responses.create.return_value = mock_response
+
+        # Act
+        result = self.adapter.create_response(model='gpt-4', input=[])
+
+        # Assert
+        # Verificar que content_parts tiene la estructura correcta
+        assert len(result.content_parts) == 2
+
+        # Parte 1: Texto
+        assert result.content_parts[0]['type'] == 'text'
+        assert result.content_parts[0]['text'] == 'Here is the image:'
+
+        # Parte 2: Imagen
+        assert result.content_parts[1]['type'] == 'image'
+        assert result.content_parts[1]['source']['type'] == 'base64'
+        assert result.content_parts[1]['source']['data'] == 'BASE64DATA'
+        assert result.content_parts[1]['source']['media_type'] == 'image/png'
+
+        # Verificar fallback de texto plano
+        assert "[Imagen Generada]" in result.output_text

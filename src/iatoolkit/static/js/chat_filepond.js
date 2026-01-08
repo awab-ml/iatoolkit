@@ -21,7 +21,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const filePond = FilePond.create(inputElement, {
         allowMultiple: true,
         maxFiles: 5,
-        maxFileSize: '10MB', // Adjust as needed
+        maxFileSize: '30MB',
+
         // Extensive list of accepted types (Images, PDF, Text, Excel, Word)
         acceptedFileTypes: [
             'image/*',

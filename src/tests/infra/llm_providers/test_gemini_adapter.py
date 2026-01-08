@@ -177,3 +177,51 @@ class TestGeminiAdapter:
         self.mock_generative_model.generate_content.return_value = mock_response
         response = self.adapter.create_response(model="gemini-pro", input=[])
         assert response.status == expected_status
+
+    def test_create_response_with_generated_image(self):
+        """Prueba una respuesta que incluye texto e imagen generada."""
+        mock_response = MagicMock()
+        mock_candidate = MagicMock()
+        mock_candidate.finish_reason = "STOP"
+
+        # Parte 1: Texto
+        part_text = MagicMock()
+        part_text.text = "Mira este dibujo:"
+        # Importante: forzar que inline_data sea falso para que no entre en el elif de imagen por error
+        part_text.inline_data = None
+        del part_text.function_call
+
+        # Parte 2: Imagen (Inline Data)
+        part_img = MagicMock()
+        # CRUCIAL: part_img.text debe ser falso para saltar el primer if
+        part_img.text = None
+        part_img.inline_data.mime_type = "image/png"
+        part_img.inline_data.data = "FAKE_BASE64"
+        del part_img.function_call
+
+        mock_candidate.content.parts = [part_text, part_img]
+        mock_response.candidates = [mock_candidate]
+        del mock_response.usage_metadata # Simplificar usage
+
+        self.mock_generative_model.generate_content.return_value = mock_response
+
+        # Act
+        response = self.adapter.create_response(model="gemini-1.5-pro", input=[])
+
+        # Assert
+        assert isinstance(response, LLMResponse)
+        assert len(response.content_parts) == 2
+
+        # Verificar Texto
+        assert response.content_parts[0]['type'] == 'text'
+        assert response.content_parts[0]['text'] == "Mira este dibujo:"
+
+        # Verificar Imagen
+        assert response.content_parts[1]['type'] == 'image'
+        source = response.content_parts[1]['source']
+        assert source['type'] == 'base64'
+        assert source['media_type'] == 'image/png'
+        assert source['data'] == 'FAKE_BASE64'
+
+        # Verificar que output_text tenga el placeholder
+        assert "[Imagen Generada]" in response.output_text

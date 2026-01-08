@@ -304,8 +304,7 @@ class PromptService:
         """
 
         # if there are system prompts already registered, skip
-        if self.llm_query_repo.get_system_prompts():
-            return
+        # if self.llm_query_repo.get_system_prompts(): return
 
         sys_category = PromptCategory(company_id=company.id, name="System", order=0)
         self.llm_query_repo.create_or_update_prompt_category(sys_category)

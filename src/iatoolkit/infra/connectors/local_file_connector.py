@@ -44,3 +44,6 @@ class LocalFileConnector(FileConnector):
         except Exception as e:
             raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
                                f"Error leyendo el archivo {file_path}: {e}")
+
+    def upload_file(self, file_path: str, content: bytes, content_type: str = None) -> None:
+        return

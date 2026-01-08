@@ -66,3 +66,6 @@ class GoogleDriveConnector(FileConnector):
             status, done = downloader.next_chunk()
 
         return file_buffer.getvalue()
+
+    def upload_file(self, file_path: str, content: bytes, content_type: str = None) -> None:
+        return

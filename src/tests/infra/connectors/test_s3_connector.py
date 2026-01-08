@@ -94,3 +94,71 @@ class TestS3Connector(unittest.TestCase):
 
         result = self.connector.get_file_content("test-prefix/file1.txt")
         self.assertEqual(result, b"mock file content")
+
+    def test_upload_file_success(self):
+        # Test basic upload functionality
+        file_path = "uploads/image.png"
+        content = b"fake-image-data"
+        content_type = "image/png"
+
+        self.connector.upload_file(file_path, content, content_type)
+
+        # Verify put_object was called with correct parameters
+        self.mock_s3_client.put_object.assert_called_once_with(
+            Bucket=self.bucket,
+            Key=file_path,
+            Body=content,
+            ContentType=content_type
+        )
+
+    def test_upload_file_without_content_type(self):
+        # Test upload without specifying content type
+        file_path = "uploads/data.bin"
+        content = b"fake-data"
+
+        self.connector.upload_file(file_path, content)
+
+        # Verify put_object was called without ContentType
+        self.mock_s3_client.put_object.assert_called_once_with(
+            Bucket=self.bucket,
+            Key=file_path,
+            Body=content
+        )
+
+    def test_upload_file_error(self):
+        # Test error handling during upload
+        self.mock_s3_client.put_object.side_effect = Exception("S3 Upload Failed")
+
+        with self.assertRaises(Exception) as context:
+            self.connector.upload_file("path/file.txt", b"data")
+
+        self.assertEqual(str(context.exception), "S3 Upload Failed")
+
+    def test_generate_presigned_url_success(self):
+        # Test generating a presigned URL
+        file_path = "images/pic.jpg"
+        expected_url = "https://s3.amazonaws.com/test-bucket/images/pic.jpg?signature=xyz"
+
+        self.mock_s3_client.generate_presigned_url.return_value = expected_url
+
+        url = self.connector.generate_presigned_url(file_path)
+
+        self.assertEqual(url, expected_url)
+        self.mock_s3_client.generate_presigned_url.assert_called_once_with(
+            'get_object',
+            Params={'Bucket': self.bucket, 'Key': file_path},
+            ExpiresIn=3600
+        )
+
+    def test_generate_presigned_url_custom_expiration(self):
+        # Test generating URL with custom expiration time
+        file_path = "images/pic.jpg"
+        expiration = 60
+
+        self.connector.generate_presigned_url(file_path, expiration)
+
+        self.mock_s3_client.generate_presigned_url.assert_called_once_with(
+            'get_object',
+            Params={'Bucket': self.bucket, 'Key': file_path},
+            ExpiresIn=expiration
+        )

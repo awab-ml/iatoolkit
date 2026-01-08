@@ -88,6 +88,10 @@ class TestDeepseekAdapter:
         assert result.usage.output_tokens == 5
         assert result.usage.total_tokens == 15
 
+        # Check content_parts consistency
+        assert len(result.content_parts) == 1
+        assert result.content_parts[0] == {"type": "text", "text": "Hello"}
+
     def test_create_response_with_tools_and_tool_calls(self):
         """
         When tools are provided and the model returns tool_calls:
@@ -235,6 +239,11 @@ class TestDeepseekAdapter:
         assert result.output_text == "Plain answer"
         assert result.status == "completed"
         assert result.output == []
+
+        # Check content_parts consistency
+        assert len(result.content_parts) == 1
+        assert result.content_parts[0] == {"type": "text", "text": "Plain answer"}
+
 
     def test_map_deepseek_chat_response_no_choices_raises(self):
         """

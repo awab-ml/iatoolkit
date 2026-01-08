@@ -12,6 +12,7 @@ import logging
 import json
 import uuid
 import mimetypes
+import re
 
 
 class GeminiAdapter:
@@ -285,13 +286,37 @@ class GeminiAdapter:
         response_id = str(uuid.uuid4())
         output_text = ""
         tool_calls = []
+        content_parts = []
 
         if gemini_response.candidates and len(gemini_response.candidates) > 0:
             candidate = gemini_response.candidates[0]
 
             for part in candidate.content.parts:
+                # 1. Caso Texto
                 if hasattr(part, 'text') and part.text:
-                    output_text += part.text
+                    text_chunk = part.text
+
+                    # Buscar imágenes incrustadas como Markdown en el texto
+                    # Pattern: ![Alt text](URL)
+                    markdown_images = re.findall(r'!\[([^\]]*)\]\((https?://[^)]+)\)', text_chunk)
+
+                    for alt_text, url in markdown_images:
+                        content_parts.append({
+                            "type": "image",
+                            "source": {
+                                "type": "url",
+                                "media_type": "image/webp", # Asumimos webp por defecto en generación moderna
+                                "url": url
+                            }
+                        })
+
+                    output_text += text_chunk
+                    content_parts.append({
+                        "type": "text",
+                        "text": text_chunk
+                    })
+
+                # 2. Caso Función (Tool Call)
                 elif hasattr(part, 'function_call') and part.function_call:
                     func_call = part.function_call
                     tool_calls.append(ToolCall(
@@ -300,6 +325,39 @@ class GeminiAdapter:
                         name=func_call.name,
                         arguments=json.dumps(MessageToDict(func_call._pb).get('args', {}))
                     ))
+
+                # 3. Caso Imagen (Inline Data / Base64 directo de Gemini)
+                elif hasattr(part, 'inline_data') and part.inline_data:
+                    # Gemini devuelve imagenes generadas aqui
+                    mime_type = part.inline_data.mime_type
+                    data_base64 = part.inline_data.data # Esto son bytes o str base64
+
+                    content_parts.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mime_type,
+                            "data": data_base64
+                        }
+                    })
+
+                    # Opcional: Agregar un placeholder al texto plano para logs
+                    output_text += "\n[Imagen Generada]\n"
+
+                # 4. Caso Archivo (File Data / URI)
+                elif hasattr(part, 'file_data') and part.file_data:
+                    mime_type = part.file_data.mime_type
+                    file_uri = part.file_data.file_uri
+
+                    content_parts.append({
+                        "type": "image",
+                        "source": {
+                            "type": "url",
+                            "media_type": mime_type,
+                            "url": file_uri
+                        }
+                    })
+                    output_text += f"\n[Imagen Generada: {file_uri}]\n"
 
         # Determinar status
         status = "completed"
@@ -339,7 +397,8 @@ class GeminiAdapter:
             status=status,
             output_text=output_text,
             output=tool_calls,
-            usage=usage
+            usage=usage,
+            content_parts=content_parts
         )
 
     def _extract_usage_metadata(self, gemini_response) -> Usage:

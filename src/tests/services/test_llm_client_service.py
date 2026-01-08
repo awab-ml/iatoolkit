@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from iatoolkit.services.llm_client_service import llmClient
+from iatoolkit.services.storage_service import StorageService
 from iatoolkit.common.model_registry import ModelRegistry
 from iatoolkit.infra.llm_response import LLMResponse, ToolCall, Usage
 from iatoolkit.common.exceptions import IAToolkitException
@@ -18,6 +19,7 @@ class TestLLMClient:
         self.llmquery_repo = MagicMock()
         self.util_mock = MagicMock()
         self.model_registry_mock = MagicMock(spec=ModelRegistry)
+        self.storage_service_mock = MagicMock(spec=StorageService)
         self.mock_proxy = MagicMock()
         self.injector_mock = MagicMock()
 
@@ -38,7 +40,8 @@ class TestLLMClient:
             llmquery_repo=self.llmquery_repo,
             util=self.util_mock,
             llm_proxy=self.mock_proxy,
-            model_registry=self.model_registry_mock
+            model_registry=self.model_registry_mock,
+            storage_service=self.storage_service_mock
         )
 
         # Respuesta mock estándar del LLM
@@ -68,7 +71,66 @@ class TestLLMClient:
         assert result['valid_response'] is True
         assert 'Test response' in result['answer']
         assert result['response_id'] == 'response_123'
+
+        assert 'content_parts' in result
+        assert len(result['content_parts']) > 0
+
         self.llmquery_repo.add_query.assert_called_once()
+
+    def test_invoke_processes_generated_images(self):
+        """Test que verifica que las imágenes generadas se suben al storage y se actualiza la respuesta."""
+        # 1. Configurar respuesta del LLM con una imagen en Base64
+        base64_data = "SGVsbG8="  # 'Hello' en base64
+        mime_type = "image/png"
+
+        mock_response = LLMResponse(
+            id='resp_img', model='gpt-4o', status='completed',
+            output_text='{"answer": "Look at this", "aditional_data": {}}',
+            output=[], usage=Usage(10, 10, 20),
+            content_parts=[
+                {'type': 'text', 'text': 'Look at this'},
+                {
+                    'type': 'image',
+                    'source': {
+                        'type': 'base64',
+                        'media_type': mime_type,
+                        'data': base64_data
+                    }
+                }
+            ]
+        )
+        self.mock_proxy.create_response.return_value = mock_response
+
+        # 2. Configurar el mock de storage para devolver URLs simuladas
+        self.storage_service_mock.store_generated_image.return_value = {
+            'storage_key': 'companies/test_company/generated_images/uuid.png',
+            'url': 'https://s3.amazonaws.com/bucket/uuid.png?token=...'
+        }
+
+        # 3. Invocar
+        result = self.client.invoke(
+            company=self.company, user_identifier='user1', previous_response_id='p1',
+            question='q', context='c', tools=[], text={}, model='gpt-5', images=[]
+        )
+
+        # 4. Validar llamada a storage service
+        self.storage_service_mock.store_generated_image.assert_called_once_with(
+            'test_company', base64_data, mime_type
+        )
+
+        # 5. Validar que la respuesta final contiene la URL y no el base64
+        content_parts = result['content_parts']
+        assert len(content_parts) == 2
+
+        image_part = content_parts[1]
+        assert image_part['type'] == 'image'
+        # El tipo de fuente debe haber cambiado a 'url'
+        assert image_part['source']['type'] == 'url'
+        assert image_part['source']['url'] == 'https://s3.amazonaws.com/bucket/uuid.png?token=...'
+        assert image_part['source']['storage_key'] == 'companies/test_company/generated_images/uuid.png'
+        # Asegurarse que el campo data (base64) ya no existe para ahorrar espacio
+        assert 'data' not in image_part['source']
+
 
     def test_invoke_success_with_images(self):
         """Test de una llamada invoke exitosa con imagenes."""
