@@ -1,13 +1,15 @@
 # Copyright (c) 2024 Fernando Libedinsky
 # Product: IAToolkit
 
-from iatoolkit.repositories.models import Company
+from iatoolkit.repositories.models import Company, IngestionSource, IngestionStatus, IngestionSourceType
 from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.infra.connectors.file_connector_factory import FileConnectorFactory
 from iatoolkit.services.file_processor_service import FileProcessorConfig, FileProcessor
+from iatoolkit.repositories.document_repo import DocumentRepo
 from iatoolkit.common.exceptions import IAToolkitException
 import logging
+from datetime import datetime
 from injector import inject, singleton
 import os
 
@@ -15,18 +17,20 @@ import os
 @singleton
 class LoadDocumentsService:
     """
-    Orchestrates the discovery and loading of documents from configured sources.
-    Delegates the processing and ingestion logic to KnowledgeBaseService.
+    Orchestrates the discovery and loading of documents.
+    Now operates based on IngestionSource database records accessed via DocumentRepo.
     """
     @inject
     def __init__(self,
                  config_service: ConfigurationService,
                  file_connector_factory: FileConnectorFactory,
-                 knowledge_base_service: KnowledgeBaseService
+                 knowledge_base_service: KnowledgeBaseService,
+                 document_repo: DocumentRepo  # New dependency
                  ):
         self.config_service = config_service
         self.file_connector_factory = file_connector_factory
         self.knowledge_base_service = knowledge_base_service
+        self.document_repo = document_repo
 
         logging.getLogger().setLevel(logging.ERROR)
 
@@ -35,76 +39,131 @@ class LoadDocumentsService:
                      sources_to_load: list[str] = None,
                      filters: dict = None) -> int:
         """
-        Loads documents from one or more configured sources for a company.
-
-        Args:
-            company (Company): The company to load files for.
-            sources_to_load (list[str], optional): A list of specific source names to load.
-                                                  If None, all configured sources will be loaded.
-            filters (dict, optional): Filters to apply when listing files (e.g., file extension).
-
-        Returns:
-            int: The total number of processed files.
+        Legacy/CLI Entrypoint.
+        1. Syncs sources from YAML to DB to ensure consistency.
+        2. Triggers ingestion for the requested sources (by name).
         """
-        knowledge_base_config = self.config_service.get_configuration(company.short_name, 'knowledge_base')
-        if not knowledge_base_config:
-            raise IAToolkitException(IAToolkitException.ErrorType.CONFIG_ERROR,
-                                     f"Missing 'knowledge_base' configuration for company '{company.short_name}'.")
-
         if not sources_to_load:
             raise IAToolkitException(IAToolkitException.ErrorType.PARAM_NOT_FILLED,
                                      f"Missing sources to load for company '{company.short_name}'.")
 
-        base_connector_config = self._get_base_connector_config(knowledge_base_config)
-        all_sources = knowledge_base_config.get('document_sources', {})
+        # 1. Sync DB with YAML configuration
+        self.sync_sources_from_yaml(company)
 
-        total_processed_files = 0
-        for source_name in sources_to_load:
-            source_config = all_sources.get(source_name)
-            if not source_config:
-                logging.warning(f"Source '{source_name}' not found in configuration for company '{company.short_name}'. Skipping.")
-                continue
+        # 2. Retrieve sources from DB using Repo
+        sources = self.document_repo.get_active_ingestion_sources(company.id, sources_to_load)
 
-            collection = source_config.get('collection')
-            if not collection:
-                logging.warning(
-                    f"Document Source '{source_name}' missing collection definition en company.yaml, Skipping.")
-                continue
+        if not sources:
+            logging.warning(f"No active ingestion sources found matching: {sources_to_load}")
+            return 0
 
+        total_processed = 0
+        for source in sources:
             try:
-                logging.info(f"company {company.short_name}: loading source '{source_name}' into collection '{collection}'...")
+                total_processed += self.trigger_ingestion(source, filters)
+            except Exception as e:
+                logging.error(f"Error executing source {source.name}: {e}")
 
-                # Combine the base connector configuration with the specific path from the source.
-                full_connector_config = base_connector_config.copy()
-                full_connector_config['path'] = source_config.get('path')
-                full_connector_config['folder'] = source_config.get('folder')
+        return total_processed
 
-                # Prepare the context for the callback function.
-                context = {
-                    'company': company,
-                    'collection': collection,
-                    'metadata': source_config.get('metadata', {})
-                }
+    def sync_sources_from_yaml(self, company: Company):
+        """
+        Reads the company.yaml 'document_sources' and creates/updates IngestionSource records.
+        This allows managing sources via YAML until the UI is fully ready.
+        """
+        kb_config = self.config_service.get_configuration(company.short_name, 'knowledge_base')
+        if not kb_config:
+            return
 
-                processor_config = FileProcessorConfig(
-                    callback=self._file_processing_callback,
-                    context=context,
-                    filters=filters or {"filename_contains": ".pdf"},
-                    continue_on_error=True,
-                    echo=True
+        yaml_sources = kb_config.get('document_sources', {})
+        base_connector = self._get_base_connector_config(kb_config)
+
+        for name, config in yaml_sources.items():
+            # Determine type based on base connector or specific config override
+            source_type = IngestionSourceType.LOCAL if base_connector.get('type') == 'local' else IngestionSourceType.S3
+
+            # Build Configuration JSON for the Connector Factory
+            full_config = base_connector.copy()
+            full_config.update({
+                'path': config.get('path'),
+                'folder': config.get('folder'),
+                'metadata': config.get('metadata', {}),
+                'collection': config.get('collection') # Store collection name in config for now
+            })
+
+            # Check if exists using Repo
+            source_record = self.document_repo.get_ingestion_source_by_name(company.id, name)
+
+            if not source_record:
+                source_record = IngestionSource(
+                    company_id=company.id,
+                    name=name,
+                    source_type=source_type,
+                    status=IngestionStatus.ACTIVE
                 )
 
-                connector = self.file_connector_factory.create(full_connector_config)
-                processor = FileProcessor(connector, processor_config)
-                processor.process_files()
+            # Update config (whether new or existing)
+            source_record.configuration = full_config
 
-                total_processed_files += processor.processed_files
-                logging.info(f"Finished processing source '{source_name}'. Processed {processor.processed_files} files.")
+            # Save using Repo
+            self.document_repo.create_or_update_ingestion_source(source_record)
 
-            except Exception as e:
-                logging.exception(f"Failed to process source '{source_name}' for company '{company.short_name}': {e}")
+    def trigger_ingestion(self, source: IngestionSource, filters: dict = None) -> int:
+        """
+        Executes the ingestion for a specific DB Source.
+        This is the method the API and Scheduler will call.
+        """
+        # 1. Update Status
+        source.status = IngestionStatus.RUNNING
+        source.last_error = None
+        self.document_repo.create_or_update_ingestion_source(source)
 
-        return total_processed_files
+        processed_count = 0
+        try:
+            logging.info(f"🚀 Starting ingestion for source '{source.name}' ({source.id})")
+
+            # 2. Prepare Context
+            connector_config = source.configuration
+            metadata = connector_config.get('metadata', {})
+
+            # Resolve Collection Name (Prefer relation, fallback to config dict)
+            collection_name = source.collection_type.name if source.collection_type else connector_config.get('collection')
+
+            context = {
+                'company': source.company,
+                'collection': collection_name,
+                'metadata': metadata
+            }
+
+            processor_config = FileProcessorConfig(
+                callback=self._file_processing_callback,
+                context=context,
+                filters=filters or {"filename_contains": ".pdf"},
+                continue_on_error=True,
+                echo=True
+            )
+
+            # 3. Factory & Process
+            connector = self.file_connector_factory.create(connector_config)
+            processor = FileProcessor(connector, processor_config)
+            processor.process_files()
+
+            processed_count = processor.processed_files
+
+            # 4. Success Update
+            source.last_run_at = datetime.now()
+            source.status = IngestionStatus.ACTIVE
+            logging.info(f"✅ Finished source '{source.name}'. Processed: {processed_count}")
+
+        except Exception as e:
+            logging.exception(f"❌ Ingestion failed for source {source.name}")
+            source.status = IngestionStatus.ERROR
+            source.last_error = str(e)
+            raise e
+        finally:
+            self.document_repo.create_or_update_ingestion_source(source)
+
+        return processed_count
 
     def _get_base_connector_config(self, knowledge_base_config: dict) -> dict:
         """Determines and returns the appropriate base connector configuration (dev vs prod)."""
@@ -116,10 +175,7 @@ class LoadDocumentsService:
         else:
             prod_config = connectors.get('production')
             if not prod_config:
-                raise IAToolkitException(IAToolkitException.ErrorType.CONFIG_ERROR,
-                                         "Production connector configuration is missing.")
-            # The S3 connector itself is responsible for reading AWS environment variables.
-            # No need to pass credentials explicitly here.
+                return {}
             return prod_config
 
     def _file_processing_callback(self, company: Company, filename: str, content: bytes, context: dict = None):
@@ -131,10 +187,8 @@ class LoadDocumentsService:
             raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER, "Missing company object in callback.")
 
         try:
-            # Get predefined metadata from the context passed by the processor.
             predefined_metadata = context.get('metadata', {}) if context else {}
 
-            # Delegate heavy lifting to KnowledgeBaseService
             new_document = self.knowledge_base_service.ingest_document_sync(
                 company=company,
                 filename=filename,
@@ -146,7 +200,6 @@ class LoadDocumentsService:
             return new_document
 
         except Exception as e:
-            # We log here but re-raise to let FileProcessor handle the error counting/continue logic
             logging.exception(f"Error processing file '{filename}': {e}")
             raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR,
                                      f"Error while processing file: {filename}")

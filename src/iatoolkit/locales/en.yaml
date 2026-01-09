@@ -203,6 +203,7 @@ ui:
     collection: "Collection"
     manage_collections: "Manage collections"
     all_collections: "All collections"
+    sources: Fuentes
 
   json_editor:
     title: "JSON Schema Editor"

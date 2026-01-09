@@ -3,10 +3,11 @@
 #
 # IAToolkit is open source software.
 
-from iatoolkit.repositories.models import Document
+from iatoolkit.repositories.models import Document, IngestionSource, IngestionStatus, IngestionSource
 from injector import inject
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.common.exceptions import IAToolkitException
+from typing import List, Optional
 
 
 class DocumentRepo:
@@ -38,3 +39,29 @@ class DocumentRepo:
             return None
 
         return self.session.query(Document).filter_by(id=document_id).first()
+
+    # --- Ingestion Source Methods ---
+
+    def get_ingestion_source_by_name(self, company_id: int, name: str) -> Optional[IngestionSource]:
+        return self.session.query(IngestionSource).filter_by(company_id=company_id, name=name).first()
+
+    def create_or_update_ingestion_source(self, source: IngestionSource) -> IngestionSource:
+        """Adds or updates a source. If ID exists, it merges; otherwise adds."""
+        if source.id:
+            self.session.merge(source)
+        else:
+            self.session.add(source)
+        self.session.commit()
+        return source
+
+    def get_active_ingestion_sources(self, company_id: int, names: List[str]) -> List[IngestionSource]:
+        """Retrieves active sources matching the given names list."""
+        query = self.session.query(IngestionSource).filter(
+            IngestionSource.company_id == company_id,
+            IngestionSource.name.in_(names),
+            IngestionSource.status != IngestionStatus.PAUSED
+        )
+        return query.all()
+
+    def commit(self):
+        self.session.commit()

@@ -29,6 +29,18 @@ class PromptType(str, enum.Enum):
     COMPANY = "company"
     AGENT = "agent"
 
+class IngestionSourceType(str, enum.Enum):
+    S3 = "s3"
+    GCS = "google_cloud_storage"
+    GDRIVE = "google_drive"
+    LOCAL = "local"
+
+class IngestionStatus(str, enum.Enum):
+    ACTIVE = "active"
+    PAUSED = "paused"
+    RUNNING = "running"
+    ERROR = "error"
+
 
 # relation table for many-to-many relationship between companies and users
 user_company = Table('iat_user_company',
@@ -73,6 +85,9 @@ class Company(Base):
                              back_populates="company",
                              cascade="all, delete-orphan",
                              lazy='dynamic')
+    ingestion_sources = relationship("IngestionSource",
+                                     back_populates="company",
+                                     cascade="all, delete-orphan")
     tools = relationship("Tool",
                            back_populates="company",
                            cascade="all, delete-orphan")
@@ -162,8 +177,6 @@ class Tool(Base):
         return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}
 
 
-
-
 class CollectionType(Base):
     """Defines the available document collections/categories for a company."""
     __tablename__ = 'iat_collection_types'
@@ -179,6 +192,39 @@ class CollectionType(Base):
 
     company = relationship("Company", back_populates="collection_types")
     documents = relationship("Document", back_populates="collection_type")
+    ingestion_sources = relationship("IngestionSource", back_populates="collection_type")
+
+class IngestionSource(Base):
+    """
+    Defines a configured source (bucket, folder, etc.) from which documents
+    are ingested, either manually or on a schedule.
+    """
+    __tablename__ = 'iat_ingestion_sources'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(Integer, ForeignKey('iat_companies.id', ondelete='CASCADE'), nullable=False)
+    collection_type_id = Column(Integer, ForeignKey('iat_collection_types.id', ondelete='SET NULL'), nullable=True)
+
+    name = Column(String, nullable=False)  # Friendly name for UI (e.g., "HR Bucket")
+    source_type = Column(Enum(IngestionSourceType), nullable=False)
+
+    # Stores connector-specific config (bucket name, prefix, folder_id, etc.)
+    configuration = Column(JSON, nullable=False, default={})
+
+    # Cron expression for scheduling (e.g., "0 3 * * *" for 3 AM daily). Null means manual only.
+    schedule_cron = Column(String, nullable=True)
+
+    status = Column(Enum(IngestionStatus), default=IngestionStatus.ACTIVE, nullable=False)
+
+    last_run_at = Column(DateTime, nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+    company = relationship("Company", back_populates="ingestion_sources")
+    collection_type = relationship("CollectionType", back_populates="ingestion_sources")
+
+    def to_dict(self):
+        return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}
 
 class Document(Base):
     """Represents a file or document uploaded by a company for context."""

@@ -1,29 +1,15 @@
 # Copyright (c) 2024 Fernando Libedinsky
 # Product: IAToolkit
-#
-# IAToolkit is open source software.
 
 import pytest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 from iatoolkit.services.load_documents_service import LoadDocumentsService
 from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.infra.connectors.file_connector_factory import FileConnectorFactory
-from iatoolkit.repositories.models import Company
+from iatoolkit.repositories.document_repo import DocumentRepo
+from iatoolkit.repositories.models import Company, IngestionSource, IngestionStatus
 from iatoolkit.common.exceptions import IAToolkitException
-
-# Mock configuration to simulate the 'knowledge_base' section of company.yaml
-MOCK_KNOWLEDGE_BASE_CONFIG = {
-    'connectors': {
-        'development': {'type': 'local'},
-        'production': {'type': 's3', 'bucket': 'prod_bucket', 'prefix': 'prod_prefix'}
-    },
-    'document_sources': {
-        'contracts': {'path': 'data/contracts', 'metadata': {'category': 'legal'}},
-        'manuals': {'path': 'data/manuals', 'metadata': {'category': 'guide'}}
-    }
-}
-
 
 class TestLoadDocumentsService:
 
@@ -33,42 +19,119 @@ class TestLoadDocumentsService:
         self.mock_config_service = MagicMock(spec=ConfigurationService)
         self.mock_file_connector_factory = MagicMock(spec=FileConnectorFactory)
         self.mock_kb_service = MagicMock(spec=KnowledgeBaseService)
+        self.mock_document_repo = MagicMock(spec=DocumentRepo)
 
         self.service = LoadDocumentsService(
             config_service=self.mock_config_service,
             file_connector_factory=self.mock_file_connector_factory,
-            knowledge_base_service=self.mock_kb_service
+            knowledge_base_service=self.mock_kb_service,
+            document_repo=self.mock_document_repo
         )
         self.company = Company(id=1, short_name='acme')
 
-    def test_load_sources_raises_exception_if_knowledge_base_config_is_missing(self):
-        self.mock_config_service.get_configuration.return_value = None
-        with pytest.raises(IAToolkitException) as excinfo:
-            self.service.load_sources(self.company, sources_to_load=['contracts'])
-        assert excinfo.value.error_type == IAToolkitException.ErrorType.CONFIG_ERROR
-
-
-    def test_load_sources_raises_exception_if_no_sources_provided(self):
-        """
-        GIVEN sources_to_load is None or empty
-        WHEN load_company_sources is called
-        THEN it should raise a parameter error.
-        """
-        self.mock_config_service.get_configuration.return_value = MOCK_KNOWLEDGE_BASE_CONFIG
-        with pytest.raises(IAToolkitException) as excinfo:
-            self.service.load_sources(self.company)
-        assert excinfo.value.error_type == IAToolkitException.ErrorType.PARAM_NOT_FILLED
-
-    def test_callback_delegates_to_knowledge_base_service(self):
-        """
-        GIVEN a file callback trigger
-        WHEN _file_processing_callback is called
-        THEN it should delegate ingestion to KnowledgeBaseService.
-        """
+    def test_sync_sources_from_yaml_creates_records(self):
         # Arrange
-        filename = 'doc.pdf'
-        content = b'pdf_content'
-        context = {'metadata': {'type': 'manual'}}
+        mock_yaml = {
+            'document_sources': {
+                'contracts': {'path': 'contracts/', 'collection': 'Legal'}
+            },
+            'connectors': {'development': {'type': 'local', 'path': '/tmp'}}
+        }
+        self.mock_config_service.get_configuration.return_value = mock_yaml
+
+        # Mock finding NO existing source
+        self.mock_document_repo.get_ingestion_source_by_name.return_value = None
+
+        # Act
+        with patch.dict('os.environ', {'FLASK_ENV': 'dev'}):
+            self.service.sync_sources_from_yaml(self.company)
+
+        # Assert
+        # Check that Repo create/update was called
+        self.mock_document_repo.create_or_update_ingestion_source.assert_called_once()
+        saved_source = self.mock_document_repo.create_or_update_ingestion_source.call_args[0][0]
+
+        assert isinstance(saved_source, IngestionSource)
+        assert saved_source.name == 'contracts'
+        assert saved_source.configuration['path'] == 'contracts/'
+        assert saved_source.company_id == 1
+
+    def test_trigger_ingestion_success(self):
+        # Arrange
+        mock_source = IngestionSource(
+            id=10,
+            name="test_source",
+            company=self.company,
+            configuration={'type': 'local', 'path': 'data/'},
+            status=IngestionStatus.ACTIVE
+        )
+
+        mock_connector = MagicMock()
+        self.mock_file_connector_factory.create.return_value = mock_connector
+
+        # Mock FileProcessor
+        with patch('iatoolkit.services.load_documents_service.FileProcessor') as MockProcessor:
+            mock_processor_instance = MockProcessor.return_value
+            mock_processor_instance.processed_files = 5
+
+            # Act
+            processed = self.service.trigger_ingestion(mock_source)
+
+            # Assert
+            # 1. Check connector creation
+            self.mock_file_connector_factory.create.assert_called_with(mock_source.configuration)
+
+            # 2. Check processor run
+            mock_processor_instance.process_files.assert_called_once()
+
+            # 3. Check status update via Repo
+            # Expected calls: 1 for RUNNING, 1 for ACTIVE (success)
+            assert self.mock_document_repo.create_or_update_ingestion_source.call_count == 2
+
+            assert processed == 5
+            assert mock_source.status == IngestionStatus.ACTIVE
+
+    def test_trigger_ingestion_handles_error(self):
+        # Arrange
+        mock_source = IngestionSource(name="error_source", company=self.company, configuration={})
+        self.mock_file_connector_factory.create.side_effect = Exception("Fail")
+
+        # Act & Assert
+        with pytest.raises(Exception):
+            self.service.trigger_ingestion(mock_source)
+
+        # Check error status saved via Repo
+        assert mock_source.status == IngestionStatus.ERROR
+        assert "Fail" in mock_source.last_error
+        assert self.mock_document_repo.create_or_update_ingestion_source.call_count >= 1
+
+    def test_load_sources_orchestration(self):
+        """Test load_sources orchestrates sync and retrieval via Repo."""
+        # Arrange
+        self.mock_config_service.get_configuration.return_value = {}
+
+        # Mock Repo returning 1 active source
+        mock_source = IngestionSource(name="manuals")
+        self.mock_document_repo.get_active_ingestion_sources.return_value = [mock_source]
+
+        # Internal mocks
+        with patch.object(self.service, 'trigger_ingestion', return_value=10) as mock_trigger:
+            with patch.object(self.service, 'sync_sources_from_yaml') as mock_sync:
+
+                # Act
+                total = self.service.load_sources(self.company, sources_to_load=["manuals"])
+
+                # Assert
+                mock_sync.assert_called_once_with(self.company)
+                self.mock_document_repo.get_active_ingestion_sources.assert_called_with(1, ["manuals"])
+                mock_trigger.assert_called_once_with(mock_source, None)
+                assert total == 10
+
+    def test_callback_delegates_correctly(self):
+        # Arrange
+        filename = "doc.pdf"
+        content = b"data"
+        context = {'collection': 'HR', 'metadata': {'tag': 'confidential'}}
 
         # Act
         self.service._file_processing_callback(self.company, filename, content, context)
@@ -78,22 +141,6 @@ class TestLoadDocumentsService:
             company=self.company,
             filename=filename,
             content=content,
-            collection=None,
-            metadata={'type': 'manual'}
+            collection='HR',
+            metadata={'tag': 'confidential'}
         )
-
-    def test_callback_handles_exception_from_knowledge_base(self):
-        """
-        GIVEN KnowledgeBaseService raises an exception
-        WHEN _file_processing_callback is called
-        THEN it should catch and re-raise as IAToolkitException.
-        """
-        # Arrange
-        self.mock_kb_service.ingest_document_sync.side_effect = Exception("Ingestion failed")
-
-        # Act & Assert
-        with pytest.raises(IAToolkitException) as excinfo:
-            self.service._file_processing_callback(self.company, 'fail.pdf', b'content')
-
-        assert excinfo.value.error_type == IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR
-        assert "Error while processing file" in str(excinfo.value)

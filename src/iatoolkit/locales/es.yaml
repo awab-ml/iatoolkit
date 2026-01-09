@@ -200,6 +200,7 @@ ui:
     collection: "Categoría"
     manage_collections: "Administra collections"
     select_collection: "Selecciona una categorìa"
+    sources: "Fuentes"
 
   json_editor:
     title: "Editor de Esquema JSON"

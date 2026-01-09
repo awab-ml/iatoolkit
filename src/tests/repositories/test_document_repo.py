@@ -5,10 +5,11 @@
 
 import pytest
 from unittest.mock import MagicMock
-from iatoolkit.repositories.models import Document, Company
+from iatoolkit.repositories.models import Document, Company, IngestionSource
 from iatoolkit.repositories.document_repo import DocumentRepo
 from iatoolkit.common.exceptions import IAToolkitException
 import base64
+from typing import List, Optional
 
 
 class TestDocumentRepo:
@@ -72,5 +73,56 @@ class TestDocumentRepo:
 
         assert result == self.mock_document
         self.session.query.assert_called()
+
+    # --- New Ingestion Source Tests ---
+
+    def test_get_ingestion_source_by_name(self):
+        # Arrange
+        mock_source = IngestionSource(id=10, name="src1", company_id=1)
+        self.session.query.return_value.filter_by.return_value.first.return_value = mock_source
+
+        # Act
+        result = self.repo.get_ingestion_source_by_name(1, "src1")
+
+        # Assert
+        assert result == mock_source
+        self.session.query.assert_called_with(IngestionSource)
+
+    def test_create_or_update_ingestion_source_create(self):
+        # Arrange
+        new_source = IngestionSource(name="new_src", company_id=1)
+        # Act
+        self.repo.create_or_update_ingestion_source(new_source)
+        # Assert
+        self.session.add.assert_called_with(new_source)
+        self.session.commit.assert_called()
+
+    def test_create_or_update_ingestion_source_update(self):
+        # Arrange
+        existing_source = IngestionSource(id=5, name="updated_src")
+        # Act
+        self.repo.create_or_update_ingestion_source(existing_source)
+        # Assert
+        self.session.merge.assert_called_with(existing_source)
+        self.session.commit.assert_called()
+
+    def test_get_active_ingestion_sources(self):
+        # Arrange
+        mock_list = [IngestionSource(name="src1"), IngestionSource(name="src2")]
+
+        # Mock chained query: query().filter().all()
+        mock_query = self.session.query.return_value
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = mock_list
+
+        # Act
+        result = self.repo.get_active_ingestion_sources(1, ["src1", "src2"])
+
+        # Assert
+        assert len(result) == 2
+        # Verify filter call
+        # Hard to assert complex filter arguments on mocks, but we check query flow
+        mock_query.filter.assert_called()
+        mock_query.all.assert_called()
 
 
