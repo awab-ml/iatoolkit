@@ -48,6 +48,7 @@ class IngestionApiView(MethodView):
         response_data = []
         for src in sources:
             source_dict = src.to_dict()
+            source_dict['collection_name'] = src.collection_type.name
             response_data.append(source_dict)
 
         return jsonify(response_data), 200
