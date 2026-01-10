@@ -3,7 +3,8 @@
 #
 # IAToolkit is open source software.
 
-from iatoolkit.repositories.models import Document, IngestionSource, IngestionStatus, IngestionSource
+from iatoolkit.repositories.models import (Document,
+                        IngestionStatus, IngestionSource, CollectionType)
 from injector import inject
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.common.exceptions import IAToolkitException
@@ -39,6 +40,10 @@ class DocumentRepo:
             return None
 
         return self.session.query(Document).filter_by(id=document_id).first()
+
+    def get_collection_type_by_name(self, company_id: int, name: str) -> Optional[CollectionType]:
+        return self.session.query(CollectionType).filter_by(company_id=company_id, name=name).first()
+
 
     # --- Ingestion Source Methods ---
 

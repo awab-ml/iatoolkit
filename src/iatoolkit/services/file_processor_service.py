@@ -63,9 +63,6 @@ class FileProcessor:
             logging.error(f"Error fetching files: {e}")
             return False
 
-        if self.config.echo:
-            print(f'loading {len(files)} files')
-
         for file_info in files:
             file_path = file_info['path']
             file_name = file_info['name']

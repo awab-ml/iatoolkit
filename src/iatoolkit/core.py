@@ -322,7 +322,7 @@ class IAToolkit:
         from iatoolkit.services.prompt_service import PromptService
         from iatoolkit.services.excel_service import ExcelService
         from iatoolkit.services.mail_service import MailService
-        from iatoolkit.services.load_documents_service import LoadDocumentsService
+        from iatoolkit.services.ingestor_service import IngestorService
         from iatoolkit.services.profile_service import ProfileService
         from iatoolkit.services.jwt_service import JWTService
         from iatoolkit.services.dispatcher_service import Dispatcher
@@ -344,7 +344,7 @@ class IAToolkit:
         binder.bind(PromptService, to=PromptService)
         binder.bind(ExcelService, to=ExcelService)
         binder.bind(MailService, to=MailService)
-        binder.bind(LoadDocumentsService, to=LoadDocumentsService)
+        binder.bind(IngestorService, to=IngestorService)
         binder.bind(ProfileService, to=ProfileService)
         binder.bind(JWTService, to=JWTService)
         binder.bind(Dispatcher, to=Dispatcher)

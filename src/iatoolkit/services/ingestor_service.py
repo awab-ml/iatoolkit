@@ -15,17 +15,17 @@ import os
 
 
 @singleton
-class LoadDocumentsService:
+class IngestorService:
     """
-    Orchestrates the discovery and loading of documents.
-    Now operates based on IngestionSource database records accessed via DocumentRepo.
+    Service responsible for managing Ingestion Sources (CRUD) and executing
+    document ingestion processes (Pipeline orchestration).
     """
     @inject
     def __init__(self,
                  config_service: ConfigurationService,
                  file_connector_factory: FileConnectorFactory,
                  knowledge_base_service: KnowledgeBaseService,
-                 document_repo: DocumentRepo  # New dependency
+                 document_repo: DocumentRepo
                  ):
         self.config_service = config_service
         self.file_connector_factory = file_connector_factory
@@ -34,13 +34,125 @@ class LoadDocumentsService:
 
         logging.getLogger().setLevel(logging.ERROR)
 
+    # --- Public API Methods (CRUD & Management) ---
+
+    def create_source(self, company: Company, data: dict) -> IngestionSource:
+        """
+        Validates input data and creates a new IngestionSource in the database.
+        """
+        required_fields = ['name', 'source_type', 'configuration', 'collection_name']
+        for field in required_fields:
+            if field not in data:
+                raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER,
+                                         f"Missing required field: {field}")
+
+        try:
+            # Validate Source Type enum
+            source_type_enum = IngestionSourceType(data['source_type'])
+        except ValueError:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_PARAMETER,
+                                     f"Invalid source type: {data.get('source_type')}")
+
+        collection_type = self.document_repo.get_collection_type_by_name(company.id, data['collection_name'])
+        if not collection_type:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_PARAMETER,
+                                     f"Invalid collection name: {data['collection_name']}")
+
+        # 1. Get Storage Configuration from Company Config
+        storage_config = self.config_service.get_configuration(company.short_name, "storage_provider")
+
+        if not storage_config:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_PARAMETER,
+                    f"Missing storage configuration for company '{company.short_name}'.")
+
+        provider = storage_config.get("provider", "s3")
+        connector_config = {}
+
+        # 2. Validate Type & Build Connector Config
+        if source_type_enum == IngestionSourceType.S3:
+            if provider != "s3":
+                raise IAToolkitException(IAToolkitException.ErrorType.INVALID_PARAMETER,
+                                         f"Company storage provider is '{provider}', cannot create source of type 's3'.")
+
+            s3_conf = storage_config.get("s3", {})
+            user_logical_bucket = data['configuration'].get('bucket', '')
+
+            # Resolve Env Var NAMES to VALUES (matching StorageService logic)
+            access_key = os.getenv(s3_conf.get("access_key_env", "AWS_ACCESS_KEY_ID"))
+            secret_key = os.getenv(s3_conf.get("secret_key_env", "AWS_SECRET_ACCESS_KEY"))
+            region = os.getenv(s3_conf.get("region_env", "AWS_REGION"), "us-east-1")
+
+            connector_config = {
+                "type": "s3",
+                "bucket": storage_config.get("bucket"),  # Physical Bucket
+                "prefix": user_logical_bucket,           # User's bucket becomes the prefix
+                "folder": data['configuration'].get('prefix', ''),
+                "auth": {
+                    'aws_access_key_id': access_key,
+                    'aws_secret_access_key': secret_key,
+                    'region_name': region
+                }
+            }
+
+        elif source_type_enum == IngestionSourceType.GCS:
+            if provider != "google_cloud_storage":
+                raise IAToolkitException(IAToolkitException.ErrorType.INVALID_PARAMETER,
+                                         f"Company storage provider is '{provider}', cannot create source of type 'google_cloud_storage'.")
+
+            gcs_conf = storage_config.get("google_cloud_storage", {})
+            connector_config = {
+                "type": "gcs",
+                "bucket": storage_config.get("bucket"),
+                "service_account_path": gcs_conf.get("service_account_path", "service_account.json")
+            }
+
+        # Merge any other metadata from user configuration if needed
+        if 'metadata' in data['configuration']:
+            connector_config['metadata'] = data['configuration']['metadata']
+
+        # Ensure collection info is preserved in config for processing context
+        connector_config['collection'] = data['collection_name']
+
+        new_source = IngestionSource(
+            company_id=company.id,
+            name=data['name'],
+            source_type=source_type_enum,
+            collection_type_id=collection_type.id,
+            configuration=connector_config, # Save the constructed full config
+            schedule_cron=data.get('schedule_cron'),
+            status=IngestionStatus.ACTIVE
+        )
+
+        return self.document_repo.create_or_update_ingestion_source(new_source)
+
+    def run_ingestion(self, company: Company, source_id: int) -> int:
+        """
+        Validates source state and triggers the ingestion process.
+        """
+        # We assume validation of ownership happens here via query
+        source = self.document_repo.session.query(IngestionSource).filter_by(
+            id=source_id,
+            company_id=company.id
+        ).first()
+
+        if not source:
+            raise IAToolkitException(IAToolkitException.ErrorType.DOCUMENT_NOT_FOUND, "Ingestion Source not found")
+
+        if source.status == IngestionStatus.RUNNING:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_STATE, "Ingestion already running")
+
+        # Trigger internal logic
+        return self._trigger_ingestion_logic(source)
+
+    # --- CLI Legacy Support ---
+
     def load_sources(self,
                      company: Company,
                      sources_to_load: list[str] = None,
                      filters: dict = None) -> int:
         """
-        Legacy/CLI Entrypoint.
-        1. Syncs sources from YAML to DB to ensure consistency.
+        Legacy Entrypoint for CLI.
+        1. Syncs sources from YAML to DB.
         2. Triggers ingestion for the requested sources (by name).
         """
         if not sources_to_load:
@@ -60,16 +172,17 @@ class LoadDocumentsService:
         total_processed = 0
         for source in sources:
             try:
-                total_processed += self.trigger_ingestion(source, filters)
+                total_processed += self._trigger_ingestion_logic(source, filters)
             except Exception as e:
                 logging.error(f"Error executing source {source.name}: {e}")
 
         return total_processed
 
+    # --- Internal Logic ---
+
     def sync_sources_from_yaml(self, company: Company):
         """
         Reads the company.yaml 'document_sources' and creates/updates IngestionSource records.
-        This allows managing sources via YAML until the UI is fully ready.
         """
         kb_config = self.config_service.get_configuration(company.short_name, 'knowledge_base')
         if not kb_config:
@@ -79,19 +192,16 @@ class LoadDocumentsService:
         base_connector = self._get_base_connector_config(kb_config)
 
         for name, config in yaml_sources.items():
-            # Determine type based on base connector or specific config override
             source_type = IngestionSourceType.LOCAL if base_connector.get('type') == 'local' else IngestionSourceType.S3
 
-            # Build Configuration JSON for the Connector Factory
             full_config = base_connector.copy()
             full_config.update({
                 'path': config.get('path'),
                 'folder': config.get('folder'),
                 'metadata': config.get('metadata', {}),
-                'collection': config.get('collection') # Store collection name in config for now
+                'collection': config.get('collection')
             })
 
-            # Check if exists using Repo
             source_record = self.document_repo.get_ingestion_source_by_name(company.id, name)
 
             if not source_record:
@@ -102,16 +212,12 @@ class LoadDocumentsService:
                     status=IngestionStatus.ACTIVE
                 )
 
-            # Update config (whether new or existing)
             source_record.configuration = full_config
-
-            # Save using Repo
             self.document_repo.create_or_update_ingestion_source(source_record)
 
-    def trigger_ingestion(self, source: IngestionSource, filters: dict = None) -> int:
+    def _trigger_ingestion_logic(self, source: IngestionSource, filters: dict = None) -> int:
         """
-        Executes the ingestion for a specific DB Source.
-        This is the method the API and Scheduler will call.
+        Internal worker: Executes the ingestion for a specific DB Source.
         """
         # 1. Update Status
         source.status = IngestionStatus.RUNNING
@@ -120,13 +226,11 @@ class LoadDocumentsService:
 
         processed_count = 0
         try:
-            logging.info(f"🚀 Starting ingestion for source '{source.name}' ({source.id})")
+            logging.info(f"🚀 Starting ingestion for source '{source.name}'")
 
             # 2. Prepare Context
             connector_config = source.configuration
             metadata = connector_config.get('metadata', {})
-
-            # Resolve Collection Name (Prefer relation, fallback to config dict)
             collection_name = source.collection_type.name if source.collection_type else connector_config.get('collection')
 
             context = {
@@ -166,29 +270,19 @@ class LoadDocumentsService:
         return processed_count
 
     def _get_base_connector_config(self, knowledge_base_config: dict) -> dict:
-        """Determines and returns the appropriate base connector configuration (dev vs prod)."""
         connectors = knowledge_base_config.get('connectors', {})
         env = os.getenv('FLASK_ENV', 'dev')
-
         if env == 'dev':
             return connectors.get('development', {'type': 'local'})
         else:
-            prod_config = connectors.get('production')
-            if not prod_config:
-                return {}
-            return prod_config
+            return connectors.get('production', {})
 
     def _file_processing_callback(self, company: Company, filename: str, content: bytes, context: dict = None):
-        """
-        Callback method to process a single file.
-        Delegates the actual ingestion (storage, vectorization) to KnowledgeBaseService.
-        """
         if not company:
             raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER, "Missing company object in callback.")
 
         try:
             predefined_metadata = context.get('metadata', {}) if context else {}
-
             new_document = self.knowledge_base_service.ingest_document_sync(
                 company=company,
                 filename=filename,
@@ -196,9 +290,7 @@ class LoadDocumentsService:
                 collection=context.get('collection'),
                 metadata=predefined_metadata
             )
-
             return new_document
-
         except Exception as e:
             logging.exception(f"Error processing file '{filename}': {e}")
             raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR,
