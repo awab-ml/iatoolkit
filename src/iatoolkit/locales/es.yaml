@@ -4,9 +4,55 @@ ui:
     actions: "Acciones"
     save: "Guardar"
     cancel: "Cancelar"
+    time: "Hora"
     apply: "Aplicar Cambios"
     discard_changes: "Descartar Cambios"
     order: "Orden"
+    period: "Período"
+    refresh: "Actualizar"
+
+  dates:
+    last_7_days: "Últimos 7 días"
+    last_30_days: "Últimos 30 días"
+    last_90_days: "Últimos 90 días"
+
+  kpi:
+    title: "Panel Ejecutivo"
+    subtitle: "Visión general en tiempo real del rendimiento y salud del chatbot"
+    active_users: "Usuarios Activos"
+    conversations: "Conversaciones"
+    tasks: "Agentes"
+    tokens: "Uso de Tokens"
+    activity_trends: "Tendencias de Actividad"
+
+  mon:
+    system_status: "Estado Sistema"
+    latency_p95: "Latencia (Prom)"
+    error_rate: "Tasa Error (1h)"
+    queue: "Tareas Pendientes"
+    tab_chats: "Chats en Vivo"
+    tab_logs: "Logs del Sistema"
+    search_placeholder: "Buscar usuario o texto..."
+
+    inspector:
+      title: "Inspector de Interacción"
+      subtitle: "Detalles de traza y ejecución"
+      tab_overview: "Resumen"
+      tab_input: "Entrada / Contexto"
+      tab_response: "Respuesta Completa"
+      session_meta: "Metadatos de Sesión"
+      user_id: "Identificador Usuario"
+      timestamp: "Fecha/Hora"
+      model: "Modelo"
+      performance: "Rendimiento"
+      latency: "Latencia"
+      tokens: "Tokens Totales"
+      tools_executed: "Herramientas Ejecutadas"
+      no_tools: "No se usaron herramientas en esta sesión."
+      primary_input: "Entrada Principal"
+      prompt_args: "Argumentos del Prompt (Client Data)"
+      llm_output: "Salida LLM (JSON Crudo)"
+
 
   login_widget:
     title: "Iniciar Sesión"
@@ -93,6 +139,7 @@ ui:
     add: "Agregar"
     create: "Crear"
     delete: "Borrar"
+    close: "Cerrar"
     add_new: "Agregar nuevo"
     category_name_placeholder: "nombre de categoria"
     items: "Items"

@@ -7,6 +7,51 @@ ui:
     apply: "Apply Changes"
     discard_changes: "Discard Changes"
     order: "Order"
+    period: "Period"
+    refresh: "Refresh"
+    time: "Time"
+
+  dates:
+    last_7_days: "Last 7 Days"
+    last_30_days: "Last 30 Days"
+    last_90_days: "Last 90 Days"
+
+  kpi:
+    title: "Executive Dashboard"
+    subtitle: "Real-time overview of chatbot performance and health"
+    active_users: "Active Users"
+    conversations: "Conversations"
+    tasks: "Agents"
+    tokens: "Token Usage"
+    activity_trends: "Activity Trends"
+
+  mon:
+    system_status: "System Status"
+    latency_p95: "Latency (Avg)"
+    error_rate: "Error Rate (1h)"
+    queue: "Pending Tasks"
+    tab_chats: "Live Chats"
+    tab_logs: "System Logs"
+    search_placeholder: "Search user or text..."
+
+    inspector:
+      title: "Interaction Inspector"
+      subtitle: "Trace details & execution path"
+      tab_overview: "Overview"
+      tab_input: "Input / Context"
+      tab_response: "Full Response"
+      session_meta: "Session Metadata"
+      user_id: "User Identifier"
+      timestamp: "Timestamp"
+      model: "Model"
+      performance: "Performance"
+      latency: "Latency"
+      tokens: "Total Tokens"
+      tools_executed: "Tools Executed"
+      no_tools: "No tools used in this session."
+      primary_input: "Primary Input"
+      prompt_args: "Prompt Arguments (Client Data)"
+      llm_output: "LLM Output (Raw JSON)"
 
 
   login_widget:
@@ -97,6 +142,7 @@ ui:
     add: "Add"
     create: "Create"
     delete: "Delete"
+    close: "Close"
     add_new: "Add new"
     category_name_placeholder: "Category name"
     items: "Items"
@@ -167,7 +213,6 @@ ui:
     select_section: "Select a section from the left panel"
     no_section_selected: "No section selected"
     view_yaml: "View YAML"
-
 
   rag:
     ingestion: "Ingestion"
