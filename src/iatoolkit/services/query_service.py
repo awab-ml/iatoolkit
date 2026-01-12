@@ -339,6 +339,7 @@ class QueryService:
                   prompt_name: str = None,
                   question: str = '',
                   client_data: dict = {},
+                  task_id: Optional[int] = None,
                   ignore_history: bool = False,
                   files: list = []
                   ) -> dict:
@@ -392,6 +393,7 @@ class QueryService:
                 company=company,
                 user_identifier=user_identifier,
                 model=effective_model,
+                task_id=task_id,
                 previous_response_id=previous_response_id,
                 context_history=context_history,
                 question=effective_question,

@@ -118,7 +118,7 @@ class OpenAIAdapter:
         content_parts: List[Dict] = []
         output_text = ""
 
-        print(f'openai_response.output: {openai_response.output}')
+        # print(f'openai_response.output: {openai_response.output}')
         output_items = getattr(openai_response, 'output', []) or []
 
         def _extract_markdown_images(text: str) -> None:

@@ -278,6 +278,7 @@ class LLMQuery(Base):
     stats = Column(JSON, default={})
     answer_time = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now)
+    task_id = Column(Integer, default=None, nullable=True)
 
     company = relationship("Company", back_populates="llm_queries")
 

@@ -73,6 +73,7 @@ class llmClient:
                model: str,
                context_history: Optional[List[Dict]] = None,
                images: list = None,
+               task_id: Optional[int] = None
                ) -> dict:
 
         images = images or []
@@ -226,6 +227,7 @@ class llmClient:
             # save the query and response
             query = LLMQuery(user_identifier=user_identifier,
                              company_id=company.id,
+                             task_id=task_id,
                              query=question,
                              output=decoded_response.get('answer', ''),
                              valid_response=decoded_response.get('status', False),
@@ -266,6 +268,7 @@ class llmClient:
             # log the error in the llm_query table
             query = LLMQuery(user_identifier=user_identifier,
                              company_id=company.id,
+                             task_id=task_id,
                              query=question,
                              output=error_message,
                              response={},
