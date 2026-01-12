@@ -17,6 +17,24 @@ class LanguageService:
 
     FALLBACK_LANGUAGE = 'es'
 
+    # 1. Definimos las reglas de formato para cada idioma/región soportado.
+    # Nota: 'js_locale' debe ser un string BCP 47 válido para el navegador (usar guiones, no guiones bajos).
+    LOCALE_DEFINITIONS = {
+        'es': {
+            'code': 'es',
+            'js_locale': 'es-ES',
+            'date_format_js': 'dd/MM/yyyy',
+            'currency': 'EUR'
+        },
+        'en': {
+            'code': 'en',
+            'js_locale': 'en-US',
+            'date_format_js': 'MM/dd/yyyy',
+            'currency': 'USD'
+        },
+    }
+
+
     @inject
     def __init__(self,
                  config_service: ConfigurationService,
@@ -47,43 +65,67 @@ class LanguageService:
 
     def get_current_language(self) -> str:
         """
-        Determines and caches the language for the current request using a priority order:
-        0. Query parameter '?lang=<code>' (highest priority; e.g., 'en', 'es').
-        1. User's preference (from their profile).
-        2. Company's default language.
-        3. System-wide fallback language ('es').
-        """
-        if 'lang' in g:
+            Determines and caches the language for the current request using a priority order:
+            0. Query parameter '?lang=<code>' (highest priority; e.g., 'en', 'es').
+            1. User's preference (from their profile).
+            2. Company's default language.
+            3. System-wide fallback language ('es').
+            """
+        if 'locale_ctx' in g:
             return g.lang
 
-        try:
-            # Priority 0: Explicit query parameter (?lang=)
-            lang_arg = request.args.get('lang')
-            if lang_arg:
-                g.lang = lang_arg
-                return g.lang
+        # returns the detected locale string, ej: "es_MX" o "en"
+        detected_locale_str = self._resolve_locale_string()
 
-            # Priority 1: User's preferred language
-            user_identifier = SessionManager.get('user_identifier')
-            if user_identifier:
-                user = self.profile_repo.get_user_by_email(user_identifier)
-                if user and user.preferred_language:
-                    logging.debug(f"Language determined by user preference: {user.preferred_language}")
-                    g.lang = user.preferred_language
-                    return g.lang
+        # 2. map string to definition
+        # otherwise fallback  to 'es'
+        definition = self.LOCALE_DEFINITIONS.get(detected_locale_str)
 
-            # Priority 2: Company's default language
-            company_short_name = self._get_company_short_name()
-            if company_short_name:
-                locale = self.config_service.get_configuration(company_short_name, 'locale')
-                if locale:
-                    company_language = locale.split('_')[0]
-                    g.lang = company_language
-                    return g.lang
-        except Exception as e:
-            pass
+        if not definition:
+            # Fallback al idioma base (ej: es_MX -> es)
+            base_lang = detected_locale_str.split('_')[0]
+            definition = self.LOCALE_DEFINITIONS.get(base_lang, self.LOCALE_DEFINITIONS[self.FALLBACK_LANGUAGE])
 
-        # Priority 3: System-wide fallback
-        logging.debug(f"Language determined by system fallback: {self.FALLBACK_LANGUAGE}")
-        g.lang = self.FALLBACK_LANGUAGE
+        # 3. Guardamos TODO el contexto en 'g' para usarlo luego
+        g.lang = definition['code']
+        g.locale_ctx = definition
+
         return g.lang
+
+    def get_frontend_context(self) -> dict:
+        """
+        returns the configuration ready for JS inyection
+        """
+        # Asegura que se ha ejecutado la detección
+        if 'locale_ctx' not in g:
+            self.get_current_language()
+
+        return g.locale_ctx
+
+    def _resolve_locale_string(self) -> str:
+        # Priority 0: Query param
+        lang_arg = request.args.get('lang')
+        if lang_arg:
+            return lang_arg
+
+        # Priority 1: User Profile
+        user_identifier = SessionManager.get('user_identifier')
+        if user_identifier:
+            user = self.profile_repo.get_user_by_email(user_identifier)
+            if user and user.preferred_language:
+                return user.preferred_language
+
+        # Priority 2: Company Config
+        company_short_name = self._get_company_short_name()
+        if company_short_name:
+            # cnfig returns something like 'es_ES' o 'en_US'
+            try:
+                conf_locale = self.config_service.get_configuration(company_short_name, 'locale')
+                if conf_locale:
+                    return conf_locale
+            except Exception as e:
+                logging.warning(f"Error fetching configuration for '{company_short_name}': {e}")
+
+
+        logging.debug(f"Language determined by system fallback: {self.FALLBACK_LANGUAGE}")
+        return self.FALLBACK_LANGUAGE

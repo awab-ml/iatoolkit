@@ -29,7 +29,7 @@ class TestLanguageService:
         self.app = Flask(__name__)
 
         # Mock user objects for predictable test data
-        self.user_with_lang_de = User(id=1, email='user-de@acme.com', preferred_language='de')
+        self.user_with_lang_de = User(id=1, email='user-de@acme.com', preferred_language='en_us')
         self.user_without_lang = User(id=2, email='user-no-lang@acme.com', preferred_language=None)
 
         # Register a dummy route to correctly parse `company_short_name` from URLs.
@@ -55,7 +55,7 @@ class TestLanguageService:
             lang = self.language_service.get_current_language()
 
             # Assert
-            assert lang == 'de'
+            assert lang == 'en'
             self.mock_profile_repo.get_user_by_email.assert_called_once_with('user-de@acme.com')
             # Verify no downstream calls were made
             self.mock_config_service.get_configuration.assert_not_called()
@@ -105,7 +105,7 @@ class TestLanguageService:
             lang = self.language_service.get_current_language()
 
             # Assert
-            assert lang == 'fr'
+            assert lang == 'es'
             self.mock_config_service.get_configuration.assert_called_once_with('acme-fr', 'locale')
             self.mock_profile_repo.get_user_by_email.assert_not_called()
 
@@ -178,6 +178,7 @@ class TestLanguageService:
         with self.app.test_request_context():
             # Arrange
             g.lang = 'xx-cached'
+            g.locale_ctx = {'mock': 'data'}  # Fix: El servicio verifica la existencia de locale_ctx
 
             # Act
             lang = self.language_service.get_current_language()

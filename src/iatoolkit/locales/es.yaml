@@ -31,7 +31,7 @@ ui:
     error_rate: "Tasa Error (1h)"
     queue: "Tareas Pendientes"
     tab_chats: "Chats en Vivo"
-    tab_logs: "Logs del Sistema"
+    tab_logs: "Logs de Acceso"
     search_placeholder: "Buscar usuario o texto..."
 
     inspector:
@@ -443,6 +443,8 @@ js_messages:
   no_variables_found: "El template no contiene variables."
   manage_collections: "Administra collections"
   edit: "Editar"
+  conversation: "Conversaciones"
+  agents: "Agentes"
 
 
 

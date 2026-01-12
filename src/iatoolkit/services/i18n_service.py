@@ -52,6 +52,13 @@ class I18nService:
                 return None
         return data
 
+    def get_locale_settings(self) -> dict:
+        """
+        returns the configuration ready for JS inyection
+        """
+        return self.language_service.get_frontend_context()
+
+
     def get_translation_block(self, key: str, lang: str = None) -> dict:
         """
         Gets a whole dictionary block from the translations.
