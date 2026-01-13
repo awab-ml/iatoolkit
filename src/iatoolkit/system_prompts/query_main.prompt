@@ -21,9 +21,11 @@ Cada servicio incluye su **nombre**, **propósito** y **parámetros esperados**.
 
 ### 📌 LISTA DE TOOLS DISPONIBLES
 {% for service in service_list %}
-#### Tool {{ loop.index }}: `{{ service.name }}`
-- **Descripción:** {{ service.description }}
-- **Parámetros:** {{ service.parameters | tojson }}
+    {% if service.name is defined and service.name %}
+    #### Tool {{ loop.index }}: `{{ service.name }}`
+    - **Descripción:** {{ service.description }}
+    - **Parámetros:** {{ service.parameters | tojson }}
+    {% endif %}
 {% endfor %}
 
 ---

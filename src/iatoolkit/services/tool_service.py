@@ -233,10 +233,11 @@ class ToolService:
                 "parameters": params,
                 "strict": True
             }
-            if function.name == 'iat_sql_query':
-                params['properties']['database_key']['enum'] = self.sql_service.get_db_names(company.short_name)
 
             tools.append(ai_tool)
+
+        # add image generation tools
+        tools.append({"type": "image_generation"})
         return tools
 
     def get_system_handler(self, function_name: str):

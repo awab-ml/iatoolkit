@@ -30,8 +30,8 @@ class TestToolService:
         )
 
         # Mock del modelo de base de datos (Company Model)
-        self.mock_company_model = MagicMock(spec=Company)
-        self.mock_company_model.id = 1
+        self.mock_company = MagicMock(spec=Company)
+        self.mock_company.id = 1
 
         # Mock de la instancia de negocio (Company Instance) que tiene .company
         self.company_short_name = 'my_company'
@@ -157,10 +157,10 @@ class TestToolService:
         self.mock_llm_query_repo.get_company_tools.return_value = [tool1]
 
         # Act
-        result = self.service.get_tools_for_llm(self.company_short_name)
+        result = self.service.get_tools_for_llm(self.mock_company)
 
         # Assert
-        assert len(result) == 1
+        assert len(result) == 2         # added image_generation tool
         assert result[0]['type'] == 'function'
         assert result[0]['name'] == 'tool1'
         assert result[0]['description'] == 'desc1'

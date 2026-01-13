@@ -4,7 +4,7 @@
 # IAToolkit is open source software.
 
 from iatoolkit import BaseCompany
-from iatoolkit import LoadDocumentsService, KnowledgeBaseService, SqlService
+from iatoolkit import IngestorService, KnowledgeBaseService, SqlService
 from injector import inject
 from companies.sample_company.sample_database import SampleCompanyDatabase
 import click
@@ -16,11 +16,11 @@ class SampleCompany(BaseCompany):
     def __init__(self,
                 sql_service: SqlService,
                 knowledge_service: KnowledgeBaseService,
-                load_document_service: LoadDocumentsService,):
+                ingestor_service: IngestorService,):
         super().__init__()
         self.sql_service = sql_service
         self.knowledge_service = knowledge_service
-        self.load_document_service = load_document_service
+        self.ingestor_service = ingestor_service
         logging.info('companies: ok')
 
     def handle_request(self, action: str, **kwargs) -> str:
@@ -59,7 +59,7 @@ class SampleCompany(BaseCompany):
         @app.cli.command("load-documents")
         def load_documents():
             try:
-                self.load_document_service.load_sources(
+                self.ingestor_service.load_sources(
                             company=self.company,
                             sources_to_load=["employee_contracts", "supplier_manuals"]
                         )
