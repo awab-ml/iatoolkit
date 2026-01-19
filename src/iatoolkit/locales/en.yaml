@@ -384,6 +384,16 @@ rag:
     delete_success: "Document deleted."
     not_found: "Document not found."
     action_not_found: "Action '{action}' not found."
+  visual:
+    found_images: "Found Images"
+    similar_images_found: "Visually Similar Images Found"
+    no_images_attached: "Error: No images attached to perform visual search."
+    invalid_index: "Error: Image index {index} is invalid. {total} images were attached."
+    processing_error: "Error processing image for visual search: {error}"
+    no_results_for: "No results found for: {title}."
+    view_image: "View Image"
+    image_unavailable: "Image not publicly available"
+
 
 flash_messages:
   password_changed_success: "Your password has been successfully reset. You can now log in."

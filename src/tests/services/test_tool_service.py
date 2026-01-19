@@ -11,6 +11,7 @@ from iatoolkit.services.sql_service import SqlService
 from iatoolkit.services.excel_service import ExcelService
 from iatoolkit.services.mail_service import MailService
 from iatoolkit.services.visual_kb_service import VisualKnowledgeBaseService
+from iatoolkit.services.visual_tool_service import VisualToolService
 
 class TestToolService:
     @pytest.fixture(autouse=True)
@@ -21,6 +22,7 @@ class TestToolService:
         self.mock_mail_service = MagicMock(spec=MailService)
         self.mock_profile_repo = MagicMock(spec=ProfileRepo)
         self.mock_visual_kb_service = MagicMock(spec=VisualKnowledgeBaseService)
+        self.mock_visual_tool_service = MagicMock(spec=VisualToolService)
 
         self.service = ToolService(
             llm_query_repo=self.mock_llm_query_repo,
@@ -28,7 +30,8 @@ class TestToolService:
             sql_service=self.mock_sql_service,
             excel_service=self.mock_excel_service,
             mail_service=self.mock_mail_service,
-            visual_kb_service=self.mock_visual_kb_service
+            visual_kb_service=self.mock_visual_kb_service,
+            visual_tool_service=self.mock_visual_tool_service
         )
 
         # Mock del modelo de base de datos (Company Model)

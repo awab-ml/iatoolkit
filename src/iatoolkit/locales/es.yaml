@@ -382,6 +382,15 @@ rag:
     delete_success: "Documento eliminado."
     not_found: "Documento no encontrado."
     action_not_found: "Acción '{action}' no encontrada."
+  visual:
+    found_images: "Imágenes encontradas"
+    similar_images_found: "Imágenes visualmente similares encontradas"
+    no_images_attached: "Error: No se han adjuntado imágenes para realizar la búsqueda visual."
+    invalid_index: "Error: El índice de imagen {index} no es válido. Se adjuntaron {total} imágenes."
+    processing_error: "Error procesando la imagen para búsqueda visual: {error}"
+    no_results_for: "No se encontraron resultados para: {title}."
+    view_image: "Ver imagen"
+    image_unavailable: "Imagen no disponible públicamente"
 
 flash_messages:
   password_changed_success: "Tu contraseña ha sido restablecida exitosamente. Ahora puedes iniciar sesión."

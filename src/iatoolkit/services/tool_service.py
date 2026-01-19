@@ -12,6 +12,7 @@ from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.sql_service import SqlService
 from iatoolkit.services.excel_service import ExcelService
 from iatoolkit.services.mail_service import MailService
+from iatoolkit.services.visual_tool_service import VisualToolService
 
 
 _SYSTEM_TOOLS = [
@@ -139,25 +140,24 @@ _SYSTEM_TOOLS = [
     {
         "function_name": "iat_visual_search",
         "description": "Busca imágenes visualmente similares a una imagen adjunta por el usuario (búsqueda por similitud visual). "
-                       "IMPORTANTE: usa image_index para indicar cuál imagen adjunta comparar.",
+                       "Si el usuario adjunta una imagen y pregunta 'tienes algo parecido a esto', usa esta herramienta.",
         "parameters": {
             "type": "object",
             "properties": {
                 "image_index": {
                     "type": "integer",
-                    "description": "Índice (0-based) dentro de la lista de imágenes adjuntas en este turno."
+                    "description": "Opcional. Índice (0-based) de la imagen adjunta a usar. Por defecto es 0 (la primera imagen)."
                 },
                 "n_results": {
                     "type": "integer",
-                    "description": "Cantidad de resultados a devolver (por defecto 5).",
+                    "description": "Cantidad de resultados a devolver (por defecto 3).",
                     "minimum": 1,
-                    "maximum": 20
+                    "maximum": 5
                 }
             },
-            "required": ["image_index", "n_results"]
+            "required": ["n_results", "image_index"]
         }
     },
-
 ]
 
 class ToolService:
@@ -165,6 +165,7 @@ class ToolService:
     def __init__(self,
                  llm_query_repo: LLMQueryRepo,
                  visual_kb_service: VisualKnowledgeBaseService,
+                 visual_tool_service: VisualToolService,
                  profile_repo: ProfileRepo,
                  sql_service: SqlService,
                  excel_service: ExcelService,
@@ -175,14 +176,15 @@ class ToolService:
         self.excel_service = excel_service
         self.mail_service = mail_service
         self.visual_kb_service = visual_kb_service
+        self.visual_tool_service = visual_tool_service
 
         # execution mapper for system tools
         self.system_handlers = {
             "iat_generate_excel": self.excel_service.excel_generator,
             "iat_send_email": self.mail_service.send_mail,
             "iat_sql_query": self.sql_service.exec_sql,
-            "iat_image_search": self.image_search_wrapper,
-            "iat_visual_search": self.visual_search,
+            "iat_image_search": self.visual_tool_service.image_search,
+            "iat_visual_search": self.visual_tool_service.visual_search,
         }
 
 
@@ -290,74 +292,3 @@ class ToolService:
 
     def is_system_tool(self, function_name: str) -> bool:
         return function_name in self.system_handlers
-
-    # Wrapper for text-to-image search
-    def image_search_wrapper(self, company_short_name: str, query: str, collection: str = None):
-        results = self.visual_kb_service.search_images(
-            company_short_name=company_short_name,
-            query=query,
-            collection=collection
-        )
-
-        if not results:
-            return "No se encontraron imágenes que coincidan con la descripción."
-
-        # Format response for LLM (HTML)
-        response = "<p><strong>Imágenes encontradas:</strong></p><ul>"
-
-        for item in results:
-            filename = item.get("filename", "imagen")
-            score = item.get("score", 0.0)
-            url = item.get("url")
-
-            response += f"<li><strong>{filename}</strong> (Score: {score:.2f})"
-            if url:
-                # Link HTML (clickeable) + preview opcional
-                response += (
-                    f' — <a href="{url}" target="_blank" rel="noopener noreferrer">Ver imagen</a>'
-                    f'<br><img src="{url}" alt="{filename}" style="max-width: 100%; height: auto;" />'
-                )
-            else:
-                response += "<br><em>(Imagen no disponible públicamente)</em>"
-            response += "</li>"
-
-        response += "</ul>"
-
-        return response
-
-    def visual_search(self, company_short_name: str, image_content: bytes, n_results: int = 5):
-        """
-            Búsqueda por similitud visual (image-to-image).
-            image_content debe ser bytes del archivo (se obtiene del request/adjunto; NO desde el LLM).
-        """
-        results = self.visual_kb_service.search_similar_images(
-            company_short_name=company_short_name,
-            image_content=image_content,
-            n_results=n_results
-        )
-
-        if not results:
-            return "No se encontraron imágenes visualmente similares."
-
-        # Respuesta HTML para el frontend
-        response = "<p><strong>Imágenes similares encontradas:</strong></p><ul>"
-
-        for item in results:
-            filename = item.get("filename", "imagen")
-            score = item.get("score", 0.0)
-            url = item.get("url")
-
-            response += f"<li><strong>{filename}</strong> (Score: {score:.2f})"
-            if url:
-                response += (
-                    f' — <a href="{url}" target="_blank" rel="noopener noreferrer">Ver imagen</a>'
-                    f'<br><img src="{url}" alt="{filename}" style="max-width: 100%; height: auto;" />'
-                )
-            else:
-                response += "<br><em>(Imagen no disponible públicamente)</em>"
-            response += "</li>"
-
-        response += "</ul>"
-        return response
-
-
