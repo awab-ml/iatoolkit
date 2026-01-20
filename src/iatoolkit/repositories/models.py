@@ -306,10 +306,9 @@ class VSDoc(Base):
                         ondelete='CASCADE'), nullable=False)
     text = Column(Text, nullable=False)
 
-    # the size of this vector should be set depending on the embedding model used
-    # for OpenAI is 1536, and for huggingface is 384
-    embedding = Column(Vector(384), nullable=False)
-
+    # the size of this vector is dynamic to support multiple models
+    # (e.g. OpenAI=1536, HuggingFace=384, etc.)
+    embedding = Column(Vector, nullable=False)
     company = relationship("Company", back_populates="vsdocs")
 
     def to_dict(self):
@@ -330,7 +329,7 @@ class VSImage(Base):
     meta = Column(JSON, nullable=True)
 
     # Vector dimension depends on the multimodal model (e.g., CLIP uses 512 or 768)
-    embedding = Column(Vector(2048), nullable=False)
+    embedding = Column(Vector, nullable=False)
 
     company = relationship("Company", back_populates="vsimages")
     document = relationship("Document", back_populates="vsimage")
