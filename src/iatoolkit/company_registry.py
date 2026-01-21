@@ -90,6 +90,9 @@ def get_company_registry() -> CompanyRegistry:
 def get_registered_companies() -> Dict[str, Type[BaseCompany]]:
     return _company_registry.get_registered_companies()
 
+def get_company_instance(company_short_name: str) -> Optional[BaseCompany]:
+    return _company_registry.get_company_instance(company_short_name)
+
 
 def set_company_registry(registry: CompanyRegistry) -> None:
     """
