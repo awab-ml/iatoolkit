@@ -461,17 +461,6 @@ class KnowledgeBaseService:
 
         session.commit()
 
-        # 4. Update Configuration YAML
-        # Lazy import to avoid circular dependency
-        from iatoolkit import current_iatoolkit
-        from iatoolkit.services.configuration_service import ConfigurationService
-        config_service = current_iatoolkit().get_injector().get(ConfigurationService)
-
-        config_service.update_configuration_key(
-            company_short_name,
-            "knowledge_base.collections",
-            categories_config
-        )
 
     def get_collection_names(self, company_short_name: str) -> List[str]:
         """

@@ -285,6 +285,10 @@ class ConfigurationService:
         # Lazy import to avoid circular dependency
         from iatoolkit import current_iatoolkit
         from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
+
+        if not current_iatoolkit().is_community:
+            return
+
         knowledge_base = current_iatoolkit().get_injector().get(KnowledgeBaseService)
 
         kb_config = config.get('knowledge_base', {})
