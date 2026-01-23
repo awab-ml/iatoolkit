@@ -233,7 +233,7 @@ class PromptService:
             raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME,
                                      f'Company {company_short_name} not found')
 
-        # community edition has its own prompt management
+        # enterprise edition has its own prompt management
         if not current_iatoolkit().is_community:
             return
 

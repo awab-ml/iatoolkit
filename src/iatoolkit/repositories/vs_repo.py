@@ -197,7 +197,7 @@ class VSRepo:
                       doc.id,
                       doc.filename,
                       doc.storage_key,
-                      img.meta,
+                      doc.meta,
                       (img.embedding <=> CAST(:query_embedding AS VECTOR)) as distance
                   FROM iat_vsimages img
                            JOIN iat_documents doc ON img.document_id = doc.id

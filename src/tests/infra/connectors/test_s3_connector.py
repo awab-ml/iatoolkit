@@ -6,6 +6,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from iatoolkit.infra.connectors.s3_connector import S3Connector
+from datetime import datetime
 
 
 class TestS3Connector(unittest.TestCase):
@@ -51,12 +52,12 @@ class TestS3Connector(unittest.TestCase):
                 {
                     "Key": "test-prefix/test-folder/doc1.pdf",
                     "Size": 1024,
-                    "LastModified": "2023-01-01"
+                    "LastModified": datetime(2023, 1, 1, 0, 0, 0)
                 },
                 {
                     "Key": "test-prefix/test-folder/img.png",
                     "Size": 2048,
-                    "LastModified": "2023-01-02"
+                    "LastModified": datetime(2023, 1, 2, 0, 0, 0)
                 }
             ]
         }
@@ -65,18 +66,20 @@ class TestS3Connector(unittest.TestCase):
         result = self.connector.list_files()
 
         # Assert
-        # Verificar llamada a S3 con prefijo correcto
         expected_prefix = f"{self.prefix}/{self.folder}/"
         self.mock_s3_client.list_objects_v2.assert_called_with(Bucket=self.bucket, Prefix=expected_prefix)
 
-        # Verificar mapeo
         self.assertEqual(len(result), 2)
 
         self.assertEqual(result[0]['path'], "test-prefix/test-folder/doc1.pdf")
         self.assertEqual(result[0]['name'], "doc1.pdf")
         self.assertEqual(result[0]['metadata']['size'], 1024)
+        self.assertEqual(result[0]['metadata']['last_modified'], "2023-01-01T00:00:00")
+        self.assertEqual(result[0]['metadata']['folder'], "test-folder")
 
         self.assertEqual(result[1]['name'], "img.png")
+        self.assertEqual(result[1]['metadata']['last_modified'], "2023-01-02T00:00:00")
+        self.assertEqual(result[1]['metadata']['folder'], "test-folder")
 
     def test_list_files_returns_empty_list_when_no_contents(self):
         """Verifica que retorna lista vacía si S3 no devuelve 'Contents'."""

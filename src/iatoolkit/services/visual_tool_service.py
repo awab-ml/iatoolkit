@@ -20,7 +20,7 @@ class VisualToolService:
         self.i18n_service = i18n_service
 
 
-    def image_search(self, company_short_name: str, query: str, collection: str = None):
+    def image_search(self, company_short_name: str, query: str, collection: str = None, request_images: list = []):
         """
         Handle the search for text to image (iat_image_search).
         """

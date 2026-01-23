@@ -1,6 +1,9 @@
 # Copyright (c) 2024 Fernando Libedinsky
 # Product: IAToolkit
+#
+# IAToolkit is open source software.
 
+from iatoolkit import current_iatoolkit
 from iatoolkit.repositories.models import Company, IngestionSource, IngestionStatus, IngestionSourceType
 from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
@@ -35,6 +38,108 @@ class IngestorService:
         logging.getLogger().setLevel(logging.ERROR)
 
     # --- Public API Methods (CRUD & Management) ---
+
+    def run_ingestion(self, company: Company, source_id: int) -> int:
+        """
+        Validates source state and triggers the ingestion process.
+        """
+        # We assume validation of ownership happens here via query
+        source = self.document_repo.session.query(IngestionSource).filter_by(
+            id=source_id,
+            company_id=company.id
+        ).first()
+
+        if not source:
+            raise IAToolkitException(IAToolkitException.ErrorType.DOCUMENT_NOT_FOUND, "Ingestion Source not found")
+
+        if source.status == IngestionStatus.RUNNING:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_STATE, "Ingestion already running")
+
+        # Trigger internal logic
+        return self._trigger_ingestion_logic(source)
+
+
+    def _trigger_ingestion_logic(self, source: IngestionSource, filters: dict = {}) -> int:
+        """
+        Internal worker: Executes the ingestion for a specific DB Source.
+        """
+        # 1. Update Status
+        source.status = IngestionStatus.RUNNING
+        source.last_error = None
+        self.document_repo.create_or_update_ingestion_source(source)
+
+        processed_count = 0
+        try:
+            logging.info(f"🚀 Starting ingestion for source '{source.name}'")
+
+            # 2. Prepare Context
+            connector_config = source.configuration
+            metadata = connector_config.get('metadata', {})
+            collection_name = source.collection_type.name if source.collection_type else connector_config.get('collection')
+
+            context = {
+                'company': source.company,
+                'collection': collection_name,
+                'metadata': metadata
+            }
+
+            processor_config = FileProcessorConfig(
+                callback=self._file_processing_callback,
+                context=context,
+                filters=filters,
+                continue_on_error=True,
+                echo=False
+            )
+
+            # 3. Factory & Process
+            connector = self.file_connector_factory.create(connector_config)
+            processor = FileProcessor(connector, processor_config)
+            processor.process_files()
+
+            processed_count = processor.processed_files
+
+            # 4. Success Update
+            source.last_run_at = datetime.now()
+            source.status = IngestionStatus.ACTIVE
+            logging.info(f"✅ Finished source '{source.name}'. Processed: {processed_count}")
+
+        except Exception as e:
+            logging.exception(f"❌ Ingestion failed for source {source.name}")
+            source.status = IngestionStatus.ERROR
+            source.last_error = str(e)
+            raise e
+        finally:
+            self.document_repo.create_or_update_ingestion_source(source)
+
+        return processed_count
+
+    def _file_processing_callback(self,
+                                  company: Company,
+                                  filename: str,
+                                  content: bytes,
+                                  metadata: dict = None,
+                                  context: dict = None
+                                  ):
+        if not company:
+            raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER, "Missing company object in callback.")
+
+        try:
+            predefined_metadata = context.get('metadata', {}) if context else {}
+            if metadata:
+                predefined_metadata.update(metadata)
+
+            new_document = self.knowledge_base_service.ingest_document_sync(
+                company=company,
+                filename=filename,
+                content=content,
+                collection=context.get('collection'),
+                metadata=predefined_metadata
+            )
+            return new_document
+        except Exception as e:
+            logging.exception(f"Error processing file '{filename}': {e}")
+            raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR,
+                                     f"Error while processing file: {filename}")
 
     def create_source(self, company: Company, data: dict) -> IngestionSource:
         """
@@ -125,25 +230,6 @@ class IngestorService:
 
         return self.document_repo.create_or_update_ingestion_source(new_source)
 
-    def run_ingestion(self, company: Company, source_id: int) -> int:
-        """
-        Validates source state and triggers the ingestion process.
-        """
-        # We assume validation of ownership happens here via query
-        source = self.document_repo.session.query(IngestionSource).filter_by(
-            id=source_id,
-            company_id=company.id
-        ).first()
-
-        if not source:
-            raise IAToolkitException(IAToolkitException.ErrorType.DOCUMENT_NOT_FOUND, "Ingestion Source not found")
-
-        if source.status == IngestionStatus.RUNNING:
-            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_STATE, "Ingestion already running")
-
-        # Trigger internal logic
-        return self._trigger_ingestion_logic(source)
-
     # --- CLI Legacy Support ---
 
     def load_sources(self,
@@ -155,6 +241,11 @@ class IngestorService:
         1. Syncs sources from YAML to DB.
         2. Triggers ingestion for the requested sources (by name).
         """
+
+        # enterprise edition has its own ingestor service
+        if not current_iatoolkit().is_community:
+            return
+
         if not sources_to_load:
             raise IAToolkitException(IAToolkitException.ErrorType.PARAM_NOT_FILLED,
                                      f"Missing sources to load for company '{company.short_name}'.")
@@ -178,7 +269,14 @@ class IngestorService:
 
         return total_processed
 
-    # --- Internal Logic ---
+    def _get_base_connector_config(self, knowledge_base_config: dict) -> dict:
+        connectors = knowledge_base_config.get('connectors', {})
+        env = os.getenv('FLASK_ENV', 'dev')
+        if env == 'dev':
+            return connectors.get('development', {'type': 'local'})
+        else:
+            return connectors.get('production', {})
+
 
     def sync_sources_from_yaml(self, company: Company):
         """
@@ -214,84 +312,3 @@ class IngestorService:
 
             source_record.configuration = full_config
             self.document_repo.create_or_update_ingestion_source(source_record)
-
-    def _trigger_ingestion_logic(self, source: IngestionSource, filters: dict = {}) -> int:
-        """
-        Internal worker: Executes the ingestion for a specific DB Source.
-        """
-        # 1. Update Status
-        source.status = IngestionStatus.RUNNING
-        source.last_error = None
-        self.document_repo.create_or_update_ingestion_source(source)
-
-        processed_count = 0
-        try:
-            logging.info(f"🚀 Starting ingestion for source '{source.name}'")
-
-            # 2. Prepare Context
-            connector_config = source.configuration
-            metadata = connector_config.get('metadata', {})
-            collection_name = source.collection_type.name if source.collection_type else connector_config.get('collection')
-
-            context = {
-                'company': source.company,
-                'collection': collection_name,
-                'metadata': metadata
-            }
-
-            processor_config = FileProcessorConfig(
-                callback=self._file_processing_callback,
-                context=context,
-                filters=filters,
-                continue_on_error=True,
-                echo=False
-            )
-
-            # 3. Factory & Process
-            connector = self.file_connector_factory.create(connector_config)
-            processor = FileProcessor(connector, processor_config)
-            processor.process_files()
-
-            processed_count = processor.processed_files
-
-            # 4. Success Update
-            source.last_run_at = datetime.now()
-            source.status = IngestionStatus.ACTIVE
-            logging.info(f"✅ Finished source '{source.name}'. Processed: {processed_count}")
-
-        except Exception as e:
-            logging.exception(f"❌ Ingestion failed for source {source.name}")
-            source.status = IngestionStatus.ERROR
-            source.last_error = str(e)
-            raise e
-        finally:
-            self.document_repo.create_or_update_ingestion_source(source)
-
-        return processed_count
-
-    def _get_base_connector_config(self, knowledge_base_config: dict) -> dict:
-        connectors = knowledge_base_config.get('connectors', {})
-        env = os.getenv('FLASK_ENV', 'dev')
-        if env == 'dev':
-            return connectors.get('development', {'type': 'local'})
-        else:
-            return connectors.get('production', {})
-
-    def _file_processing_callback(self, company: Company, filename: str, content: bytes, context: dict = None):
-        if not company:
-            raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER, "Missing company object in callback.")
-
-        try:
-            predefined_metadata = context.get('metadata', {}) if context else {}
-            new_document = self.knowledge_base_service.ingest_document_sync(
-                company=company,
-                filename=filename,
-                content=content,
-                collection=context.get('collection'),
-                metadata=predefined_metadata
-            )
-            return new_document
-        except Exception as e:
-            logging.exception(f"Error processing file '{filename}': {e}")
-            raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR,
-                                     f"Error while processing file: {filename}")

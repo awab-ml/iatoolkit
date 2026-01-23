@@ -25,7 +25,11 @@ class S3Connector(FileConnector):
             {
                 "path": obj['Key'],  # s3 key
                 "name": obj['Key'].split('/')[-1],  # filename
-                "metadata": {"size": obj.get('Size'), "last_modified": obj.get('LastModified')}
+                "metadata": {
+                    "size": int(obj.get('Size', 0) or 0),
+                    "last_modified": self._isoformat_or_none(obj.get('LastModified')),
+                    "folder": self._relative_folder_from_key(obj["Key"])
+                }
             }
             for obj in files
         ]
@@ -59,3 +63,28 @@ class S3Connector(FileConnector):
             Params={'Bucket': self.bucket, 'Key': file_path},
             ExpiresIn=expiration
         )
+
+    def _relative_folder_from_key(self, key: str) -> str:
+        """
+        Retorna el folder relativo a self.folder, sin bucket, ni filename.
+        Ej:
+          prefix='companies/sample_company/sample_data/supplier_manuals/'
+          key   ='companies/sample_company/sample_data/supplier_manuals/a/b/doc.pdf'
+          -> 'a/b'
+        Si el archivo está directo en self.folder -> '' (string vacío)
+        """
+        if not isinstance(key, str) or not key:
+            return ""
+
+        rel = key
+        if rel.startswith(self.prefix):
+            rel = rel[len(self.prefix):]
+
+        parts = [p for p in rel.split("/") if p]
+        if len(parts) <= 1:
+            return ""
+        return "/".join(parts[:-1])
+
+    def _isoformat_or_none(self, value) -> str | None:
+        return value.isoformat() if value is not None else None
+

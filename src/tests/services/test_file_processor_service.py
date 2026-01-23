@@ -68,6 +68,7 @@ class TestFileProcessor:
             company=self.mock_company,
             filename="test_file2.txt",
             content=b"content of file2",
+            metadata={},
             context={'company': self.mock_company})
         assert self.mock_callback.call_count == 1
         assert self.mock_connector.get_file_content.call_count == 1

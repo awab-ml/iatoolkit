@@ -187,7 +187,6 @@ class ToolService:
             "iat_visual_search": self.visual_tool_service.visual_search,
         }
 
-
     def register_system_tools(self):
         """Creates or updates system functions in the database."""
         try:
