@@ -120,7 +120,7 @@ class CustomClassClientWrapper(EmbeddingClientWrapper):
     """
     Adapter for custom embedding classes defined by the user.
     The custom class is expected to implement 'get_embedding(text)'
-    and optionally 'get_image_embedding(image_bytes)'.
+    and optionally 'get_image_embedding()'.
     """
     def __init__(self, instance, model: str, dimensions: int):
         super().__init__(instance, model, dimensions)
@@ -139,7 +139,7 @@ class CustomClassClientWrapper(EmbeddingClientWrapper):
         return embedding
 
     def get_image_embedding(self, presigned_url: str, image_bytes: bytes) -> list[float]:
-        return self.client.get_image_embedding(image_input)
+        return self.client.get_image_embedding(presigned_url, image_bytes)
 
 
 # Factory and Service classes
