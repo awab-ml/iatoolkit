@@ -349,7 +349,7 @@ class VSImage(Base):
                                              ondelete='CASCADE'), nullable=False)
 
     # Vector dimension depends on the multimodal model (e.g., CLIP uses 512 or 768)
-    embedding = Column(Vector(512), nullable=False)
+    embedding = Column(Vector, nullable=False)
 
     company = relationship("Company", back_populates="vsimages")
     document = relationship("Document", back_populates="vsimage")

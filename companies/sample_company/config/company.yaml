@@ -126,16 +126,6 @@ knowledge_base:
       collection: employee_contract
       path: companies/sample_company/sample_data/employee_contracts
       folder: employee_contracts
-embedding_provider:
-  provider: huggingface
-  model: sentence-transformers/all-MiniLM-L6-v2
-  api_key_name: HF_TOKEN
-visual_embedding_provider:
-  provider: huggingface
-  model: openai/clip-vit-base-patch32
-  api_key_name: HF_TOKEN
-  dimensions: 512
-  endpoint_url: https://wj5yzzh7hw21srg9.us-east-1.aws.endpoints.huggingface.cloud
 mail_provider:
   provider: brevo_mail
   sender_email: sample_ia@iatoolkit.com
@@ -168,3 +158,44 @@ connectors:
       aws_access_key_id_env: MAXAA_AWS_ACCESS_KEY_ID
       aws_secret_access_key_env: MAXAA_AWS_SECRET_ACCESS_KEY
       aws_region_env: MAXAA_AWS_REGION
+
+# Configuración para embeddings de texto
+embedding_provider:
+  provider: huggingface
+  model: sentence-transformers/all-MiniLM-L6-v2
+  tool_name: text_embeddings  # <--- Conecta con inference_tools.text_embeddings
+
+# Configuración para embeddings visuales (imágenes)
+visual_embedding_provider:
+  provider: huggingface
+  model: openai/clip-vit-base-patch32
+  tool_name: clip_embeddings  # <--- Conecta con inference_tools.clip_embeddings
+  dimensions: 512
+
+# Definición centralizada de herramientas de inferencia
+inference_tools:
+  # Ancla para reutilizar la configuración base
+  _defaults: &hf_config
+    endpoint_url: https://wj5yzzh7hw21srg9.us-east-1.aws.endpoints.huggingface.cloud
+    api_key_name: HF_TOKEN
+
+  # Herramienta para CLIP (usada por visual_embedding_provider)
+  clip_embeddings:
+    <<: *hf_config
+    model_id: openai/clip-vit-base-patch32
+    model_parameters:
+      from_tf: true
+
+  # Herramienta para Texto (usada por embedding_provider)
+  text_embeddings:
+    <<: *hf_config
+    model_id: sentence-transformers/all-MiniLM-L6-v2
+
+  # Otras herramientas disponibles para el futuro (Voice, Whisper, etc.)
+  vibe_voice:
+    <<: *hf_config
+    model_id: microsoft/VibeVoice-1.5B
+
+  whisper:
+    <<: *hf_config
+    model_id: openai/whisper-large-v3

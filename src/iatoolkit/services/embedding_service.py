@@ -12,6 +12,7 @@ from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.infra.call_service import CallServiceClient
+from iatoolkit.services.inference_service import InferenceService
 import logging
 import importlib
 import inspect
@@ -43,71 +44,50 @@ class HuggingFaceClientWrapper(EmbeddingClientWrapper):
             client,
             model: str,
             dimensions: Optional[int] = None,
-            endpoint: str | None = None,
-            api_key: str | None = None,
-            call_service: None = None
+            inference_service: InferenceService = None,
+            company_short_name: str = None,
+            tool_name: str = None
     ):
         super().__init__(client, model, dimensions)
-        self.endpoint = endpoint
-        self.api_key = api_key
-        self.call_service = call_service
+        self.inference_service = inference_service
+        self.company_short_name = company_short_name
+        self.tool_name = tool_name
 
-    def _post_endpoint(self, payload: dict) -> dict:
-        if not self.endpoint:
-            raise ValueError("Missing HuggingFace endpoint URL (endpoint_url).")
-        if not self.call_service:
-            raise ValueError("Missing call_service dependency for HuggingFaceClientWrapper.")
-        if not self.api_key:
-            raise ValueError("Missing HuggingFace token (api_key).")
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        resp, status = self.call_service.post(
-            self.endpoint,
-            json_dict=payload,
-            headers=headers,
-            timeout=(10, 120.0)
-        )
-
-        if status != 200:
-            raise ValueError(f"HuggingFace endpoint error {status}: {resp}")
-
-        if not isinstance(resp, dict):
-            raise ValueError(f"Unexpected response format: {type(resp)} - {resp}")
-
-        if "error" in resp:
-            raise ValueError(f"HuggingFace endpoint error: {resp['error']}")
-
-        if "embedding" not in resp or not isinstance(resp["embedding"], list):
-            raise ValueError(f"Unexpected response format: {type(resp)} - {resp}")
-
-        return resp
+        if not self.inference_service or not self.company_short_name or not self.tool_name:
+            raise ValueError("HuggingFaceClientWrapper requires inference_service, company_short_name, and tool_name.")
 
     def get_embedding(self, text: str) -> list[float]:
-        result = self._post_endpoint({"inputs": {"mode": "text", "text": text}})
-        embedding = result["embedding"]
+        # Adapt text input to InferenceService payload structure
+        input_data = {"mode": "text", "text": text}
 
-        return embedding
+        result = self.inference_service.predict(
+            self.company_short_name,
+            self.tool_name,
+            input_data
+        )
+        return result["embedding"]
 
     def get_image_embedding(self,
                             presigned_url: Optional[str] = None,
                             image_bytes: Optional[bytes] = None
                             ) -> list[float]:
-        import base64
+        input_data = {"mode": "image"}
 
         if presigned_url:
-            result = self._post_endpoint({"inputs": {"mode": "image", "url": presigned_url}})
-            return result["embedding"]
-
-        if image_bytes:
+            input_data["url"] = presigned_url
+        elif image_bytes:
+            # InferenceService/Handler expects raw base64 string
             b64_data = base64.b64encode(image_bytes).decode("utf-8")
-            result = self._post_endpoint({"inputs": {"mode": "image", "base64": b64_data}})
-            return result["embedding"]
+            input_data["base64"] = b64_data
+        else:
+            raise ValueError("Missing image data (presigned_url or image_bytes).")
 
-        raise ValueError("Missing image data (presigned_url or image_bytes).")
+        result = self.inference_service.predict(
+            self.company_short_name,
+            self.tool_name,
+            input_data
+        )
+        return result["embedding"]
 
 class OpenAIClientWrapper(EmbeddingClientWrapper):
     def get_embedding(self, text: str) -> list[float]:
@@ -161,9 +141,13 @@ class EmbeddingClientFactory:
     It ensures that only one client wrapper is created per company, and it is thread-safe.
     """
     @inject
-    def __init__(self, config_service: ConfigurationService, call_service: CallServiceClient):
+    def __init__(self,
+                 config_service: ConfigurationService,
+                 call_service: CallServiceClient,
+                 inference_service: InferenceService):
         self.config_service = config_service
         self.call_service = call_service
+        self.inference_service = inference_service
         self._clients = {}  # Cache for storing initialized client wrappers
 
     def get_client(self, company_short_name: str, model_type: str = 'text') -> EmbeddingClientWrapper:
@@ -236,19 +220,30 @@ class EmbeddingClientFactory:
                 raise ValueError(f"Error initializing custom provider '{class_path}': {e}")
 
         elif provider == 'huggingface':
-            # api_key validation
-            api_key = self._get_api_key_from_config(embedding_config)
+            # NEW: Use InferenceService logic
+            # We need to know which tool to call in inference_tools.
+            # We look for 'tool_name' in the embedding config.
+            # Default fallback could be implied from context but explicit is better.
+            tool_name = embedding_config.get('tool_name')
+            if not tool_name:
+                # Fallback: if no tool_name, we can't use InferenceService effectively
+                # unless we assume 'text_embeddings' or 'clip_embeddings' based on model_type
+                if model_type in ['image', 'image_query']:
+                    tool_name = 'clip_embeddings'
+                else:
+                    tool_name = 'text_embeddings'
 
-            # read the endpoint_url from the config
-            endpoint_url = embedding_config.get('endpoint_url')
+                logging.warning(f"No 'tool_name' found in {config_section} for '{company_short_name}'. Defaulting to '{tool_name}'.")
+
             wrapper = HuggingFaceClientWrapper(
                 client=None,
                 model=model,
                 dimensions=dimensions,
-                endpoint=endpoint_url,
-                api_key=api_key,
-                call_service=self.call_service
+                inference_service=self.inference_service,
+                company_short_name=company_short_name,
+                tool_name=tool_name
             )
+
         elif provider == 'openai':
             api_key = self._get_api_key_from_config(embedding_config)
 
@@ -317,9 +312,6 @@ class EmbeddingService:
     def embed_image(self, company_short_name: str,
                     presigned_url: Optional[str] = None,
                     image_bytes: Optional[bytes] = None) -> list[float]:
-        """
-        Embedding para imagen a partir de una URL firmada (ingestions / assets).
-        """
         try:
             client_wrapper = self.client_factory.get_client(company_short_name, model_type='image')
             return client_wrapper.get_image_embedding(presigned_url, image_bytes)

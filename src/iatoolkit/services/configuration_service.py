@@ -337,8 +337,6 @@ class ConfigurationService:
                 add_error("embedding_provider", "Missing required key: 'provider'")
             if not config.get("embedding_provider", {}).get("model"):
                 add_error("embedding_provider", "Missing required key: 'model'")
-            if not config.get("embedding_provider", {}).get("api_key_name"):
-                add_error("embedding_provider", "Missing required key: 'api_key_name'")
 
         # 3b. Visual Embedding Provider (Optional)
         if config.get("visual_embedding_provider"):
