@@ -3,13 +3,17 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
+
 from iatoolkit.services.ingestor_service import IngestorService
 from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.infra.connectors.file_connector_factory import FileConnectorFactory
 from iatoolkit.repositories.document_repo import DocumentRepo
-from iatoolkit.repositories.models import Company, IngestionSource, IngestionStatus, IngestionSourceType
+from iatoolkit.repositories.models import Company, IngestionSource
 from iatoolkit.common.exceptions import IAToolkitException
+from iatoolkit.services.ingestion_source_service import IngestionSourceService
+from iatoolkit.services.ingestion_runner_service import IngestionRunnerService
+
 
 class TestIngestorService:
 
@@ -19,111 +23,92 @@ class TestIngestorService:
         self.mock_file_connector_factory = MagicMock(spec=FileConnectorFactory)
         self.mock_kb_service = MagicMock(spec=KnowledgeBaseService)
         self.mock_document_repo = MagicMock(spec=DocumentRepo)
-        self.mock_session = MagicMock()
-        self.mock_document_repo.session = self.mock_session
+
+        self.mock_ingestion_source_service = MagicMock(spec=IngestionSourceService)
+        self.mock_ingestion_runner_service = MagicMock(spec=IngestionRunnerService)
 
         self.service = IngestorService(
             config_service=self.mock_config_service,
             file_connector_factory=self.mock_file_connector_factory,
             knowledge_base_service=self.mock_kb_service,
-            document_repo=self.mock_document_repo
+            document_repo=self.mock_document_repo,
+            ingestion_source_service=self.mock_ingestion_source_service,
+            ingestion_runner_service=self.mock_ingestion_runner_service
         )
         self.company = Company(id=1, short_name='acme')
 
-    # --- Tests for create_source ---
+    def test_create_source_delegates_to_ingestion_source_service(self):
+        payload = {"name": "S1", "source_type": "s3", "configuration": {}, "collection_name": "C1"}
+        expected = IngestionSource(id=1, name="S1")
+        self.mock_ingestion_source_service.create_source.return_value = expected
 
-    def test_create_source_success(self):
-        # Arrange
-        data = {
-            'name': 'Test Bucket',
-            'collection_name': 'Test Collection',
-            'source_type': 's3',
-            'configuration': {'bucket': 'b1'}
-        }
-        expected_source = IngestionSource(id=1, name='Test Bucket')
-        self.mock_document_repo.create_or_update_ingestion_source.return_value = expected_source
-        self.mock_config_service.get_configuration.return_value = {
-            'provider': 's3'
-        }
-        # Act
-        result = self.service.create_source(self.company, data)
+        result = self.service.create_source(self.company, payload)
 
-        # Assert
-        self.mock_document_repo.create_or_update_ingestion_source.assert_called_once()
-        arg_source = self.mock_document_repo.create_or_update_ingestion_source.call_args[0][0]
-        assert arg_source.name == 'Test Bucket'
-        assert arg_source.source_type == IngestionSourceType.S3
-        assert result == expected_source
+        assert result == expected
+        self.mock_ingestion_source_service.create_source.assert_called_once_with(self.company, payload)
 
-    def test_create_source_missing_params(self):
-        with pytest.raises(IAToolkitException) as exc:
-            self.service.create_source(self.company, {'name': 'Missing Type'})
-        assert exc.value.error_type == IAToolkitException.ErrorType.MISSING_PARAMETER
+    def test_run_ingestion_delegates_to_ingestion_runner_service(self):
+        self.mock_ingestion_runner_service.run_ingestion.return_value = 3
 
-    def test_create_source_invalid_type(self):
-        data = {'name': 'X', 'source_type': 'ftp',
-                'collection_name': 'Test Collection','configuration': {}}
-        with pytest.raises(IAToolkitException) as exc:
-            self.service.create_source(self.company, data)
-        assert exc.value.error_type == IAToolkitException.ErrorType.INVALID_PARAMETER
+        count = self.service.run_ingestion(self.company, 10, user_identifier="u1")
 
-    def test_create_source_invalid_collection_name(self):
-        data = {'name': 'X', 'source_type': 's3',
-                'collection_name': 'Test Collection','configuration': {}}
-        self.mock_document_repo.get_collection_type_by_name.return_value = None
-        with pytest.raises(IAToolkitException) as exc:
-            self.service.create_source(self.company, data)
-        assert exc.value.error_type == IAToolkitException.ErrorType.INVALID_PARAMETER
+        assert count == 3
+        self.mock_ingestion_runner_service.run_ingestion.assert_called_once_with(
+            self.company, 10, user_identifier="u1"
+        )
 
-    # --- Tests for run_ingestion ---
-
-    def test_run_ingestion_success(self):
-        # Arrange
-        mock_source = IngestionSource(id=10, status=IngestionStatus.ACTIVE, company_id=1, configuration={'type':'local'})
-        self.mock_session.query.return_value.filter_by.return_value.first.return_value = mock_source
-
-        # Mock internal trigger logic via mocking connector factory (since internal logic uses it)
-        mock_connector = MagicMock()
-        self.mock_file_connector_factory.create.return_value = mock_connector
-
-        with patch('iatoolkit.services.ingestor_service.FileProcessor') as MockProcessor:
-            MockProcessor.return_value.processed_files = 3
-
-            # Act
-            count = self.service.run_ingestion(self.company, 10)
-
-            # Assert
-            assert count == 3
-            self.mock_file_connector_factory.create.assert_called()
-
-    def test_run_ingestion_not_found(self):
-        self.mock_session.query.return_value.filter_by.return_value.first.return_value = None
-        with pytest.raises(IAToolkitException) as exc:
-            self.service.run_ingestion(self.company, 99)
-        assert exc.value.error_type == IAToolkitException.ErrorType.DOCUMENT_NOT_FOUND
-
-    def test_run_ingestion_already_running(self):
-        mock_source = IngestionSource(id=10, status=IngestionStatus.RUNNING, company_id=1)
-        self.mock_session.query.return_value.filter_by.return_value.first.return_value = mock_source
+    def test_run_ingestion_propagates_exceptions(self):
+        self.mock_ingestion_runner_service.run_ingestion.side_effect = IAToolkitException(
+            IAToolkitException.ErrorType.INVALID_STATE, "Already running"
+        )
 
         with pytest.raises(IAToolkitException) as exc:
             self.service.run_ingestion(self.company, 10)
+
         assert exc.value.error_type == IAToolkitException.ErrorType.INVALID_STATE
 
-    # --- Tests for Legacy/Sync Logic (Reused from previous) ---
+    def test_update_source_delegates(self):
+        expected = IngestionSource(id=1, name="New")
+        self.mock_ingestion_source_service.update_source.return_value = expected
 
-    def test_sync_sources_from_yaml(self):
+        result = self.service.update_source(self.company, 1, {"name": "New"})
+
+        assert result == expected
+        self.mock_ingestion_source_service.update_source.assert_called_once_with(self.company, 1, {"name": "New"})
+
+    def test_delete_source_delegates(self):
+        self.service.delete_source(self.company, 1)
+        self.mock_ingestion_source_service.delete_source.assert_called_once_with(self.company, 1)
+
+    def test_load_sources_uses_runner_trigger_logic(self):
         # Arrange
-        mock_yaml = {
-            'document_sources': {'src1': {'path': 'p1'}},
-            'connectors': {'development': {'type': 'local'}}
-        }
-        self.mock_config_service.get_configuration.return_value = mock_yaml
-        self.mock_document_repo.get_ingestion_source_by_name.return_value = None # Create new
+        with patch('iatoolkit.services.ingestor_service.current_iatoolkit') as mock_current:
+            mock_current.return_value.is_community = True
 
-        # Act
-        with patch.dict('os.environ', {'FLASK_ENV': 'dev'}):
-            self.service.sync_sources_from_yaml(self.company)
+            self.service.sync_sources_from_yaml = MagicMock()
 
-        # Assert
-        self.mock_document_repo.create_or_update_ingestion_source.assert_called_once()
+            src1 = IngestionSource(id=1, name="src1")
+            src2 = IngestionSource(id=2, name="src2")
+            self.mock_document_repo.get_active_ingestion_sources.return_value = [src1, src2]
+
+            self.mock_ingestion_runner_service._trigger_ingestion_logic.side_effect = [2, 3]
+
+            # Act
+            total = self.service.load_sources(self.company, sources_to_load=["src1", "src2"], filters={"ext": "pdf"})
+
+            # Assert
+            assert total == 5
+            self.service.sync_sources_from_yaml.assert_called_once_with(self.company)
+            self.mock_document_repo.get_active_ingestion_sources.assert_called_once_with(self.company.id, ["src1", "src2"])
+            assert self.mock_ingestion_runner_service._trigger_ingestion_logic.call_count == 2
+            self.mock_ingestion_runner_service._trigger_ingestion_logic.assert_any_call(src1, filters={"ext": "pdf"})
+            self.mock_ingestion_runner_service._trigger_ingestion_logic.assert_any_call(src2, filters={"ext": "pdf"})
+
+    def test_load_sources_missing_sources_to_load_raises(self):
+        with patch('iatoolkit.services.ingestor_service.current_iatoolkit') as mock_current:
+            mock_current.return_value.is_community = True
+
+            with pytest.raises(IAToolkitException) as exc:
+                self.service.load_sources(self.company, sources_to_load=None)
+
+            assert exc.value.error_type == IAToolkitException.ErrorType.PARAM_NOT_FILLED

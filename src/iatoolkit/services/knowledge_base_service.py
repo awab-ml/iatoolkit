@@ -207,6 +207,7 @@ class KnowledgeBaseService:
 
             # Attempt to save the error state
             try:
+                session.add(document)
                 document.status = DocumentStatus.FAILED
                 document.error_message = str(e)
                 session.commit()

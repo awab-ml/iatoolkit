@@ -337,6 +337,8 @@ class IAToolkit:
         from iatoolkit.services.auth_service import AuthService
         from iatoolkit.services.sql_service import SqlService
         from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
+        from iatoolkit.services.ingestion_runner_service import IngestionRunnerService
+        from iatoolkit.services.ingestion_source_service import IngestionSourceService
 
         binder.bind(QueryService, to=QueryService)
         binder.bind(BenchmarkService, to=BenchmarkService)
@@ -359,6 +361,8 @@ class IAToolkit:
         binder.bind(AuthService, to=AuthService)
         binder.bind(SqlService, to=SqlService)
         binder.bind(KnowledgeBaseService, to=KnowledgeBaseService)
+        binder.bind(IngestionRunnerService, to=IngestionRunnerService)
+        binder.bind(IngestionSourceService, to=IngestionSourceService)
 
     def _bind_infrastructure(self, binder: Binder):
         from iatoolkit.infra.llm_proxy import LLMProxy

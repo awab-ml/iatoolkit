@@ -5,7 +5,7 @@
 
 import pytest
 from unittest.mock import MagicMock
-from iatoolkit.repositories.models import Document, Company, IngestionSource
+from iatoolkit.repositories.models import Document, Company, IngestionSource, IngestionRun
 from iatoolkit.repositories.document_repo import DocumentRepo
 from iatoolkit.common.exceptions import IAToolkitException
 import base64
@@ -124,5 +124,71 @@ class TestDocumentRepo:
         # Hard to assert complex filter arguments on mocks, but we check query flow
         mock_query.filter.assert_called()
         mock_query.all.assert_called()
+
+    def test_get_ingestion_source_by_id(self):
+        # Arrange
+        mock_source = IngestionSource(id=10, name="src1", company_id=1)
+        mock_query = self.session.query.return_value
+        mock_query.filter_by.return_value.first.return_value = mock_source
+
+        # Act
+        result = self.repo.get_ingestion_source_by_id(1, 10)
+
+        # Assert
+        assert result == mock_source
+        self.session.query.assert_called_with(IngestionSource)
+        mock_query.filter_by.assert_called()
+        mock_query.filter_by.return_value.first.assert_called_once()
+
+    def test_list_ingestion_sources(self):
+        # Arrange
+        mock_list = [IngestionSource(id=1, company_id=1), IngestionSource(id=2, company_id=1)]
+        mock_query = self.session.query.return_value
+        mock_query.filter_by.return_value.all.return_value = mock_list
+
+        # Act
+        result = self.repo.list_ingestion_sources(1)
+
+        # Assert
+        assert result == mock_list
+        self.session.query.assert_called_with(IngestionSource)
+        mock_query.filter_by.assert_called()
+        mock_query.filter_by.return_value.all.assert_called_once()
+
+    def test_delete_ingestion_source(self):
+        # Arrange
+        src = IngestionSource(id=1, company_id=1, name="src")
+
+        # Act
+        self.repo.delete_ingestion_source(src)
+
+        # Assert
+        self.session.delete.assert_called_once_with(src)
+        self.session.commit.assert_called()
+
+    def test_create_ingestion_run(self):
+        # Arrange
+        run = IngestionRun(company_id=1, source_id=2)
+
+        # Act
+        result = self.repo.create_ingestion_run(run)
+
+        # Assert
+        assert result == run
+        self.session.add.assert_called_once_with(run)
+        self.session.commit.assert_called()
+
+    def test_update_ingestion_run(self):
+        # Arrange
+        run = IngestionRun(id=5, company_id=1, source_id=2)
+
+        # Act
+        result = self.repo.update_ingestion_run(run)
+
+        # Assert
+        assert result == run
+        self.session.merge.assert_called_once_with(run)
+        self.session.commit.assert_called()
+
 
 

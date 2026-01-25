@@ -3,6 +3,7 @@
 #
 # IAToolkit is open source software.
 
+
 from flask import request, jsonify
 from flask.views import MethodView
 from injector import inject
@@ -30,10 +31,10 @@ class IngestionApiView(MethodView):
         self.profile_repo = profile_repo
         self.ingestor_service = ingestor_service
 
-    def get(self, company_short_name: str):
+    def get(self, company_short_name: str, source_id: int = None):
         """
-        GET /api/{company}/ingestion-sources
-        Lists all configured ingestion sources for the company.
+        GET /<company>/api/ingestion-sources
+        GET /<company>/api/ingestion-sources/<id>
         """
         auth_result = self.auth_service.verify()
         if not auth_result.get("success"):
@@ -43,20 +44,27 @@ class IngestionApiView(MethodView):
         if not company:
             return jsonify({"error": "Company not found"}), 404
 
-        sources = self.document_repo.session.query(IngestionSource).filter_by(company_id=company.id).all()
+        if source_id:
+            src = self.document_repo.get_ingestion_source_by_id(company.id, source_id)
+            if not src:
+                return jsonify({"error": "Ingestion Source not found"}), 404
+            payload = src.to_dict()
+            payload['collection_name'] = src.collection_type.name if src.collection_type else None
+            return jsonify(payload), 200
 
+        sources = self.document_repo.session.query(IngestionSource).filter_by(company_id=company.id).all()
         response_data = []
         for src in sources:
             source_dict = src.to_dict()
-            source_dict['collection_name'] = src.collection_type.name
+            source_dict['collection_name'] = src.collection_type.name if src.collection_type else None
             response_data.append(source_dict)
 
         return jsonify(response_data), 200
 
     def post(self, company_short_name: str, source_id: int = None, action: str = None):
         """
-        POST /api/{company}/ingestion-sources (Create)
-        POST /api/{company}/ingestion-sources/{id}/run (Trigger)
+        POST /<company>/api/ingestion-sources (Create)
+        POST /<company>/api/ingestion-sources/<id>/run (Trigger)
         """
         auth_result = self.auth_service.verify()
         if not auth_result.get("success"):
@@ -68,15 +76,13 @@ class IngestionApiView(MethodView):
             return jsonify({"error": "Company not found"}), 404
 
         try:
-            # Case 1: Trigger Run
             if source_id and action == 'run':
-                processed_count = self.ingestor_service.run_ingestion(company, source_id)
+                processed_count = self.ingestor_service.run_ingestion(company, source_id, user_identifier=user_identifier)
                 return jsonify({
                     "message": "Ingestion completed successfully",
                     "processed_files": processed_count
                 }), 200
 
-            # Case 2: Create New Source
             if not source_id and not action:
                 data = request.get_json() or {}
                 new_source = self.ingestor_service.create_source(company, data)
@@ -85,7 +91,6 @@ class IngestionApiView(MethodView):
             return jsonify({"error": "Invalid endpoint usage"}), 400
 
         except IAToolkitException as e:
-            # Mapeo de excepciones de negocio a códigos HTTP
             status_code = 500
             if e.error_type == IAToolkitException.ErrorType.INVALID_STATE:
                 status_code = 409
@@ -98,4 +103,65 @@ class IngestionApiView(MethodView):
 
         except Exception as e:
             logging.exception(f"Ingestion API Error: {e}")
+            return jsonify({"error": "Internal server error"}), 500
+
+    def put(self, company_short_name: str, source_id: int):
+        """
+        PUT /<company>/api/ingestion-sources/<id>
+        """
+        auth_result = self.auth_service.verify()
+        if not auth_result.get("success"):
+            return jsonify(auth_result), auth_result.get("status_code", 401)
+
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            return jsonify({"error": "Company not found"}), 404
+
+        try:
+            data = request.get_json() or {}
+            updated = self.ingestor_service.update_source(company, source_id, data)
+            return jsonify(updated.to_dict()), 200
+
+        except IAToolkitException as e:
+            status_code = 500
+            if e.error_type == IAToolkitException.ErrorType.INVALID_STATE:
+                status_code = 409
+            elif e.error_type in [IAToolkitException.ErrorType.MISSING_PARAMETER, IAToolkitException.ErrorType.INVALID_PARAMETER]:
+                status_code = 400
+            elif e.error_type == IAToolkitException.ErrorType.DOCUMENT_NOT_FOUND:
+                status_code = 404
+            return jsonify({"error": str(e)}), status_code
+
+        except Exception as e:
+            logging.exception(f"Ingestion API Error (PUT): {e}")
+            return jsonify({"error": "Internal server error"}), 500
+
+    def delete(self, company_short_name: str, source_id: int):
+        """
+        DELETE /<company>/api/ingestion-sources/<id>
+        """
+        auth_result = self.auth_service.verify()
+        if not auth_result.get("success"):
+            return jsonify(auth_result), auth_result.get("status_code", 401)
+
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            return jsonify({"error": "Company not found"}), 404
+
+        try:
+            self.ingestor_service.delete_source(company, source_id)
+            return jsonify({"status": "success"}), 200
+
+        except IAToolkitException as e:
+            status_code = 500
+            if e.error_type == IAToolkitException.ErrorType.INVALID_STATE:
+                status_code = 409
+            elif e.error_type in [IAToolkitException.ErrorType.MISSING_PARAMETER, IAToolkitException.ErrorType.INVALID_PARAMETER]:
+                status_code = 400
+            elif e.error_type == IAToolkitException.ErrorType.DOCUMENT_NOT_FOUND:
+                status_code = 404
+            return jsonify({"error": str(e)}), status_code
+
+        except Exception as e:
+            logging.exception(f"Ingestion API Error (DELETE): {e}")
             return jsonify({"error": "Internal server error"}), 500

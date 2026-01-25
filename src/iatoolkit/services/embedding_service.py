@@ -21,7 +21,7 @@ from typing import Union, Optional
 # Wrapper classes to create a common interface for embedding clients
 class EmbeddingClientWrapper:
     """Abstract base class for embedding client wrappers."""
-    def __init__(self, client, model: str, dimensions: int = 1536):
+    def __init__(self, client, model: str, dimensions: Optional[int] = None):
         self.client = client
         self.model = model
         self.dimensions = dimensions
@@ -42,7 +42,7 @@ class HuggingFaceClientWrapper(EmbeddingClientWrapper):
             self,
             client,
             model: str,
-            dimensions: int = 1536,
+            dimensions: Optional[int] = None,
             endpoint: str | None = None,
             api_key: str | None = None,
             call_service: None = None
@@ -90,10 +90,6 @@ class HuggingFaceClientWrapper(EmbeddingClientWrapper):
         result = self._post_endpoint({"inputs": {"mode": "text", "text": text}})
         embedding = result["embedding"]
 
-        if self.dimensions and len(embedding) != self.dimensions:
-            logging.warning(
-                f"HuggingFace embedding dimensions mismatch: expected={self.dimensions} got={len(embedding)} model={self.model}"
-            )
         return embedding
 
     def get_image_embedding(self,
@@ -117,9 +113,16 @@ class OpenAIClientWrapper(EmbeddingClientWrapper):
     def get_embedding(self, text: str) -> list[float]:
         # The OpenAI API expects the input text to be clean
         text = text.replace("\n", " ")
-        response = self.client.embeddings.create(input=[text],
-                                                 model=self.model,
-                                                 dimensions=self.dimensions)
+
+        # Prepare arguments, passing dimensions only if explicitly set
+        kwargs = {
+            "input": [text],
+            "model": self.model
+        }
+        if self.dimensions is not None:
+            kwargs["dimensions"] = self.dimensions
+
+        response = self.client.embeddings.create(**kwargs)
         return response.data[0].embedding
 
 class CustomClassClientWrapper(EmbeddingClientWrapper):
@@ -128,7 +131,7 @@ class CustomClassClientWrapper(EmbeddingClientWrapper):
     The custom class is expected to implement 'get_embedding(text)'
     and optionally 'get_image_embedding()'.
     """
-    def __init__(self, instance, model: str, dimensions: int):
+    def __init__(self, instance, model: str, dimensions: Optional[int] = None):
         super().__init__(instance, model, dimensions)
         # We assume the instance has methods compatible with our needs
         # or we adapt them here. For simplicity, we assume Duck Typing.
@@ -174,7 +177,7 @@ class EmbeddingClientFactory:
             return self._clients[cache_key]
 
         # Determine config section based on model type
-        config_section = 'visual_embedding_provider' if model_type == 'image' else 'embedding_provider'
+        config_section = 'visual_embedding_provider' if model_type in ['image', 'image_query'] else 'embedding_provider'
 
         # Get the embedding provider and model from the company.yaml
         embedding_config = self.config_service.get_configuration(company_short_name, config_section)
@@ -186,7 +189,11 @@ class EmbeddingClientFactory:
             raise ValueError(f"Provider not configured in {config_section} for '{company_short_name}'.")
 
         model = embedding_config.get('model')
-        dimensions = int(embedding_config.get('dimensions', "512" if model_type == 'image' else "1536"))
+
+        # Dimensions are optional. If not present, we let the provider/model decide defaults.
+        dimensions = embedding_config.get('dimensions')
+        if dimensions is not None:
+            dimensions = int(dimensions)
 
         # Extract class path if provider is custom
         class_path = embedding_config.get('class_path')
@@ -259,7 +266,7 @@ class EmbeddingClientFactory:
     def _get_api_key_from_config(self, embedding_config: dict):
         api_key_name = embedding_config.get('api_key_name')
         if not api_key_name:
-            raise ValueError(f"Missing configuration for {config_section}:api_key_name in config.yaml.")
+            raise ValueError(f"Missing configuration for embedding api_key_name in config.yaml.")
 
         api_key = os.getenv(api_key_name)
         if not api_key:

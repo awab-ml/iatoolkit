@@ -31,71 +31,22 @@ class StorageService:
 
     def _get_connector(self, company_short_name: str) -> FileConnector:
         """
-        Retrieves cached connector or creates a new one using the Factory.
+        Retrieves a connector using the fixed 'iatoolkit_storage' alias.
         """
-        if company_short_name in self._connectors:
-            return self._connectors[company_short_name]
+        connectors = self.config_service.get_configuration(company_short_name, "connectors") or {}
+        storage_alias = "iatoolkit_storage"
 
-        # 1. Get raw config from YAML
-        storage_config = self.config_service.get_configuration(company_short_name, "storage_provider")
-
-        # 2. Build the "Factory Config" dictionary
-        factory_config = {}
-
-        if not storage_config:
-            # Fallback Legacy: S3 with default env vars
-            logging.warning(f"No storage config for '{company_short_name}'. Using default S3.")
-            factory_config = {
-                "type": "s3",
-                "bucket": os.getenv("S3_BUCKET_NAME", "iatoolkit-assets")
-                # Factory will pick up default AWS_ env vars since 'auth' is missing
-            }
-        else:
-            provider = storage_config.get("provider", "s3")
-            bucket = storage_config.get("bucket")
-
-            if provider == "s3":
-                s3_conf = storage_config.get("s3", {})
-
-                # Resolve Env Var NAMES to VALUES
-                auth = {}
-                a_key_env = s3_conf.get("access_key_env")
-                s_key_env = s3_conf.get("secret_key_env")
-
-                access_key = os.getenv(a_key_env) if a_key_env else None
-                secret_key = os.getenv(s_key_env) if s_key_env else None
-                if access_key and secret_key:
-                    auth = {"aws_access_key_id": access_key,
-                            "aws_secret_access_key": secret_key,
-                            "region_name": os.getenv(s3_conf.get("region_env", "AWS_REGION"), "us-east-1")}
-
-                factory_config = {
-                    "type": "s3",
-                    "bucket": bucket,
-                    "prefix": s3_conf.get("prefix", ""),
-                    "auth": auth
-                }
-
-            elif provider == "google_cloud_storage":
-                gcs_conf = storage_config.get("google_cloud_storage", {})
-                service_account = gcs_conf.get("service_account_path", "service_account.json")
-
-                factory_config = {
-                    "type": "gcs",
-                    "bucket": bucket,
-                    "service_account_path": service_account
-                }
+        connector_config = connectors.get(storage_alias)
+        if not connector_config:
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.CONFIG_ERROR,
+                f"Missing connector alias '{storage_alias}' in company configuration."
+            )
 
         try:
-            # 3. Delegate instantiation to Factory
-            connector = FileConnectorFactory.create(factory_config)
-
-            # Cache and return
-            self._connectors[company_short_name] = connector
-            return connector
-
+            return FileConnectorFactory.create(connector_config)
         except Exception as e:
-            error_msg = f"Failed to initialize storage factory for '{company_short_name}': {str(e)}"
+            error_msg = f"Failed to initialize storage connector '{storage_alias}' for '{company_short_name}': {str(e)}"
             logging.error(error_msg)
             raise IAToolkitException(IAToolkitException.ErrorType.CONFIG_ERROR, error_msg)
 

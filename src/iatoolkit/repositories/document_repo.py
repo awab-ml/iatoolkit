@@ -3,8 +3,9 @@
 #
 # IAToolkit is open source software.
 
-from iatoolkit.repositories.models import (Document,
-                        IngestionStatus, IngestionSource, CollectionType)
+from iatoolkit.repositories.models import (Document, CollectionType,
+                                IngestionStatus, IngestionSource, IngestionRun )
+
 from injector import inject
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.common.exceptions import IAToolkitException
@@ -50,6 +51,16 @@ class DocumentRepo:
     def get_ingestion_source_by_name(self, company_id: int, name: str) -> Optional[IngestionSource]:
         return self.session.query(IngestionSource).filter_by(company_id=company_id, name=name).first()
 
+    def get_ingestion_source_by_id(self, company_id: int, source_id: int) -> Optional[IngestionSource]:
+        return self.session.query(IngestionSource).filter_by(company_id=company_id, id=source_id).first()
+
+    def list_ingestion_sources(self, company_id: int) -> List[IngestionSource]:
+        return self.session.query(IngestionSource).filter_by(company_id=company_id).all()
+
+    def delete_ingestion_source(self, source: IngestionSource) -> None:
+        self.session.delete(source)
+        self.session.commit()
+
     def create_or_update_ingestion_source(self, source: IngestionSource) -> IngestionSource:
         """Adds or updates a source. If ID exists, it merges; otherwise adds."""
         if source.id:
@@ -67,6 +78,18 @@ class DocumentRepo:
             IngestionSource.status != IngestionStatus.PAUSED
         )
         return query.all()
+
+    # --- Ingestion Run Methods ---
+
+    def create_ingestion_run(self, run: IngestionRun) -> IngestionRun:
+        self.session.add(run)
+        self.session.commit()
+        return run
+
+    def update_ingestion_run(self, run: IngestionRun) -> IngestionRun:
+        self.session.merge(run)
+        self.session.commit()
+        return run
 
     def commit(self):
         self.session.commit()

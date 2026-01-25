@@ -17,7 +17,14 @@ class S3Connector(FileConnector):
 
     def list_files(self) -> List[dict]:
         # list all the files as dictionaries, with keys:  'path', 'name' y 'metadata'.
-        prefix = f'{self.prefix}/{self.folder}/'
+        # Construimos el prefijo evitando dobles barras si folder está vacío
+        parts = [p.strip('/') for p in [self.prefix, self.folder] if p]
+        prefix = "/".join(parts)
+
+        # Agregamos slash final solo si hay prefijo, para listar "contenido de carpeta"
+        if prefix:
+            prefix += "/"
+
         response = self.s3.list_objects_v2(Bucket=self.bucket, Prefix=prefix)
         files = response.get('Contents', [])
 

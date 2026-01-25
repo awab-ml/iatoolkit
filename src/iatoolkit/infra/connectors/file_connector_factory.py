@@ -21,14 +21,31 @@ class FileConnectorFactory:
             return LocalFileConnector(config['path'])
 
         elif connector_type == 's3':
-            # Permite inyectar auth ya resuelto, o usar defaults de entorno
-            auth = config.get('auth')
+            # Resolve credentials in a single place for the whole toolkit.
+            auth = config.get('auth', {})
             if not auth:
-                auth = {
-                    'aws_access_key_id': os.getenv('AWS_ACCESS_KEY_ID'),
-                    'aws_secret_access_key': os.getenv('AWS_SECRET_ACCESS_KEY'),
-                    'region_name': os.getenv('AWS_REGION', 'us-east-1')
-                }
+                auth_env = config.get('auth_env') or {}
+                a_env = auth_env.get('aws_access_key_id_env')
+                s_env = auth_env.get('aws_secret_access_key_env')
+                r_env = auth_env.get('aws_region_env')
+
+                access_key = os.getenv(a_env) if a_env else None
+                secret_key = os.getenv(s_env) if s_env else None
+                region = os.getenv(r_env) if r_env else None
+
+                if access_key and secret_key:
+                    auth = {
+                        'aws_access_key_id': access_key,
+                        'aws_secret_access_key': secret_key,
+                        'region_name': region or os.getenv('AWS_REGION', 'us-east-1')
+                    }
+                else:
+                    # Fall back to the standard AWS_* env vars (or empty to enable default chain).
+                    auth = {
+                        'aws_access_key_id': os.getenv('AWS_ACCESS_KEY_ID'),
+                        'aws_secret_access_key': os.getenv('AWS_SECRET_ACCESS_KEY'),
+                        'region_name': os.getenv('AWS_REGION', 'us-east-1')
+                    }
 
             return S3Connector(
                 bucket=config['bucket'],
