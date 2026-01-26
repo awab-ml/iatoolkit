@@ -207,6 +207,41 @@ ui:
     delete_confirmation: "Eliminar el prompt?"
     filter_type: "Filtrar por tipo"
 
+  tools:
+    title: "Gestor de Herramientas"
+    subtitle: "Configura funciones externas y capacidades del sistema accesibles para el LLM."
+    library: "Biblioteca de Herramientas"
+    new_btn: "Nueva Herramienta"
+    filter_placeholder: "Filtrar herramientas..."
+    select_tool: "Selecciona una herramienta"
+    empty_state: "Selecciona una herramienta para configurar"
+
+    # Header & Actions
+    delete_btn: "Eliminar"
+    save_btn: "Guardar Cambios"
+
+    # Right Panel
+    definition_title: "Definición"
+    type_label: "Tipo de Herramienta"
+    method_label: "Método de Ejecución (Clase Cliente)"
+    method_help: "Nombre del método Python en la implementación de la clase de su empresa."
+    desc_label: "Descripción (Prompt)"
+    desc_placeholder: "Describe al LLM cuándo y cómo usar esta herramienta..."
+    active_label: "Activo"
+
+    # Schema Section
+    schema_title: "Esquema de Parámetros"
+    visual_editor: "Editor Visual"
+
+    # Modal
+    modal_title: "Crear Nueva Herramienta"
+    modal_name_label: "Nombre (Función LLM)"
+    modal_name_help: "Usar snake_case. Debe ser único."
+    modal_type_label: "Tipo"
+    modal_desc_label: "Descripción Corta"
+    modal_desc_placeholder: "Explica brevemente qué hace esta herramienta..."
+    modal_cancel: "Cancelar"
+    modal_create_btn: "Crear Herramienta"
 
   config:
     editor_description: "Editor de configuración"

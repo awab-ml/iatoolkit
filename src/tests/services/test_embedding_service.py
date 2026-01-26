@@ -19,7 +19,7 @@ from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.infra.call_service import CallServiceClient
-
+from iatoolkit.services.inference_service import InferenceService
 
 class TestEmbeddingService:
     """
@@ -30,8 +30,7 @@ class TestEmbeddingService:
     MOCK_CONFIG_HF = {
         'provider': 'huggingface',
         'model': 'hf-model',
-        'api_key_name': 'HF_KEY',
-        'endpoint_url': 'https://example.com/endpoint'
+        'tool_name': 'my_embedding_tool'
     }
     MOCK_CONFIG_OPENAI = {
         'provider': 'openai',
@@ -90,11 +89,14 @@ class TestEmbeddingService:
         self.mock_i18n_service = MagicMock(spec=I18nService)
         self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
         self.mock_call_service = MagicMock(spec=CallServiceClient)
+        self.mock_inference_service = MagicMock(spec=InferenceService)
 
         # Instantiate the classes under test
         self.client_factory = EmbeddingClientFactory(
             config_service=self.mock_config_service,
-            call_service=self.mock_call_service)
+            call_service=self.mock_call_service,
+            inference_service=self.mock_inference_service
+        )
         self.embedding_service = EmbeddingService(client_factory=self.client_factory,
                                                   profile_repo=self.mock_profile_repo,
                                                   i18n_service=self.mock_i18n_service)
@@ -102,17 +104,16 @@ class TestEmbeddingService:
     # --- Factory Tests ---
 
     def test_factory_creates_huggingface_wrapper(self, mocker):
-        """Tests that the factory correctly creates a HuggingFaceClientWrapper (endpoint-only)."""
-        mocker.patch('os.getenv', return_value='fake-hf-key')
-
+        """Tests that the factory correctly creates a HuggingFaceClientWrapper with InferenceService."""
         wrapper = self.client_factory.get_client('company_hf')
 
         assert isinstance(wrapper, HuggingFaceClientWrapper)
         assert wrapper.client is None
         assert wrapper.model == 'hf-model'
-        assert wrapper.endpoint == 'https://example.com/endpoint'
-        assert wrapper.api_key == 'fake-hf-key'
-        assert wrapper.call_service == self.mock_call_service
+        # Validates that dependencies were injected correctly
+        assert wrapper.inference_service == self.mock_inference_service
+        assert wrapper.company_short_name == 'company_hf'
+        assert wrapper.tool_name == 'my_embedding_tool'
 
 
     def test_factory_creates_openai_wrapper(self, mocker):
@@ -181,12 +182,6 @@ class TestEmbeddingService:
         assert wrapper_text.model == 'openai-model' # From MOCK_CONFIG_OPENAI
         assert wrapper_image.model == 'clip-vit-base' # From MOCK_CONFIG_VISUAL
 
-    def test_factory_raises_error_if_api_key_is_not_set(self, mocker):
-        """Tests that a ValueError is raised if the API key environment variable is missing."""
-        mocker.patch('os.getenv', return_value=None)
-        with pytest.raises(ValueError, match="Environment variable 'HF_KEY' is not set"):
-            self.client_factory.get_client('company_hf')
-
     # --- Service Tests (Provider Agnostic) ---
 
     def test_service_embed_text_returns_vector(self, mocker):
@@ -245,161 +240,110 @@ class TestEmbeddingService:
         mock_wrapper.get_image_embedding.assert_called_once_with(presigned_url, None)
         assert result == self.SAMPLE_VECTOR
 
-    def test_service_embed_image_from_bytes_returns_vector(self, mocker):
-        """
-        Tests that embed_image_from_bytes calls the factory with model_type='image' and uses get_image_embedding(bytes).
-        """
-        # Arrange
-        mock_wrapper = MagicMock(spec=EmbeddingClientWrapper)
-        mock_wrapper.get_image_embedding.return_value = self.SAMPLE_VECTOR
-        mocker.patch.object(self.client_factory, 'get_client', return_value=mock_wrapper)
+        def test_service_embed_image_from_bytes_returns_vector(self, mocker):
+            """
+            Tests that embed_image_from_bytes calls the factory with model_type='image' and uses get_image_embedding(bytes).
+            """
+            # Arrange
+            mock_wrapper = MagicMock(spec=EmbeddingClientWrapper)
+            mock_wrapper.get_image_embedding.return_value = self.SAMPLE_VECTOR
+            mocker.patch.object(self.client_factory, 'get_client', return_value=mock_wrapper)
 
-        fake_image_bytes = b'\x89PNG\r\n\x1a\n'
+            fake_image_bytes = b'\x89PNG\r\n\x1a\n'
 
-        # Act
-        result = self.embedding_service.embed_image("any_company", presigned_url=None, image_bytes=fake_image_bytes)
+            # Act
+            result = self.embedding_service.embed_image("any_company", presigned_url=None, image_bytes=fake_image_bytes)
 
-        # Assert
-        self.client_factory.get_client.assert_called_once_with("any_company", model_type="image")
-        mock_wrapper.get_image_embedding.assert_called_once_with(None, fake_image_bytes)
-        assert result == self.SAMPLE_VECTOR
+            # Assert
+            self.client_factory.get_client.assert_called_once_with("any_company", model_type="image")
+            mock_wrapper.get_image_embedding.assert_called_once_with(None, fake_image_bytes)
+            assert result == self.SAMPLE_VECTOR
 
-    def test_huggingface_wrapper_get_embedding_calls_endpoint_with_text_mode(self):
-        self.mock_call_service.post.return_value = ({"embedding": [0.1, 0.2, 0.3], "dimensions": 3}, 200)
+        def test_huggingface_wrapper_get_embedding_calls_inference_service(self):
+            """Tests that get_embedding delegates to inference_service.predict with correct structure."""
+            # Arrange
+            self.mock_inference_service.predict.return_value = {"embedding": [0.1, 0.2, 0.3]}
 
-        wrapper = HuggingFaceClientWrapper(
-            client=None,
-            model="clip",
-            dimensions=3,
-            endpoint="https://example.com/endpoint",
-            api_key="fake-token",
-            call_service=self.mock_call_service
-        )
+            wrapper = HuggingFaceClientWrapper(
+                client=None,
+                model="clip",
+                dimensions=3,
+                inference_service=self.mock_inference_service,
+                company_short_name="test_co",
+                tool_name="test_tool"
+            )
 
-        result = wrapper.get_embedding("hola")
+            # Act
+            result = wrapper.get_embedding("hola")
 
-        assert result == [0.1, 0.2, 0.3]
-        self.mock_call_service.post.assert_called_once()
-        call_kwargs = self.mock_call_service.post.call_args.kwargs
-        assert call_kwargs["json_dict"] == {"inputs": {"mode": "text", "text": "hola"}}
-        assert call_kwargs["headers"]["Authorization"] == "Bearer fake-token"
+            # Assert
+            assert result == [0.1, 0.2, 0.3]
+            self.mock_inference_service.predict.assert_called_once_with(
+                "test_co",
+                "test_tool",
+                {"mode": "text", "text": "hola"}
+            )
 
-    def test_huggingface_wrapper_get_image_embedding_raises_without_endpoint(self):
-        wrapper = HuggingFaceClientWrapper(
-            client=None,
-            model="any-model",
-            dimensions=512,
-            endpoint=None,
-            api_key="fake-token",
-            call_service=self.mock_call_service
-        )
+        def test_huggingface_wrapper_init_raises_missing_dependencies(self):
+            """Tests that the wrapper raises ValueError if initialized without required services."""
+            with pytest.raises(ValueError, match="requires inference_service"):
+                HuggingFaceClientWrapper(
+                    client=None, model="test",
+                    inference_service=None, # Missing
+                    company_short_name="co", tool_name="tool"
+                )
 
-        with pytest.raises(ValueError, match="Missing HuggingFace endpoint URL"):
-            wrapper.get_image_embedding("https://example.com/presigned", None)
+        def test_huggingface_wrapper_get_image_embedding_sends_url_to_inference_service(self):
+            """Tests get_image_embedding with a URL."""
+            # Arrange
+            self.mock_inference_service.predict.return_value = {"embedding": [0.0, 1.0, 2.0]}
+            wrapper = HuggingFaceClientWrapper(
+                client=None, model="clip",
+                inference_service=self.mock_inference_service,
+                company_short_name="test_co", tool_name="test_tool"
+            )
+            presigned_url = "https://example.com/presigned"
 
-    def test_huggingface_wrapper_get_image_embedding_raises_without_token(self):
-        wrapper = HuggingFaceClientWrapper(
-            client=None,
-            model="any-model",
-            dimensions=512,
-            endpoint="https://example.com/endpoint",
-            api_key=None,
-            call_service=self.mock_call_service
-        )
+            # Act
+            result = wrapper.get_image_embedding(presigned_url, None)
 
-        with pytest.raises(ValueError, match="Missing HuggingFace token"):
-            wrapper.get_image_embedding("https://example.com/presigned", None)
+            # Assert
+            assert result == [0.0, 1.0, 2.0]
+            self.mock_inference_service.predict.assert_called_once_with(
+                "test_co",
+                "test_tool",
+                {"mode": "image", "url": presigned_url}
+            )
 
-    def test_huggingface_wrapper_get_image_embedding_raises_without_call_service(self):
-        wrapper = HuggingFaceClientWrapper(
-            client=None,
-            model="any-model",
-            dimensions=512,
-            endpoint="https://example.com/endpoint",
-            api_key="fake-token",
-            call_service=None
-        )
+        def test_huggingface_wrapper_get_image_embedding_sends_base64_to_inference_service(self):
+            """Tests get_image_embedding with bytes."""
+            # Arrange
+            self.mock_inference_service.predict.return_value = {"embedding": [0.5, 0.5]}
+            wrapper = HuggingFaceClientWrapper(
+                client=None, model="clip",
+                inference_service=self.mock_inference_service,
+                company_short_name="test_co", tool_name="test_tool"
+            )
+            image_bytes = b"fake_image_data"
+            expected_b64 = base64.b64encode(image_bytes).decode("utf-8")
 
-        with pytest.raises(ValueError, match="Missing call_service dependency"):
-            wrapper.get_image_embedding("https://example.com/presigned", None)
+            # Act
+            result = wrapper.get_image_embedding(None, image_bytes)
 
-    def test_huggingface_wrapper_get_image_embedding_sends_url_inside_inputs_dict(self):
-        self.mock_call_service.post.return_value = ({"embedding": [0.0, 1.0, 2.0], "dimensions": 3}, 200)
+            # Assert
+            assert result == [0.5, 0.5]
+            self.mock_inference_service.predict.assert_called_once_with(
+                "test_co",
+                "test_tool",
+                {"mode": "image", "base64": expected_b64}
+            )
 
-        wrapper = HuggingFaceClientWrapper(
-            client=None,
-            model="clip",
-            dimensions=3,
-            endpoint="https://example.com/endpoint",
-            api_key="fake-token",
-            call_service=self.mock_call_service
-        )
-
-        presigned_url = "https://example.com/presigned"
-        result = wrapper.get_image_embedding(presigned_url, None)
-
-        assert result == [0.0, 1.0, 2.0]
-
-        self.mock_call_service.post.assert_called_once()
-        call_kwargs = self.mock_call_service.post.call_args.kwargs
-        assert call_kwargs["json_dict"] == {"inputs": {"mode": "image", "url": presigned_url}}
-        assert call_kwargs["timeout"] == (10, 120.0)
-
-        headers = call_kwargs["headers"]
-        assert headers["Authorization"] == "Bearer fake-token"
-        assert headers["Content-Type"] == "application/json"
-
-    def test_huggingface_wrapper_get_image_embedding_sends_bytes_as_base64_in_inputs(self):
-        self.mock_call_service.post.return_value = ({"embedding": [0.1, 0.2], "dimensions": 2}, 200)
-
-        wrapper = HuggingFaceClientWrapper(
-            client=None,
-            model="clip",
-            dimensions=2,
-            endpoint="https://example.com/endpoint",
-            api_key="fake-token",
-            call_service=self.mock_call_service
-        )
-
-        image_bytes = b"\x89PNG\r\n\x1a\n"
-        result = wrapper.get_image_embedding(None, image_bytes)
-
-        assert result == [0.1, 0.2]
-
-        self.mock_call_service.post.assert_called_once()
-        call_kwargs = self.mock_call_service.post.call_args.kwargs
-        payload = call_kwargs["json_dict"]
-
-        assert payload["inputs"]["mode"] == "image"
-        assert isinstance(payload["inputs"]["base64"], str)
-        assert payload["inputs"]["base64"] != ""
-
-    def test_huggingface_wrapper_get_image_embedding_raises_on_hf_error_payload(self):
-        self.mock_call_service.post.return_value = ({"error": "Bad things happened"}, 200)
-
-        wrapper = HuggingFaceClientWrapper(
-            client=None,
-            model="clip",
-            dimensions=512,
-            endpoint="https://example.com/endpoint",
-            api_key="fake-token",
-            call_service=self.mock_call_service
-        )
-
-        with pytest.raises(ValueError, match="HuggingFace endpoint error: Bad things happened"):
-            wrapper.get_image_embedding("https://example.com/presigned", None)
-
-    def test_huggingface_wrapper_get_image_embedding_raises_on_non_200(self):
-        self.mock_call_service.post.return_value = ("upstream failed", 500)
-
-        wrapper = HuggingFaceClientWrapper(
-            client=None,
-            model="clip",
-            dimensions=512,
-            endpoint="https://example.com/endpoint",
-            api_key="fake-token",
-            call_service=self.mock_call_service
-        )
-
-        with pytest.raises(ValueError, match=r"HuggingFace endpoint error 500:"):
-            wrapper.get_image_embedding("https://example.com/presigned", None)
+        def test_huggingface_wrapper_get_image_embedding_raises_if_no_data(self):
+            """Tests validation when no image data is provided."""
+            wrapper = HuggingFaceClientWrapper(
+                client=None, model="clip",
+                inference_service=self.mock_inference_service,
+                company_short_name="test_co", tool_name="test_tool"
+            )
+            with pytest.raises(ValueError, match="Missing image data"):
+                wrapper.get_image_embedding(None, None)

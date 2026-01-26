@@ -7,11 +7,11 @@ from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.prompt_service import PromptService
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.services.configuration_service import ConfigurationService
+from iatoolkit.services.inference_service import InferenceService
 from iatoolkit.common.util import Utility
 from injector import inject
 import logging
-import os
-import base64
+
 
 
 class Dispatcher:
@@ -20,10 +20,12 @@ class Dispatcher:
                  config_service: ConfigurationService,
                  prompt_service: PromptService,
                  llmquery_repo: LLMQueryRepo,
+                 inference_service: InferenceService,
                  util: Utility,):
         self.config_service = config_service
         self.prompt_service = prompt_service
         self.llmquery_repo = llmquery_repo
+        self.inference_service = inference_service
         self.util = util
 
         self._tool_service = None
@@ -103,28 +105,75 @@ class Dispatcher:
                 f"Company '{company_short_name}' not configured. available companies: {available_companies}"
             )
 
-        # check if action is a system function using ToolService
-        if self.tool_service.is_system_tool(function_name):
-            # this is the system function to be executed.
-            handler = self.tool_service.get_system_handler(function_name)
-            logging.debug(
-                f"Calling system handler [{function_name}] "
-                f"with company_short_name={company_short_name} "
-                f"and kwargs={kwargs}"
+        # 1. Consult the Database (Source of Truth) for the tool definition
+        tool_def = self.tool_service.get_tool_definition(company_short_name, function_name)
+        if not tool_def:
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
+                f"Tool '{function_name}' not registered for company '{company_short_name}'"
             )
+
+        # 2. Dispatch based on Tool Type
+        if tool_def.tool_type == 'SYSTEM':
+            # Map to internal handler
+            handler = self.tool_service.get_system_handler(function_name)
+            if not handler:
+                raise IAToolkitException(IAToolkitException.ErrorType.INTERNAL_ERROR,
+                                         f"Handler for system tool '{function_name}' not found.")
+
+            logging.debug(f"Dispatching SYSTEM tool: {function_name}")
             return handler(company_short_name, **kwargs)
 
-        company_instance = self.company_instances[company_short_name]
-        try:
-            return company_instance.handle_request(function_name, **kwargs)
-        except IAToolkitException as e:
-            # Si ya es una IAToolkitException, la relanzamos para preservar el tipo de error original.
-            raise e
+        elif tool_def.tool_type == 'INFERENCE':
+            # Delegate to Inference Service with DB config
+            logging.debug(f"Dispatching INFERENCE tool: {function_name}")
+            return self.inference_service.predict(
+                company_short_name=company_short_name,
+                tool_name=function_name,
+                input_data=kwargs,
+                execution_config=tool_def.execution_config
+            )
 
-        except Exception as e:
-            logging.exception(e)
-            raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
-                               f"Error in function call '{function_name}': {str(e)}") from e
+        elif tool_def.tool_type == 'NATIVE':
+            # Delegate to Company Python Class
+            logging.debug(f"Dispatching NATIVE tool: {function_name}")
+            company_instance = self.company_instances[company_short_name]
+
+            # Determine which method to call (default to tool name if mapping missing)
+            method_name = function_name
+            if tool_def.execution_config:
+                method_name = tool_def.execution_config.get('method_name', function_name)
+
+            try:
+                # Check if the method exists and is callable
+                if not hasattr(company_instance, method_name):
+                    raise IAToolkitException(
+                        IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
+                        f"Method '{method_name}' not found in company '{company_short_name}' instance."
+                    )
+
+                method = getattr(company_instance, method_name)
+                if not callable(method):
+                    raise IAToolkitException(
+                        IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
+                        f"Attribute '{method_name}' in company '{company_short_name}' is not callable."
+                    )
+
+                # Execute the method directly
+                return method(**kwargs)
+
+            except IAToolkitException as e:
+                raise e
+            except Exception as e:
+                logging.exception(e)
+                raise IAToolkitException(IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
+                                         f"Error executing native tool '{method_name}': {str(e)}") from e
+
+        else:
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.EXTERNAL_SOURCE_ERROR,
+                f"Unknown tool type '{tool_def.tool_type}'"
+            )
 
 
     def get_company_instance(self, company_name: str):

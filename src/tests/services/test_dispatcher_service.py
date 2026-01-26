@@ -4,6 +4,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from injector import Injector
+from iatoolkit.repositories.models import Tool
 from iatoolkit.base_company import BaseCompany
 from iatoolkit.company_registry import get_company_registry, register_company
 from iatoolkit.services.dispatcher_service import Dispatcher
@@ -88,6 +89,7 @@ class TestDispatcher:
             config_service=self.mock_config_service,
             prompt_service=self.mock_prompt_manager,
             llmquery_repo=self.mock_llm_query_repo,
+            inference_service=MagicMock(),
             util=self.util,
         )
 
@@ -101,51 +103,108 @@ class TestDispatcher:
         registry.clear()
 
     def test_dispatch_sample_company(self):
-        """Tests that dispatch works correctly for a valid company."""
-        # Ensure tool service says it's NOT a system tool
-        self.mock_tool_service.is_system_tool.return_value = False
+        """Tests that dispatch works correctly for a valid NATIVE company tool."""
+        # Arrange: Mock the tool definition retrieval
+        mock_tool_def = MagicMock(spec=Tool)
+        mock_tool_def.tool_type = Tool.TYPE_NATIVE
+        # Configuramos para que el dispatcher llame a 'handle_request' en lugar de 'some_data'
+        mock_tool_def.execution_config = {'method_name': 'handle_request'}
+        self.mock_tool_service.get_tool_definition.return_value = mock_tool_def
 
+        # Act
         result = self.dispatcher.dispatch("sample", "some_data", key='a value')
 
-        self.mock_sample_company_instance.handle_request.assert_called_once_with("some_data", key='a value')
+        # Assert
+        self.mock_tool_service.get_tool_definition.assert_called_once_with("sample", "some_data")
+        # El dispatcher solo pasa kwargs al método nativo, no el nombre de la herramienta
+        self.mock_sample_company_instance.handle_request.assert_called_once_with(key='a value')
         assert result == {"result": "sample_company_response"}
 
     def test_dispatch_invalid_company(self):
         """Tests that dispatch raises an exception for an unconfigured company."""
+        # Dispatcher checks company existence BEFORE checking tool def
         with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.dispatch("invalid_company", "some_tag")
         assert "Company 'invalid_company' not configured." in str(excinfo.value)
 
     def test_dispatch_method_exception(self):
         """Validates that the dispatcher handles exceptions thrown by companies."""
-        self.mock_tool_service.is_system_tool.return_value = False
+        # Arrange
+        mock_tool_def = MagicMock(spec=Tool)
+        mock_tool_def.tool_type = Tool.TYPE_NATIVE
+        self.mock_tool_service.get_tool_definition.return_value = mock_tool_def
+
         self.mock_sample_company_instance.handle_request.side_effect = Exception("Method error")
 
+        # Act & Assert
         with pytest.raises(IAToolkitException) as excinfo:
             self.dispatcher.dispatch("sample", "some_data")
 
-        assert "Error in function call 'some_data'" in str(excinfo.value)
-        assert "Method error" in str(excinfo.value)
+        assert "Error executing native tool" in str(excinfo.value)
 
     def test_dispatch_system_function(self):
         """Tests that dispatch correctly handles system functions via ToolService."""
-        # Setup mocks for system tool detection
-        self.mock_tool_service.is_system_tool.return_value = True
+        # Arrange
+        mock_tool_def = MagicMock(spec=Tool)
+        mock_tool_def.tool_type = Tool.TYPE_SYSTEM
+        self.mock_tool_service.get_tool_definition.return_value = mock_tool_def
 
         # Mock handler returned by ToolService
         mock_handler = MagicMock(return_value={"file": "test.xlsx"})
         self.mock_tool_service.get_system_handler.return_value = mock_handler
 
+        # Act
         result = self.dispatcher.dispatch("sample", "iat_generate_excel", filename="test.xlsx")
 
         # Assertions
-        self.mock_tool_service.is_system_tool.assert_called_once_with("iat_generate_excel")
+        self.mock_tool_service.get_tool_definition.assert_called_once_with("sample", "iat_generate_excel")
         self.mock_tool_service.get_system_handler.assert_called_once_with("iat_generate_excel")
         mock_handler.assert_called_once_with("sample", filename="test.xlsx")
 
         # Ensure company handler was NOT called
         self.mock_sample_company_instance.handle_request.assert_not_called()
         assert result == {"file": "test.xlsx"}
+
+    def test_dispatch_system_function_visual_search_success(self):
+        """Tests visual search dispatching."""
+        # Arrange
+        # Setup mock for get_tool_definition to return a SYSTEM tool
+        mock_tool_def = MagicMock(spec=Tool)
+        mock_tool_def.tool_type = Tool.TYPE_SYSTEM
+        self.mock_tool_service.get_tool_definition.return_value = mock_tool_def
+
+        mock_handler = MagicMock(return_value={"ok": True})
+        self.mock_tool_service.get_system_handler.return_value = mock_handler
+
+        img_bytes = b"hello"
+        img_b64 = base64.b64encode(img_bytes).decode("ascii")
+        request_images = [{"name": "x.png", "base64": img_b64}]
+
+        # Act
+        result = self.dispatcher.dispatch(
+            "sample",
+            "iat_visual_search",
+            request_images=request_images,
+            image_index=0,
+            n_results=7
+        )
+
+        # Assert
+        assert result == {"ok": True}
+        # UPDATED: Assert get_tool_definition called instead of is_system_tool
+        self.mock_tool_service.get_tool_definition.assert_called_once_with("sample", "iat_visual_search")
+        self.mock_tool_service.get_system_handler.assert_called_once_with("iat_visual_search")
+
+    def test_dispatch_tool_not_found(self):
+        """Test that dispatch raises exception if tool definition is missing."""
+        # Arrange
+        self.mock_tool_service.get_tool_definition.return_value = None
+
+        # Act & Assert
+        with pytest.raises(IAToolkitException) as excinfo:
+            self.dispatcher.dispatch("sample", "unknown_tool")
+
+        assert "Tool 'unknown_tool' not registered" in str(excinfo.value)
 
     def test_get_company_instance(self):
         """Tests that get_company_instance returns the correct company instance."""
@@ -234,27 +293,3 @@ class TestDispatcher:
             self.dispatcher.load_company_configs()
 
         assert "Config Error" in str(excinfo.value)
-
-    def test_dispatch_system_function_visual_search_success(self):
-        """Tests that iat_visual_search decodes base64 and calls handler with image_content bytes."""
-        self.mock_tool_service.is_system_tool.return_value = True
-
-        mock_handler = MagicMock(return_value={"ok": True})
-        self.mock_tool_service.get_system_handler.return_value = mock_handler
-
-        img_bytes = b"hello"
-        img_b64 = base64.b64encode(img_bytes).decode("ascii")
-        request_images = [{"name": "x.png", "base64": img_b64}]
-
-        result = self.dispatcher.dispatch(
-            "sample",
-            "iat_visual_search",
-            request_images=request_images,
-            image_index=0,
-            n_results=7
-        )
-
-        assert result == {"ok": True}
-        self.mock_tool_service.is_system_tool.assert_called_once_with("iat_visual_search")
-        self.mock_tool_service.get_system_handler.assert_called_once_with("iat_visual_search")
-

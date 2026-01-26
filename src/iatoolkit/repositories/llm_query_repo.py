@@ -43,25 +43,47 @@ class LLMQueryRepo:
                 Tool.is_active.is_(True),
                 or_(
                     Tool.company_id == company.id,
-                    Tool.system_function.is_(True)
+                    Tool.tool_type == Tool.TYPE_SYSTEM
                 )
             )
-            # Ordenamos descendente: True (System) va primero, False (Company) va después
-            .order_by(Tool.system_function.desc())
+            # Ordenamos: Queremos SYSTEM primero.
+            .order_by(Tool.tool_type.desc())
             .all()
         )
 
+    def get_tool_definition(self, company: Company, tool_name: str) -> Tool | None:
+        return self.session.query(Tool).filter_by(
+            company_id=company.id,
+            name=tool_name,
+            is_active=True
+        ).first()
+
+    def get_tool_by_id(self, company_id: int, tool_id: int) -> Tool | None:
+        return self.session.query(Tool).filter_by(id=tool_id, company_id=company_id).first()
+
+    def add_tool(self, tool: Tool):
+        """Adds a new tool to the session (without checking by name logic)."""
+        self.session.add(tool)
+        self.session.commit()
+        return tool
+
     def delete_system_tools(self):
-        self.session.query(Tool).filter_by(system_function=True).delete(synchronize_session=False)
+        self.session.query(Tool).filter_by(tool_type=Tool.TYPE_SYSTEM).delete(synchronize_session=False)
         self.session.commit()
 
     def create_or_update_tool(self, new_tool: Tool):
-        tool = self.session.query(Tool).filter_by(company_id=new_tool.company_id,
-                                                  name=new_tool.name).first()
+        # Usado principalmente por el proceso de Sync y Register System Tools
+        if new_tool.tool_type == Tool.TYPE_SYSTEM:
+            tool = self.session.query(Tool).filter_by(name=new_tool.name, tool_type=Tool.TYPE_SYSTEM).first()
+        else:
+            tool = self.session.query(Tool).filter_by(company_id=new_tool.company_id, name=new_tool.name).first()
+
         if tool:
             tool.description = new_tool.description
             tool.parameters = new_tool.parameters
-            tool.system_function = new_tool.system_function
+            tool.tool_type = new_tool.tool_type
+            tool.source = new_tool.source
+            tool.execution_config = new_tool.execution_config
         else:
             self.session.add(new_tool)
             tool = new_tool
@@ -70,7 +92,7 @@ class LLMQueryRepo:
         return tool
 
     def delete_tool(self, tool: Tool):
-        self.session.query(Tool).filter_by(id=tool.id).delete(synchronize_session=False)
+        self.session.delete(tool)
         self.session.commit()
 
     # -- Prompt related methods

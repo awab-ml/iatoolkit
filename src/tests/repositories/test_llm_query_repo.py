@@ -25,7 +25,8 @@ class TestLLMQueryRepo:
         self.function = Tool(name="function1",
                              company_id=1,
                              description="A description",
-                             parameters={'name': 'value'})
+                             parameters={'name': 'value'},
+                             tool_type=Tool.TYPE_NATIVE)
         self.company = Company(name='test_company',
                                short_name='test')
         self.session.add(self.company)
@@ -41,7 +42,30 @@ class TestLLMQueryRepo:
 
         self.session.add(self.function)
         self.session.commit()
-        assert len(self.repo.get_company_tools(self.company)) == 1
+
+        # Should return native tool
+        tools = self.repo.get_company_tools(self.company)
+        assert len(tools) == 1
+        assert tools[0].tool_type == Tool.TYPE_NATIVE
+
+    def test_get_company_functions_includes_system_tools(self):
+        """Test that get_company_tools returns both company specific and system tools."""
+        # 1. Add a company native tool
+        native_tool = Tool(name="native", company_id=self.company.id, description="d", parameters={}, tool_type=Tool.TYPE_NATIVE)
+        self.session.add(native_tool)
+
+        # 2. Add a system tool (no company_id)
+        system_tool = Tool(name="sys", company_id=None, description="s", parameters={}, tool_type=Tool.TYPE_SYSTEM)
+        self.session.add(system_tool)
+        self.session.commit()
+
+        tools = self.repo.get_company_tools(self.company)
+
+        assert len(tools) == 2
+        # System tool should be first due to ordering logic
+        assert tools[0].tool_type == Tool.TYPE_SYSTEM
+        assert tools[0].name == "sys"
+        assert tools[1].tool_type == Tool.TYPE_NATIVE
 
     def test_create_function_when_new_function(self):
         """Test creating a new function with all fields."""
@@ -50,7 +74,9 @@ class TestLLMQueryRepo:
             company_id=self.company.id,
             description="A description",
             parameters={'name': 'value'},
-            system_function=False
+            tool_type=Tool.TYPE_NATIVE,
+            source=Tool.SOURCE_USER,
+            execution_config={"method": "run"}
         )
         result = self.repo.create_or_update_tool(new_tool=new_tool)
         self.session.commit()  # Commit to persist and check retrieval
@@ -60,6 +86,48 @@ class TestLLMQueryRepo:
         assert result.description == "A description"
         assert result.parameters == {'name': 'value'}
         assert result.company_id == self.company.id
+        assert result.tool_type == Tool.TYPE_NATIVE
+        assert result.execution_config == {"method": "run"}
+
+    def test_create_or_update_tool_updates_existing(self):
+        """Test updating an existing tool."""
+        # 1. Crear tool original
+        tool = Tool(name="func_update", company_id=self.company.id, description="Desc Original", parameters={'a': 1}, tool_type=Tool.TYPE_NATIVE)
+        self.session.add(tool)
+        self.session.commit()
+
+        # 2. Objeto con los nuevos datos (mismo nombre y compañía)
+        updated_tool_data = Tool(
+            name="func_update",
+            company_id=self.company.id,
+            description="Desc Actualizada",
+            parameters={'a': 2},
+            tool_type=Tool.TYPE_INFERENCE, # Changed type
+            source=Tool.SOURCE_USER
+        )
+
+        # 3. Ejecutar actualización
+        result = self.repo.create_or_update_tool(updated_tool_data)
+        self.session.commit()
+
+        # 4. Verificar
+        assert result.id == tool.id  # Debe mantener el ID
+        assert result.description == "Desc Actualizada"
+        assert result.parameters == {'a': 2}
+        assert result.tool_type == Tool.TYPE_INFERENCE
+
+    def test_delete_system_tools(self):
+        """Test deleting only system tools."""
+        t1 = Tool(name="s1", tool_type=Tool.TYPE_SYSTEM, description="s", parameters={})
+        t2 = Tool(name="c1", company_id=self.company.id, tool_type=Tool.TYPE_NATIVE, description="c", parameters={})
+        self.session.add_all([t1, t2])
+        self.session.commit()
+
+        self.repo.delete_system_tools()
+
+        # Verify system tool is gone but native remains
+        assert self.session.query(Tool).filter_by(name="s1").first() is None
+        assert self.session.query(Tool).filter_by(name="c1").first() is not None
 
     def test_create_prompt_when_new_prompt(self):
         """Test creating a new prompt with all fields."""

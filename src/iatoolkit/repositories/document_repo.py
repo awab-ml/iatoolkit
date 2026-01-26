@@ -45,9 +45,7 @@ class DocumentRepo:
     def get_collection_type_by_name(self, company_id: int, name: str) -> Optional[CollectionType]:
         return self.session.query(CollectionType).filter_by(company_id=company_id, name=name).first()
 
-
     # --- Ingestion Source Methods ---
-
     def get_ingestion_source_by_name(self, company_id: int, name: str) -> Optional[IngestionSource]:
         return self.session.query(IngestionSource).filter_by(company_id=company_id, name=name).first()
 

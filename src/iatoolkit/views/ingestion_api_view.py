@@ -40,26 +40,30 @@ class IngestionApiView(MethodView):
         if not auth_result.get("success"):
             return jsonify(auth_result), auth_result.get("status_code", 401)
 
-        company = self.profile_repo.get_company_by_short_name(company_short_name)
-        if not company:
-            return jsonify({"error": "Company not found"}), 404
+        try:
+            company = self.profile_repo.get_company_by_short_name(company_short_name)
+            if not company:
+                return jsonify({"error": "Company not found"}), 404
 
-        if source_id:
-            src = self.document_repo.get_ingestion_source_by_id(company.id, source_id)
-            if not src:
-                return jsonify({"error": "Ingestion Source not found"}), 404
-            payload = src.to_dict()
-            payload['collection_name'] = src.collection_type.name if src.collection_type else None
-            return jsonify(payload), 200
+            if source_id:
+                src = self.document_repo.get_ingestion_source_by_id(company.id, source_id)
+                if not src:
+                    return jsonify({"error": "Ingestion Source not found"}), 404
+                payload = src.to_dict()
+                payload['collection_name'] = src.collection_type.name if src.collection_type else None
+                return jsonify(payload), 200
 
-        sources = self.document_repo.session.query(IngestionSource).filter_by(company_id=company.id).all()
-        response_data = []
-        for src in sources:
-            source_dict = src.to_dict()
-            source_dict['collection_name'] = src.collection_type.name if src.collection_type else None
-            response_data.append(source_dict)
+            sources = self.document_repo.list_ingestion_sources(company.id)
+            response_data = []
+            for src in sources:
+                source_dict = src.to_dict()
+                source_dict['collection_name'] = src.collection_type.name if src.collection_type else None
+                response_data.append(source_dict)
 
-        return jsonify(response_data), 200
+            return jsonify(response_data), 200
+        except Exception as e:
+            logging.exception(f"Ingestion-sources API Error (GET): {e}")
+            return jsonify({"error": "Internal server error"}), 500
 
     def post(self, company_short_name: str, source_id: int = None, action: str = None):
         """

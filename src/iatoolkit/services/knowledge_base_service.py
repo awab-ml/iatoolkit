@@ -218,7 +218,11 @@ class KnowledgeBaseService:
             raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR, error_msg)
 
 
-    def search(self, company_short_name: str, query: str, n_results: int = 5, metadata_filter: dict = None) -> str:
+    def search(self,
+               company_short_name: str,
+               query: str, n_results: int = 5,
+               metadata_filter: dict = None,
+               collection: str = None) -> str:
         """
         Performs a semantic search against the vector store and formats the result as a context string for LLMs.
         Replaces the legacy SearchService logic.
@@ -236,12 +240,20 @@ class KnowledgeBaseService:
         if not company:
             return f"error: {self.i18n_service.t('rag.search.company_not_found', company_short_name=company_short_name)}"
 
+        # If collection name provided, resolve to ID or handle in VSRepo
+        collection_id = None
+        if collection:
+            collection_id = self._get_collection_type_id(company.id, collection)
+            if not collection_id:
+                logging.warning(f"Collection '{collection}' not found. Searching all.")
+
         # Queries VSRepo (which typically uses pgvector/SQL underneath)
         chunk_list = self.vs_repo.query(
             company_short_name=company_short_name,
             query_text=query,
             n_results=n_results,
-            metadata_filter=metadata_filter
+            metadata_filter=metadata_filter,
+            collection_id=collection_id,
         )
 
         search_context = ''

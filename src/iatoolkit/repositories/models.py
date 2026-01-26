@@ -158,12 +158,25 @@ class Tool(Base):
     """Represents a custom or system function that the LLM can call (tool)."""
     __tablename__ = 'iat_tools'
 
+    # Execution types
+    TYPE_SYSTEM = 'SYSTEM'
+    TYPE_NATIVE = 'NATIVE'       # executed by company class in Python
+    TYPE_INFERENCE = 'INFERENCE' # executed by InferenceService
+
+    # source of the definition (Source of Truth)
+    SOURCE_SYSTEM = 'SYSTEM'
+    SOURCE_YAML = 'YAML'         # defined in company.yaml
+    SOURCE_USER = 'USER'         # defined via GUI/API
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer,
                         ForeignKey('iat_companies.id',ondelete='CASCADE'),
                         nullable=True)
     name = Column(String, nullable=False)
-    system_function = Column(Boolean, default=False)
+    tool_type = Column(String, default=TYPE_NATIVE, nullable=False)
+    source = Column(String, default=SOURCE_YAML, nullable=False)
+    execution_config = Column(JSON, nullable=True) # e.g. {"method_name": "calc_roi"} or {"endpoint": "..."}
+
     description = Column(Text, nullable=False)
     parameters = Column(JSON, nullable=False)
     is_active = Column(Boolean, default=True)

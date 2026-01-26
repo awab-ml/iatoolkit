@@ -54,7 +54,6 @@ ui:
       prompt_args: "Prompt Arguments (Client Data)"
       llm_output: "LLM Output (Raw JSON)"
 
-
   login_widget:
     title: "Sign In"
     welcome_message: "Enter your credentials or register to access this platform."
@@ -207,6 +206,41 @@ ui:
     delete_confirmation: "Delete Prompt?"
     filter_type: "Filter by type"
 
+  tools:
+    title: "Tool Manager"
+    subtitle: "Configure external functions and system capabilities accessible by the LLM."
+    library: "Tools Library"
+    new_btn: "New Tool"
+    filter_placeholder: "Filter tools..."
+    select_tool: "Select a tool"
+    empty_state: "Select a tool to configure"
+
+    # Header & Actions
+    delete_btn: "Delete"
+    save_btn: "Save Changes"
+
+    # Right Panel
+    definition_title: "Definition"
+    type_label: "Tool Type"
+    method_label: "Execution Method (Client Class)"
+    method_help: "Python method name in your company class implementation."
+    desc_label: "Description (Prompt)"
+    desc_placeholder: "Describe to the LLM when and how to use this tool..."
+    active_label: "Active"
+
+    # Schema Section
+    schema_title: "Parameters Schema"
+    visual_editor: "Visual Editor"
+
+    # Modal
+    modal_title: "Create New Tool"
+    modal_name_label: "Tool Name (LLM Function)"
+    modal_name_help: "Use snake_case. Must be unique."
+    modal_type_label: "Type"
+    modal_desc_label: "Short Description"
+    modal_desc_placeholder: "Briefly explain what this tool does..."
+    modal_cancel: "Cancel"
+    modal_create_btn: "Create Tool"
 
   config:
     editor_description: "IAToolkit configuration file"

@@ -13,152 +13,9 @@ from iatoolkit.services.sql_service import SqlService
 from iatoolkit.services.excel_service import ExcelService
 from iatoolkit.services.mail_service import MailService
 from iatoolkit.services.visual_tool_service import VisualToolService
+from iatoolkit.services.system_tools import SYSTEM_TOOLS_DEFINITIONS
+from iatoolkit import current_iatoolkit
 
-
-_SYSTEM_TOOLS = [
-    {
-        "function_name": "iat_generate_excel",
-        "description": "Generador de Excel."
-                       "Genera un archivo Excel (.xlsx) a partir de una lista de diccionarios. "
-                       "Cada diccionario representa una fila del archivo. "
-                       "el archivo se guarda en directorio de descargas."
-                       "retorna diccionario con filename, attachment_token (para enviar archivo por mail)"
-                       "content_type y download_link",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "filename": {
-                    "type": "string",
-                    "description": "Nombre del archivo de salida (ejemplo: 'reporte.xlsx')",
-                    "pattern": "^.+\\.xlsx?$"
-                },
-                "sheet_name": {
-                    "type": "string",
-                    "description": "Nombre de la hoja dentro del Excel",
-                    "minLength": 1
-                },
-                "data": {
-                    "type": "array",
-                    "description": "Lista de diccionarios. Cada diccionario representa una fila.",
-                    "minItems": 1,
-                    "items": {
-                        "type": "object",
-                        "properties": {},
-                        "additionalProperties": {
-                            "anyOf": [
-                                {"type": "string"},
-                                {"type": "number"},
-                                {"type": "boolean"},
-                                {"type": "null"},
-                                {
-                                    "type": "string",
-                                    "format": "date"
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "required": ["filename", "sheet_name", "data"]
-        }
-    },
-    {
-        'function_name': "iat_send_email",
-        'description': "iatoolkit mail system. "
-                       "envia mails cuando un usuario lo solicita.",
-        'parameters': {
-            "type": "object",
-            "properties": {
-                "recipient": {"type": "string", "description": "email del destinatario"},
-                "subject": {"type": "string", "description": "asunto del email"},
-                "body": {"type": "string", "description": "HTML del email"},
-                "attachments": {
-                    "type": "array",
-                    "description": "Lista de archivos adjuntos codificados en base64",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "filename": {
-                                "type": "string",
-                                "description": "Nombre del archivo con su extensión (ej. informe.pdf)"
-                            },
-                            "content": {
-                                "type": "string",
-                                "description": "Contenido del archivo en b64."
-                            },
-                            "attachment_token": {
-                                "type": "string",
-                                "description": "token para descargar el archivo."
-                            }
-                        },
-                        "required": ["filename", "content", "attachment_token"],
-                        "additionalProperties": False
-                    }
-                }
-            },
-            "required": ["recipient", "subject", "body", "attachments"]
-        }
-    },
-    {
-        "function_name": "iat_sql_query",
-        "description": "Servicio SQL de IAToolkit: debes utilizar este servicio para todas las consultas SQL a bases de datos.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "database_key": {
-                    "type": "string",
-                    "description": "IMPORTANT: nombre de la base de datos a consultar."
-                },
-                "query": {
-                    "type": "string",
-                    "description": "string con la consulta en sql"
-                },
-            },
-            "required": ["database_key", "query"]
-        }
-    },
-    {
-        "function_name": "iat_image_search",
-        "description": "Busca imágenes en la base de conocimiento visual de la empresa usando una descripción de texto. "
-                       "Útil cuando el usuario pide 'ver' algo, 'muéstrame una foto de...', o busca gráficos y diagramas."
-                    "",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Descripción detallada de la imagen que se busca (ej: 'foto de la fachada del edificio')."
-                },
-                "collection": {
-                    "type": "string",
-                    "description": "Opcional. Nombre de la colección donde buscar (ej: 'Planos', 'Marketing')."
-                }
-            },
-            "required": ["query", "collection"]
-        }
-    },
-    {
-        "function_name": "iat_visual_search",
-        "description": "Busca imágenes visualmente similares a una imagen adjunta por el usuario (búsqueda por similitud visual). "
-                       "Si el usuario adjunta una imagen y solicita buscar algo similar debes utilizar este servicio.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "image_index": {
-                    "type": "integer",
-                    "description": "Opcional. Índice (0-based) de la imagen adjunta a usar. Por defecto es 0 (la primera imagen)."
-                },
-                "n_results": {
-                    "type": "integer",
-                    "description": "Cantidad de resultados a devolver (por defecto 3).",
-                    "minimum": 1,
-                    "maximum": 5
-                }
-            },
-            "required": ["n_results", "image_index"]
-        }
-    },
-]
 
 class ToolService:
     @inject
@@ -194,13 +51,15 @@ class ToolService:
             self.llm_query_repo.delete_system_tools()
 
             # create new system tools
-            for function in _SYSTEM_TOOLS:
+            for function in SYSTEM_TOOLS_DEFINITIONS:
                 new_tool = Tool(
                     company_id=None,
-                    system_function=True,
                     name=function['function_name'],
                     description=function['description'],
-                    parameters=function['parameters']
+                    parameters=function['parameters'],
+                    tool_type=Tool.TYPE_SYSTEM,
+                    source=Tool.SOURCE_SYSTEM,
+                    execution_config={}
                 )
                 self.llm_query_repo.create_or_update_tool(new_tool)
 
@@ -211,10 +70,21 @@ class ToolService:
 
     def sync_company_tools(self, company_short_name: str, tools_config: list):
         """
-        Synchronizes tools from YAML config to Database (Create/Update/Delete strategy).
+        Synchronizes tools from YAML config to Database.
+        Logic:
+        - WE ONLY TOUCH TOOLS WHERE source='YAML'.
+        - We Upsert tools present in the YAML list.
+        - We Delete tools present in DB (source='YAML') but missing in YAML list.
+        - We IGNORE tools where source='USER' (GUI) or source='SYSTEM'.
         """
-        if not tools_config:
+
+        # enterprise edition has its own tool management
+        if not current_iatoolkit().is_community:
             return
+
+        # If config is None (key missing), we assume empty list for safety
+        if tools_config is None:
+            tools_config = []
 
         company = self.profile_repo.get_company_by_short_name(company_short_name)
         if not company:
@@ -222,35 +92,35 @@ class ToolService:
                                      f'Company {company_short_name} not found')
 
         try:
-            # 1. Get existing tools map for later cleanup
-            existing_tools = {
-                f.name: f for f in self.llm_query_repo.get_company_tools(company)
-            }
-            defined_tool_names = set()
+            # 1. Get all current tools to identify what needs to be deleted
+            all_tools = self.llm_query_repo.get_company_tools(company)
+
+            # Set of tool names defined in the current YAML
+            yaml_tool_names = set()
 
             # 2. Sync (Create or Update) from Config
             for tool_data in tools_config:
                 name = tool_data['function_name']
-                defined_tool_names.add(name)
+                yaml_tool_names.add(name)
 
-                # Construct the tool object with current config values
-                # We create a new transient object and let the repo merge it
+                # Tools from YAML are always NATIVE and source=YAML
                 tool_obj = Tool(
                     company_id=company.id,
                     name=name,
                     description=tool_data['description'],
                     parameters=tool_data['params'],
-                    system_function=False
+
+                    tool_type=Tool.TYPE_NATIVE,
+                    source=Tool.SOURCE_YAML,
+                    # Default mapping: tool name = python method name
+                    execution_config={"method_name": name}
                 )
 
-                # Always call create_or_update. The repo handles checking for existence by name.
                 self.llm_query_repo.create_or_update_tool(tool_obj)
 
-            # 3. Cleanup: Delete tools present in DB but not in Config
-            for name, tool in existing_tools.items():
-                # Ensure we don't delete system functions or active tools accidentally if logic changes,
-                # though get_company_tools filters by company_id so system functions shouldn't be here usually.
-                if not tool.system_function and (name not in defined_tool_names):
+            # 3. Cleanup: Delete tools that are managed by YAML but are no longer in the file
+            for tool in all_tools:
+                if tool.source == Tool.SOURCE_YAML and tool.name not in yaml_tool_names:
                     self.llm_query_repo.delete_tool(tool)
 
             self.llm_query_repo.commit()
@@ -258,6 +128,115 @@ class ToolService:
         except Exception as e:
             self.llm_query_repo.rollback()
             raise IAToolkitException(IAToolkitException.ErrorType.DATABASE_ERROR, str(e))
+
+    def list_tools(self, company_short_name: str) -> list[dict]:
+        """Returns a list of tools including metadata for the GUI."""
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME, "Company not found")
+
+        tools = self.llm_query_repo.get_company_tools(company)
+        return [t.to_dict() for t in tools]
+
+    def get_tool(self, company_short_name: str, tool_id: int) -> dict:
+        """Gets a specific tool by ID."""
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME, "Company not found")
+
+        tool = self.llm_query_repo.get_tool_by_id(company.id, tool_id)
+        if not tool:
+            raise IAToolkitException(IAToolkitException.ErrorType.NOT_FOUND, "Tool not found")
+
+        return tool.to_dict()
+
+    def create_tool(self, company_short_name: str, tool_data: dict) -> dict:
+        """Creates a new tool via API (Source=USER)."""
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME, "Company not found")
+
+        # Basic Validation
+        if not tool_data.get('name') or not tool_data.get('description'):
+            raise IAToolkitException(IAToolkitException.ErrorType.MISSING_PARAMETER, "Name and Description are required")
+
+        # Ensure execution_config is a dict
+        exec_config = tool_data.get('execution_config', {})
+        if not isinstance(exec_config, dict):
+            exec_config = {}
+
+        new_tool = Tool(
+            company_id=company.id,
+            name=tool_data['name'],
+            description=tool_data['description'],
+            parameters=tool_data.get('parameters', {"type": "object", "properties": {}}),
+            tool_type=tool_data.get('tool_type', Tool.TYPE_NATIVE), # Default to Native if not specified
+            source=Tool.SOURCE_USER,
+            execution_config=exec_config,
+            is_active=tool_data.get('is_active', True)
+        )
+
+        # Check for existing name collision within the company
+        existing = self.llm_query_repo.get_tool_definition(company, new_tool.name)
+        if existing:
+            raise IAToolkitException(IAToolkitException.ErrorType.DUPLICATE_ENTRY, f"Tool '{new_tool.name}' already exists.")
+
+        created_tool = self.llm_query_repo.add_tool(new_tool)
+        return created_tool.to_dict()
+
+    def update_tool(self, company_short_name: str, tool_id: int, tool_data: dict) -> dict:
+        """Updates an existing tool (Only if source=USER usually, but we allow editing YAML ones locally if needed or override)."""
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME, "Company not found")
+
+        tool = self.llm_query_repo.get_tool_by_id(company.id, tool_id)
+        if not tool:
+            raise IAToolkitException(IAToolkitException.ErrorType.NOT_FOUND, "Tool not found")
+
+        # Prevent modifying System tools
+        if tool.tool_type == Tool.TYPE_SYSTEM:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_OPERATION, "Cannot modify System Tools")
+
+        # Update fields
+        if 'description' in tool_data:
+            tool.description = tool_data['description']
+        if 'parameters' in tool_data:
+            tool.parameters = tool_data['parameters']
+        if 'execution_config' in tool_data:
+            tool.execution_config = tool_data['execution_config']
+        if 'is_active' in tool_data:
+            tool.is_active = tool_data['is_active']
+
+        # Note: We usually don't allow changing 'name' or 'type' easily as it breaks references,
+        # but if needed, add logic here.
+
+        self.llm_query_repo.commit()
+        return tool.to_dict()
+
+    def delete_tool(self, company_short_name: str, tool_id: int):
+        """Deletes a tool."""
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_NAME, "Company not found")
+
+        tool = self.llm_query_repo.get_tool_by_id(company.id, tool_id)
+        if not tool:
+            raise IAToolkitException(IAToolkitException.ErrorType.NOT_FOUND, "Tool not found")
+
+        if tool.tool_type == Tool.TYPE_SYSTEM:
+            raise IAToolkitException(IAToolkitException.ErrorType.INVALID_OPERATION, "Cannot delete System Tools")
+
+        self.llm_query_repo.delete_tool(tool)
+
+    def get_tool_definition(self, company_short_name: str, tool_name: str) -> Tool:
+        """Helper to retrieve tool metadata for the Dispatcher."""
+        # Optimization: could be a direct query in Repo
+        company = self.profile_repo.get_company_by_short_name(company_short_name)
+        if not company:
+            return None
+
+        return self.llm_query_repo.get_tool_definition(company, tool_name)
 
 
     def get_tools_for_llm(self, company: Company) -> list[dict]:
@@ -286,8 +265,6 @@ class ToolService:
 
         return tools
 
+
     def get_system_handler(self, function_name: str):
         return self.system_handlers.get(function_name)
-
-    def is_system_tool(self, function_name: str) -> bool:
-        return function_name in self.system_handlers
