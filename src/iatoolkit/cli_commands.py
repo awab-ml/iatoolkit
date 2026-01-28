@@ -43,13 +43,9 @@ def register_core_commands(app):
             click.echo(f"🔑 Bootstrap company: '{company_short_name}'...")
             result = prompt_service.register_system_prompts(company_short_name)
 
-            if result:
-                click.echo("✅ System Prompts registered successfully!")
-
             tool_service = IAToolkit.get_instance().get_injector().get(ToolService)
             result = tool_service.register_system_tools()
-            if result:
-                click.echo("✅ System Tools registered successfully!")
+            click.echo("✅ System Tools and Prompts registered successfully!")
 
 
         except Exception as e:

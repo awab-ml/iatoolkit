@@ -493,5 +493,5 @@ class KnowledgeBaseService:
         if not collection_name:
             return None
         session = self.document_repo.session
-        ct = session.query(CollectionType).filter_by(company_id=company_id, name=collection_name).first()
+        ct = session.query(CollectionType).filter_by(company_id=company_id, name=collection_name.upper()).first()
         return ct.id if ct else None
