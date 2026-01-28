@@ -218,6 +218,8 @@ ui:
     # Header & Actions
     delete_btn: "Delete"
     save_btn: "Save Changes"
+    delete_confirmation: "Delete Tool?"
+    delete_message: "This action cannot be undone. The tool will be permanently removed."
 
     # Right Panel
     definition_title: "Definition"

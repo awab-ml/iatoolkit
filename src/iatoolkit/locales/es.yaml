@@ -219,6 +219,9 @@ ui:
     # Header & Actions
     delete_btn: "Eliminar"
     save_btn: "Guardar Cambios"
+    delete_confirmation: "Eliminar la herramienta?"
+    delete_message: "Esta acción no se puede deshacer. La herramienta será eliminada permanentemente."
+
 
     # Right Panel
     definition_title: "Definición"

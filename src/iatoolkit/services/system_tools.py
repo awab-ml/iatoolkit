@@ -101,6 +101,24 @@ SYSTEM_TOOLS_DEFINITIONS = [
         }
     },
     {
+        "function_name": "iat_document_search",
+        "description": "Búsqueda en documentos que forman una colección",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Texto o pregunta a buscar en los documentos."
+                },
+                "collection": {
+                    "type": "string",
+                    "description": "Opcional. Nombre de la colección donde buscar (ej: 'Planos', 'Marketing')."
+                }
+            },
+            "required": ["query", "collection"]
+        }
+    },
+    {
         "function_name": "iat_image_search",
         "description": "Busca imágenes en la base de conocimiento visual de la empresa usando una descripción de texto. "
                        "Útil cuando el usuario pide 'ver' algo, 'muéstrame una foto de...', o busca gráficos y diagramas."

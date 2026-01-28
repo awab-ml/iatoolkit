@@ -10,6 +10,7 @@ from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.sql_service import SqlService
 from iatoolkit.services.excel_service import ExcelService
 from iatoolkit.services.mail_service import MailService
+from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.services.visual_kb_service import VisualKnowledgeBaseService
 from iatoolkit.services.visual_tool_service import VisualToolService
 
@@ -21,6 +22,7 @@ class TestToolService:
         self.mock_excel_service = MagicMock(spec=ExcelService)
         self.mock_mail_service = MagicMock(spec=MailService)
         self.mock_profile_repo = MagicMock(spec=ProfileRepo)
+        self.knowledge_base_service = MagicMock(spec=KnowledgeBaseService)
         self.mock_visual_kb_service = MagicMock(spec=VisualKnowledgeBaseService)
         self.mock_visual_tool_service = MagicMock(spec=VisualToolService)
 
@@ -30,6 +32,7 @@ class TestToolService:
             sql_service=self.mock_sql_service,
             excel_service=self.mock_excel_service,
             mail_service=self.mock_mail_service,
+            knowledge_base_service=self.knowledge_base_service,
             visual_kb_service=self.mock_visual_kb_service,
             visual_tool_service=self.mock_visual_tool_service
         )

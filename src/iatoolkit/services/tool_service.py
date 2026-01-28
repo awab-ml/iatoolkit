@@ -7,6 +7,7 @@ from injector import inject
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.services.visual_kb_service import VisualKnowledgeBaseService
+from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.repositories.models import Company, Tool
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.sql_service import SqlService
@@ -21,6 +22,7 @@ class ToolService:
     @inject
     def __init__(self,
                  llm_query_repo: LLMQueryRepo,
+                 knowledge_base_service: KnowledgeBaseService,
                  visual_kb_service: VisualKnowledgeBaseService,
                  visual_tool_service: VisualToolService,
                  profile_repo: ProfileRepo,
@@ -32,6 +34,7 @@ class ToolService:
         self.sql_service = sql_service
         self.excel_service = excel_service
         self.mail_service = mail_service
+        self.knowledge_base_service = knowledge_base_service
         self.visual_kb_service = visual_kb_service
         self.visual_tool_service = visual_tool_service
 
@@ -42,6 +45,7 @@ class ToolService:
             "iat_sql_query": self.sql_service.exec_sql,
             "iat_image_search": self.visual_tool_service.image_search,
             "iat_visual_search": self.visual_tool_service.visual_search,
+            "iat_document_search": self.knowledge_base_service.search
         }
 
     def register_system_tools(self):

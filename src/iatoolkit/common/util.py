@@ -98,9 +98,9 @@ class Utility:
             logging.exception(e)
             return None
 
-    def get_template_by_language(self, template_name: str, default_langueage: str = 'en') -> str:
+    def get_template_by_language(self, template_name: str, default_lenguage: str = 'en') -> str:
         # english is default
-        lang = request.args.get("lang", default_langueage)
+        lang = request.args.get("lang", default_lenguage)
         return f'{template_name}_{lang}.html'
 
     def serialize(self, obj):
