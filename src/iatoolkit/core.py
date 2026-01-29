@@ -322,7 +322,6 @@ class IAToolkit:
         from iatoolkit.services.prompt_service import PromptService
         from iatoolkit.services.excel_service import ExcelService
         from iatoolkit.services.mail_service import MailService
-        from iatoolkit.services.ingestor_service import IngestorService
         from iatoolkit.services.profile_service import ProfileService
         from iatoolkit.services.jwt_service import JWTService
         from iatoolkit.services.dispatcher_service import Dispatcher
@@ -337,8 +336,6 @@ class IAToolkit:
         from iatoolkit.services.auth_service import AuthService
         from iatoolkit.services.sql_service import SqlService
         from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
-        from iatoolkit.services.ingestion_runner_service import IngestionRunnerService
-        from iatoolkit.services.ingestion_source_service import IngestionSourceService
         from iatoolkit.services.inference_service import InferenceService
 
         binder.bind(QueryService, to=QueryService)
@@ -347,7 +344,6 @@ class IAToolkit:
         binder.bind(PromptService, to=PromptService)
         binder.bind(ExcelService, to=ExcelService)
         binder.bind(MailService, to=MailService)
-        binder.bind(IngestorService, to=IngestorService)
         binder.bind(ProfileService, to=ProfileService)
         binder.bind(JWTService, to=JWTService)
         binder.bind(Dispatcher, to=Dispatcher)
@@ -362,8 +358,6 @@ class IAToolkit:
         binder.bind(AuthService, to=AuthService)
         binder.bind(SqlService, to=SqlService)
         binder.bind(KnowledgeBaseService, to=KnowledgeBaseService)
-        binder.bind(IngestionRunnerService, to=IngestionRunnerService)
-        binder.bind(IngestionSourceService, to=IngestionSourceService)
         binder.bind(InferenceService, to=InferenceService)
 
     def _bind_infrastructure(self, binder: Binder):

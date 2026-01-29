@@ -33,7 +33,6 @@ def register_views(app):
     from iatoolkit.views.users_api_view import UsersApiView
     from iatoolkit.views.rag_api_view import RagApiView
     from iatoolkit.views.categories_api_view import CategoriesApiView
-    from iatoolkit.views.ingestion_api_view import IngestionApiView
     from iatoolkit.views.connectors_api_view import ConnectorsApiView
     from iatoolkit.views.tool_api_view import ToolApiView
 
@@ -152,12 +151,6 @@ def register_views(app):
 
     # this endpoint is for upload documents into the vector store (api-key)
     app.add_url_rule('/api/load-document', view_func=LoadDocumentApiView.as_view('load-document'), methods=['POST'])
-
-    # Document ingestion
-    ingestion_view = IngestionApiView.as_view('ingestion_api')
-    app.add_url_rule('/<company_short_name>/api/ingestion-sources', view_func=ingestion_view, methods=['GET', 'POST'])
-    app.add_url_rule('/<company_short_name>/api/ingestion-sources/<int:source_id>', view_func=ingestion_view, methods=['GET', 'PUT', 'DELETE'])
-    app.add_url_rule('/<company_short_name>/api/ingestion-sources/<int:source_id>/<action>', view_func=ingestion_view, methods=['POST'])
 
     # this endpoint is for generating embeddings for a given text
     app.add_url_rule('/<company_short_name>/api/embedding',

@@ -30,13 +30,6 @@ class PromptType(str, enum.Enum):
     AGENT = "agent"
 
 
-class IngestionStatus(str, enum.Enum):
-    ACTIVE = "active"
-    PAUSED = "paused"
-    RUNNING = "running"
-    ERROR = "error"
-
-
 # relation table for many-to-many relationship between companies and users
 user_company = Table('iat_user_company',
                      Base.metadata,
@@ -80,9 +73,6 @@ class Company(Base):
                              back_populates="company",
                              cascade="all, delete-orphan",
                              lazy='dynamic')
-    ingestion_sources = relationship("IngestionSource",
-                                     back_populates="company",
-                                     cascade="all, delete-orphan")
     tools = relationship("Tool",
                            back_populates="company",
                            cascade="all, delete-orphan")
@@ -202,68 +192,6 @@ class CollectionType(Base):
 
     company = relationship("Company", back_populates="collection_types")
     documents = relationship("Document", back_populates="collection_type")
-    ingestion_sources = relationship("IngestionSource", back_populates="collection_type")
-
-class IngestionSource(Base):
-    """
-    Defines a configured source (bucket, folder, etc.) from which documents
-    are ingested, either manually or on a schedule.
-    """
-    __tablename__ = 'iat_ingestion_sources'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('iat_companies.id', ondelete='CASCADE'), nullable=False)
-    collection_type_id = Column(Integer, ForeignKey('iat_collection_types.id', ondelete='SET NULL'), nullable=True)
-
-    name = Column(String, nullable=False)  # Friendly name for UI (e.g., "HR Bucket")
-
-    # the name of the source connector, should be present in company.yaml (default is "iatoolkit_storage")
-    connector_name = Column(String, nullable=False)
-
-    # Stores connector-specific config (prefix, folder_id, etc.)
-    configuration = Column(JSON, nullable=False, default={})
-
-    # Cron expression for scheduling (e.g., "0 3 * * *" for 3 AM daily). Null means manual only.
-    schedule_cron = Column(String, nullable=True)
-
-    status = Column(Enum(IngestionStatus), default=IngestionStatus.ACTIVE, nullable=False)
-
-    last_run_at = Column(DateTime, nullable=True)
-    last_error = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
-
-    company = relationship("Company", back_populates="ingestion_sources")
-    collection_type = relationship("CollectionType", back_populates="ingestion_sources")
-    runs = relationship("IngestionRun", back_populates="source", cascade="all, delete-orphan")
-
-    def to_dict(self):
-        return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}
-
-class IngestionRun(Base):
-    """
-    Execution log for ingestion sources.
-    """
-    __tablename__ = "iat_ingestion_runs"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('iat_companies.id', ondelete='CASCADE'), nullable=False, index=True)
-    source_id = Column(Integer, ForeignKey('iat_ingestion_sources.id', ondelete='CASCADE'), nullable=False, index=True)
-
-    triggered_by = Column(String, nullable=True)
-
-    started_at = Column(DateTime, default=datetime.now, nullable=False, index=True)
-    finished_at = Column(DateTime, nullable=True)
-
-    status = Column(Enum(IngestionStatus), default=IngestionStatus.RUNNING, nullable=False)
-    processed_files = Column(Integer, default=0, nullable=False)
-
-    error_message = Column(Text, nullable=True)
-
-    source = relationship("IngestionSource", back_populates="runs")
-    company = relationship("Company")
-
-    def to_dict(self):
-        return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}
 
 class Document(Base):
     """Represents a file or document uploaded by a company for context."""
