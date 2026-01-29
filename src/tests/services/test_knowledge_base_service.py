@@ -184,7 +184,7 @@ class TestKnowledgeBaseService:
     def test_ingest_document_assigns_collection_id(self):
         # Arrange
         metadata = {'collection': 'Legal'}
-        self.mock_doc_repo.get_collection_type_by_name.return_value = 99
+        self.mock_doc_repo.get_collection_id_by_name.return_value = 99
 
         self.mock_storage.upload_document.return_value = "key"
         self.mock_doc_service.file_to_txt.return_value = "content"

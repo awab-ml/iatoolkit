@@ -41,7 +41,7 @@ class DocumentRepo:
 
         return self.session.query(Document).filter_by(id=document_id).first()
 
-    def get_collection_type_by_name(self, company_short_name: str, collection_name: str) -> Optional[int]:
+    def get_collection_id_by_name(self, company_short_name: str, collection_name: str) -> Optional[int]:
         if not collection_name:
             return None
 
@@ -50,6 +50,12 @@ class DocumentRepo:
             CollectionType.name == collection_name.lower()
         ).first()
         return ct.id if ct else None
+
+    def get_collection_by_id(self, collection_id) -> Optional[CollectionType]:
+        if not collection_id:
+            return None
+
+        return self.session.query(CollectionType).filter_by(id=collection_id).first()
 
     def commit(self):
         self.session.commit()

@@ -124,7 +124,7 @@ class VisualKnowledgeBaseService:
             company_short_name=company_short_name,
             image_bytes=image_content,
             n_results=n_results,
-            collection_id=self.document_repo.get_collection_type_by_name(company_short_name, collection)
+            collection_id=self.document_repo.get_collection_id_by_name(company_short_name, collection)
         )
 
         # 2. Format Results (Reuse logic or refactor to helper)
@@ -143,7 +143,7 @@ class VisualKnowledgeBaseService:
             return []
 
         # obtain collection_id from collection_name
-        collection_id = self.document_repo.get_collection_type_by_name(company_short_name, collection)
+        collection_id = self.document_repo.get_collection_id_by_name(company_short_name, collection)
 
         results = self.vs_repo.query_images(
             company_short_name=company_short_name,
