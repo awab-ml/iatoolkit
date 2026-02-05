@@ -3,7 +3,7 @@
 #
 # IAToolkit is open source software.
 
-from iatoolkit.repositories.models import Document, Company, CollectionType
+from iatoolkit.repositories.models import Document, DocumentImage, Company, CollectionType
 
 from injector import inject
 from iatoolkit.repositories.database_manager import DatabaseManager
@@ -20,6 +20,11 @@ class DocumentRepo:
         self.session.add(new_document)
         self.session.commit()
         return new_document
+
+    def insert_document_image(self, document_image: DocumentImage) -> DocumentImage:
+        self.session.add(document_image)
+        self.session.commit()
+        return document_image
 
     def get(self, company_id, filename: str ) -> Document:
         if not company_id or not filename:

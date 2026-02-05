@@ -221,11 +221,9 @@ class Document(Base):
     company = relationship("Company", back_populates="documents")
     collection_type = relationship("CollectionType", back_populates="documents")
 
-    # Relationship to image vector - One to One
-    vsimage = relationship("VSImage",
-                           uselist=False,
-                           back_populates="document",
-                           cascade="all, delete-orphan")
+    document_images = relationship("DocumentImage",
+                                   back_populates="document",
+                                   cascade="all, delete-orphan")
 
     def to_dict(self):
         return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}
@@ -234,6 +232,29 @@ class Document(Base):
     def description(self):
         collection_type = self.collection_type.name if self.collection_type else None
         return f"Document ID {self.id}: {self.filename} ({collection_type})"
+
+
+class DocumentImage(Base):
+    """Represents an image extracted from a document or an uploaded standalone image."""
+    __tablename__ = 'iat_document_images'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    document_id = Column(Integer, ForeignKey('iat_documents.id', ondelete='CASCADE'), nullable=False)
+
+    page = Column(Integer, nullable=True)
+    image_index = Column(Integer, nullable=True)
+    storage_key = Column(String, index=True, nullable=True)
+    meta = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+    document = relationship("Document", back_populates="document_images")
+    vsimage = relationship("VSImage",
+                           uselist=False,
+                           back_populates="document_image",
+                           cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}
 
 class LLMQuery(Base):
     """Logs a query made to the LLM, including input, output, and metadata."""
@@ -269,6 +290,7 @@ class VSDoc(Base):
     document_id = Column(Integer, ForeignKey('iat_documents.id',
                         ondelete='CASCADE'), nullable=False)
     text = Column(Text, nullable=False)
+    meta = Column(JSON, nullable=True)
 
     # the size of this vector is dynamic to support multiple models
     # (e.g. OpenAI=1536, HuggingFace=384, etc.)
@@ -285,14 +307,14 @@ class VSImage(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('iat_companies.id',
                                             ondelete='CASCADE'), nullable=False)
-    document_id = Column(Integer, ForeignKey('iat_documents.id',
-                                             ondelete='CASCADE'), nullable=False)
+    document_image_id = Column(Integer, ForeignKey('iat_document_images.id',
+                                                   ondelete='CASCADE'), nullable=False)
 
     # Vector dimension depends on the multimodal model (e.g., CLIP uses 512 or 768)
     embedding = Column(Vector, nullable=False)
 
     company = relationship("Company", back_populates="vsimages")
-    document = relationship("Document", back_populates="vsimage")
+    document_image = relationship("DocumentImage", back_populates="vsimage")
 
     def to_dict(self):
         return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}

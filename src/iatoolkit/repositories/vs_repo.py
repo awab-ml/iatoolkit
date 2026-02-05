@@ -88,7 +88,8 @@ class VSRepo:
                                       iat_vsdocs.text, \
                                       iat_documents.storage_key, \
                                       iat_documents.meta,
-                                      iat_documents.id
+                                      iat_documents.id, \
+                                      iat_vsdocs.meta
                                FROM iat_vsdocs, \
                                     iat_documents
                                WHERE iat_vsdocs.company_id = :company_id
@@ -134,7 +135,8 @@ class VSRepo:
 
             for row in rows:
                 # create the document object with the data
-                meta_data = row[4] if len(row) > 4 and row[4] is not None else {}
+                doc_meta = row[4] if len(row) > 4 and row[4] is not None else {}
+                chunk_meta = row[6] if len(row) > 6 and row[6] is not None else {}
 
                 # get the url of the document
                 storage_key = row[3] if len(row) > 3 and row[3] is not None else None
@@ -148,7 +150,8 @@ class VSRepo:
                         'document_id': row[5],
                         'filename': row[1],
                         'text': row[2],
-                        'meta': meta_data,
+                        'meta': doc_meta,
+                        'chunk_meta': chunk_meta,
                         'url': url
                     }
                 )
@@ -214,11 +217,15 @@ class VSRepo:
                   SELECT
                       doc.id,
                       doc.filename,
-                      doc.storage_key,
-                      doc.meta,
+                      img_ref.id,
+                      img_ref.storage_key,
+                      img_ref.meta,
+                      img_ref.page,
+                      img_ref.image_index,
                       (img.embedding <=> CAST(:query_embedding AS VECTOR)) as distance
                   FROM iat_vsimages img
-                           JOIN iat_documents doc ON img.document_id = doc.id
+                           JOIN iat_document_images img_ref ON img.document_image_id = img_ref.id
+                           JOIN iat_documents doc ON img_ref.document_id = doc.id
                   WHERE img.company_id = :company_id
                   """
 
@@ -239,12 +246,15 @@ class VSRepo:
 
             image_results = []
             for row in rows:
-                score = 1 - row[4]
+                score = 1 - row[7]
                 image_results.append({
                     'document_id': row[0],
                     'filename': row[1],
-                    'storage_key': row[2],
-                    'meta': row[3] or {},
+                    'document_image_id': row[2],
+                    'storage_key': row[3],
+                    'meta': row[4] or {},
+                    'page': row[5],
+                    'image_index': row[6],
                     'score': score
                 })
 

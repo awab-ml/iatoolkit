@@ -79,7 +79,10 @@ class TestVSRepo:
         self.mock_session.query.return_value.filter.return_value.one_or_none.return_value = mock_company
         self.mock_storage_service.generate_presigned_url.return_value = "http://url_key"
         # Mock the final DB query result
-        db_rows = [(1, "file1.txt", "content1", "b64_1", {}, 77), (2, "file2.txt", "content2", "b64_2", {}, 88)]
+        db_rows = [
+            (1, "file1.txt", "content1", "b64_1", {"doc": 1}, 77, {"chunk": "meta1"}),
+            (2, "file2.txt", "content2", "b64_2", {"doc": 2}, 88, {"chunk": "meta2"})
+        ]
         self.mock_session.execute.return_value.fetchall.return_value = db_rows
 
         # Act
@@ -102,6 +105,7 @@ class TestVSRepo:
         assert result_docs[0]['text'] == "content1"
         assert result_docs[0]['document_id'] == 77
         assert result_docs[0]['url'] == "http://url_key"
+        assert result_docs[0]['chunk_meta'] == {"chunk": "meta1"}
 
     def test_query_raises_exception_on_db_error(self):
         """Tests that an IAToolkitException is raised if the DB query fails."""
@@ -133,8 +137,8 @@ class TestVSRepo:
         # 2. Embedding mock (must use model_type='image')
         self.mock_embedding_service.embed_text.return_value = [0.9] # Vector query
 
-        # 3. DB Result (doc_id, filename, key, meta, distance)
-        db_rows = [(10, "img.jpg", "path/img.jpg", {"w": 100}, 0.1)]
+        # 3. DB Result (doc_id, filename, image_id, key, meta, page, index, distance)
+        db_rows = [(10, "img.jpg", 501, "path/img.jpg", {"w": 100}, 2, 1, 0.1)]
         self.mock_session.execute.return_value.fetchall.return_value = db_rows
 
         # Act
@@ -150,6 +154,7 @@ class TestVSRepo:
         assert len(results) == 1
         assert results[0]['filename'] == "img.jpg"
         assert results[0]['score'] == 0.9 # 1 - 0.1 distance
+        assert results[0]['document_image_id'] == 501
 
     def test_query_images_company_not_found(self):
         """Should return empty list if company doesn't exist."""
@@ -174,8 +179,8 @@ class TestVSRepo:
         # 2. Embedding mock (must use embed_image)
         self.mock_embedding_service.embed_image.return_value = [0.8, 0.1, 0.1] # Visual vector
 
-        # 3. DB Result (doc_id, filename, key, meta, distance)
-        db_rows = [(20, "similar_photo.png", "path/photo.png", {"w": 500}, 0.05)]
+        # 3. DB Result (doc_id, filename, image_id, key, meta, page, index, distance)
+        db_rows = [(20, "similar_photo.png", 702, "path/photo.png", {"w": 500}, 1, 1, 0.05)]
         self.mock_session.execute.return_value.fetchall.return_value = db_rows
 
         fake_image_bytes = b"fake_content"
@@ -196,6 +201,7 @@ class TestVSRepo:
         assert len(results) == 1
         assert results[0]['filename'] == "similar_photo.png"
         assert results[0]['score'] == 0.95 # 1 - 0.05 distance
+        assert results[0]['document_image_id'] == 702
 
     def test_query_images_by_image_embedding_failure(self):
         """Should raise IAToolkitException if image embedding fails."""

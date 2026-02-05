@@ -319,6 +319,7 @@ class IAToolkit:
         from iatoolkit.services.query_service import QueryService
         from iatoolkit.services.benchmark_service import BenchmarkService
         from iatoolkit.services.document_service import DocumentService
+        from iatoolkit.services.docling_service import DoclingService
         from iatoolkit.services.prompt_service import PromptService
         from iatoolkit.services.excel_service import ExcelService
         from iatoolkit.services.mail_service import MailService
@@ -341,6 +342,7 @@ class IAToolkit:
         binder.bind(QueryService, to=QueryService)
         binder.bind(BenchmarkService, to=BenchmarkService)
         binder.bind(DocumentService, to=DocumentService)
+        binder.bind(DoclingService, to=DoclingService)
         binder.bind(PromptService, to=PromptService)
         binder.bind(ExcelService, to=ExcelService)
         binder.bind(MailService, to=MailService)

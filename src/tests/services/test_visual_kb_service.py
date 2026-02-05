@@ -8,7 +8,7 @@ from iatoolkit.repositories.vs_repo import VSRepo
 from iatoolkit.services.embedding_service import EmbeddingService
 from iatoolkit.services.storage_service import StorageService
 from iatoolkit.services.i18n_service import I18nService
-from iatoolkit.repositories.models import Company, Document, VSImage, DocumentStatus
+from iatoolkit.repositories.models import Company, Document, DocumentImage, VSImage, DocumentStatus
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.repositories.profile_repo import ProfileRepo
 
@@ -107,11 +107,18 @@ class TestVisualKnowledgeBaseService:
             assert saved_doc.meta['width'] == 800
             assert saved_doc.meta['category'] == 'logo'
 
-            # 4. Save VSImage
+            # 4. Save DocumentImage
+            self.mock_doc_repo.insert_document_image.assert_called_once()
+            saved_image = self.mock_doc_repo.insert_document_image.call_args[0][0]
+            assert saved_image.document_id == saved_doc.id
+            assert saved_image.page == 1
+            assert saved_image.image_index == 1
+
+            # 5. Save VSImage
             self.mock_vs_repo.add_image.assert_called_once()
             saved_vs = self.mock_vs_repo.add_image.call_args[0][0]
             assert saved_vs.embedding == expected_vector
-            assert saved_vs.document_id == saved_doc.id
+            assert saved_vs.document_image_id == saved_image.id
 
     def test_ingest_image_handles_pil_missing(self):
         """Should gracefully handle missing PIL library or invalid image."""

@@ -14,8 +14,10 @@ from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.services.storage_service import StorageService
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from iatoolkit.services.visual_kb_service import VisualKnowledgeBaseService
+from iatoolkit.services.docling_service import DoclingService
 from sqlalchemy import desc
 from typing import Dict
+import json
 from iatoolkit.common.exceptions import IAToolkitException
 import base64
 import logging
@@ -39,7 +41,8 @@ class KnowledgeBaseService:
                  document_service: DocumentService,
                  storage_service: StorageService,
                  profile_service: ProfileService,
-                 i18n_service: I18nService):
+                 i18n_service: I18nService,
+                 docling_service: DoclingService):
         self.document_repo = document_repo
         self.vs_repo = vs_repo
         self.visual_kb_service = visual_kb_service
@@ -47,6 +50,7 @@ class KnowledgeBaseService:
         self.storage_service = storage_service
         self.profile_service = profile_service
         self.i18n_service = i18n_service
+        self.docling_service = docling_service
 
         # Configure LangChain for intelligent text splitting
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -147,7 +151,7 @@ class KnowledgeBaseService:
             self.document_repo.insert(new_doc)
 
             # 3. Start processing (Extraction + Vectorization)
-            self._process_document_content(company.short_name, new_doc, content)
+            self._process_document_content(company, new_doc, content)
 
             return new_doc
 
@@ -159,7 +163,7 @@ class KnowledgeBaseService:
 
 
     def _process_document_content(self,
-                                  company_short_name: str,
+                                  company: Company,
                                   document: Document,
                                   raw_content: bytes):
         """
@@ -173,8 +177,18 @@ class KnowledgeBaseService:
             document.status = DocumentStatus.PROCESSING
             session.commit()
 
-            # B. Text Extraction (Uses existing service logic for OCR, etc.)
-            extracted_text = self.document_service.file_to_txt(document.filename, raw_content)
+            # B. Structured Extraction (Docling) or fallback to legacy text extraction
+            extracted_text = None
+            structured_result = None
+            if self.docling_service and self.docling_service.enabled and self.docling_service.supports(document.filename):
+                try:
+                    structured_result = self.docling_service.convert(document.filename, raw_content)
+                    extracted_text = structured_result.full_text
+                except Exception as e:
+                    logging.warning(f"Docling failed for {document.filename}, falling back to legacy extraction: {e}")
+
+            if extracted_text is None:
+                extracted_text = self.document_service.file_to_txt(document.filename, raw_content)
 
             if not extracted_text:
                 raise ValueError(self.i18n_service.t('rag.ingestion.empty_text'))
@@ -182,28 +196,115 @@ class KnowledgeBaseService:
             # Update the extracted content in the original document record
             document.content = extracted_text
 
-            # C. Splitting (LangChain)
-            chunks = self.text_splitter.split_text(extracted_text)
-
-            # D. Create VSDocs (Chunks)
-            # Note: The embedding generation happens inside VSRepo or can be explicit here
+            # C. Splitting & Chunking (LangChain)
             vs_docs = []
-            for chunk_text in chunks:
-                vs_doc = VSDoc(
-                    company_id=document.company_id,
-                    document_id=document.id,
-                    text=chunk_text
-                )
-                vs_docs.append(vs_doc)
+            block_index = 0
+
+            if structured_result:
+                for block in structured_result.text_blocks:
+                    if not block.text:
+                        continue
+                    chunks = self.text_splitter.split_text(block.text)
+                    for chunk_index, chunk_text in enumerate(chunks):
+                        meta = {
+                            "block_type": block.block_type,
+                            "page_start": block.page_start,
+                            "page_end": block.page_end,
+                            "section_title": block.section_title,
+                            "block_index": block_index,
+                            "chunk_index": chunk_index
+                        }
+                        if block.meta:
+                            meta.update(block.meta)
+                        vs_docs.append(VSDoc(
+                            company_id=document.company_id,
+                            document_id=document.id,
+                            text=chunk_text,
+                            meta=meta
+                        ))
+                    block_index += 1
+
+                table_index = 0
+                for table in structured_result.tables:
+                    table_index += 1
+                    table_text = table.markdown or json.dumps(table.table_json, ensure_ascii=False)
+                    if not table_text:
+                        continue
+                    table_chunks = self.text_splitter.split_text(table_text)
+                    for chunk_index, chunk_text in enumerate(table_chunks):
+                        meta = {
+                            "block_type": "table",
+                            "table_index": table_index,
+                            "table_title": table.title,
+                            "table_page": table.page,
+                            "table_json": table.table_json,
+                            "block_index": block_index,
+                            "chunk_index": chunk_index
+                        }
+                        if table.meta:
+                            meta.update(table.meta)
+                        vs_docs.append(VSDoc(
+                            company_id=document.company_id,
+                            document_id=document.id,
+                            text=chunk_text,
+                            meta=meta
+                        ))
+                    block_index += 1
+            else:
+                chunks = self.text_splitter.split_text(extracted_text)
+                for chunk_text in chunks:
+                    vs_docs.append(VSDoc(
+                        company_id=document.company_id,
+                        document_id=document.id,
+                        text=chunk_text
+                    ))
 
             # E. Vector Storage
             # We need the short_name so VSRepo knows which API Key to use for embeddings
-            self.vs_repo.add_document(company_short_name, vs_docs)
+            self.vs_repo.add_document(company.short_name, vs_docs)
 
-            # F. Finalize
+            # F. Image ingestion (Docling images or fallback)
+            if structured_result and structured_result.images:
+                for image in structured_result.images:
+                    image_meta = image.meta or {}
+                    if image.caption_text:
+                        image_meta["caption_text"] = image.caption_text
+                        image_meta["caption_source"] = image.caption_source or "extracted"
+                    try:
+                        self.visual_kb_service.ingest_document_image_sync(
+                            company=company,
+                            parent_document=document,
+                            filename=image.filename,
+                            content=image.content,
+                            page=image.page,
+                            image_index=image.image_index,
+                            metadata=image_meta
+                        )
+                    except Exception as e:
+                        logging.warning(f"Failed to ingest image {image.filename}: {e}")
+            elif document.filename.lower().endswith('.pdf'):
+                fallback_images = self.document_service.pdf_to_images(raw_content)
+                if fallback_images:
+                    for index, pix in enumerate(fallback_images, start=1):
+                        try:
+                            image_bytes = pix.tobytes("png")
+                            image_filename = f"{document.filename}_img_{index}.png"
+                            self.visual_kb_service.ingest_document_image_sync(
+                                company=company,
+                                parent_document=document,
+                                filename=image_filename,
+                                content=image_bytes,
+                                page=None,
+                                image_index=index,
+                                metadata={}
+                            )
+                        except Exception as e:
+                            logging.warning(f"Failed to ingest fallback image {index}: {e}")
+
+            # G. Finalize
             document.status = DocumentStatus.ACTIVE
             session.commit()
-            logging.info(f"Successfully ingested {document.description}  with {len(chunks)} chunks.")
+            logging.info(f"Successfully ingested {document.description} with {len(vs_docs)} chunks.")
 
         except Exception as e:
             session.rollback()
@@ -430,4 +531,3 @@ class KnowledgeBaseService:
         session = self.document_repo.session
         collections = session.query(CollectionType).filter_by(company_id=company.id).all()
         return [c.name for c in collections]
-

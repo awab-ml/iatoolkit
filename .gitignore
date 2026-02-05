@@ -1,0 +1,9 @@
+
+# Environments
+.env*
+!.env.template
+.envrc*
+.venv
+env/
+venv/
+

@@ -11,6 +11,7 @@ from iatoolkit.repositories.document_repo import DocumentRepo
 from iatoolkit.repositories.vs_repo import VSRepo
 from iatoolkit.services.document_service import DocumentService
 from iatoolkit.services.i18n_service import I18nService
+from iatoolkit.services.docling_service import DoclingService
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.repositories.models import (Company, Document, DocumentStatus, CollectionType)
 from iatoolkit.services.storage_service import StorageService
@@ -30,10 +31,13 @@ class TestKnowledgeBaseService:
         self.mock_i18n_service = MagicMock(spec=I18nService)
         self.mock_storage = MagicMock(spec=StorageService)
         self.mock_visual_kb = MagicMock(spec=VisualKnowledgeBaseService)
+        self.mock_docling_service = MagicMock(spec=DoclingService)
+        self.mock_docling_service.enabled = False
 
         # Mock session for DocumentRepo (crucial for commits/rollbacks)
         self.mock_session = MagicMock()
         self.mock_doc_repo.session = self.mock_session
+        self.mock_doc_service.pdf_to_images.return_value = []
 
         # Instantiate service
         self.service = KnowledgeBaseService(
@@ -43,7 +47,8 @@ class TestKnowledgeBaseService:
             profile_service=self.mock_profile_service,
             i18n_service=self.mock_i18n_service,
             storage_service=self.mock_storage,
-            visual_kb_service=self.mock_visual_kb
+            visual_kb_service=self.mock_visual_kb,
+            docling_service=self.mock_docling_service
         )
 
         # Common test data

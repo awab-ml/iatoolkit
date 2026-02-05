@@ -4,7 +4,7 @@
 #
 from sqlalchemy.testing.plugin.plugin_base import file_config
 
-from iatoolkit.repositories.models import Document, VSImage, DocumentStatus
+from iatoolkit.repositories.models import Document, DocumentImage, VSImage, DocumentStatus
 from iatoolkit.repositories.document_repo import DocumentRepo
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.repositories.vs_repo import VSRepo
@@ -42,7 +42,7 @@ class VisualKnowledgeBaseService:
                           metadata: dict = None,
                           collection_type_id: int = None) -> Document:
         """
-        Processes an image: Upload -> Embed -> Save (Document + VSImage).
+        Processes a standalone image: Upload -> Embed -> Save (Document + DocumentImage + VSImage).
         """
         # 1. Deduplication Check
         file_hash = hashlib.sha256(content).hexdigest()
@@ -90,10 +90,20 @@ class VisualKnowledgeBaseService:
             # Save document first to get ID
             self.document_repo.insert(new_doc)
 
-            # 6. Create VSImage Record
+            # 6. Create DocumentImage Record
+            document_image = DocumentImage(
+                document_id=new_doc.id,
+                page=1,
+                image_index=1,
+                storage_key=storage_key,
+                meta=image_meta
+            )
+            self.document_repo.insert_document_image(document_image)
+
+            # 7. Create VSImage Record
             vs_image = VSImage(
                 company_id=company.id,
-                document_id=new_doc.id,
+                document_image_id=document_image.id,
                 embedding=vector,
             )
             self.vs_repo.add_image(vs_image)
@@ -104,6 +114,61 @@ class VisualKnowledgeBaseService:
 
         except Exception as e:
             logging.exception(f"Error ingesting image {filename}: {e}")
+            raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR, str(e))
+
+    def ingest_document_image_sync(self,
+                                   company,
+                                   parent_document: Document,
+                                   filename: str,
+                                   content: bytes,
+                                   page: int = None,
+                                   image_index: int = None,
+                                   metadata: dict = None) -> DocumentImage:
+        """
+        Processes an image extracted from a document: Upload -> Embed -> Save (DocumentImage + VSImage).
+        """
+        try:
+            mime_type, _ = mimetypes.guess_type(filename)
+            storage_key = self.storage_service.upload_document(
+                company_short_name=company.short_name,
+                file_content=content,
+                filename=filename,
+                mime_type=mime_type or "image/jpeg"
+            )
+
+            presigned_url = self.storage_service.generate_presigned_url(company.short_name, storage_key)
+
+            vector = self.embedding_service.embed_image(
+                company_short_name=company.short_name,
+                presigned_url=presigned_url,
+                image_bytes=content)
+
+            image_meta = self._extract_image_meta(content)
+            if metadata:
+                image_meta.update(metadata)
+
+            document_image = DocumentImage(
+                document_id=parent_document.id,
+                page=page,
+                image_index=image_index,
+                storage_key=storage_key,
+                meta=image_meta
+            )
+            self.document_repo.insert_document_image(document_image)
+
+            vs_image = VSImage(
+                company_id=company.id,
+                document_image_id=document_image.id,
+                embedding=vector,
+            )
+            self.vs_repo.add_image(vs_image)
+
+            logging.info(f"Successfully ingested document image {filename}.")
+
+            return document_image
+
+        except Exception as e:
+            logging.exception(f"Error ingesting document image {filename}: {e}")
             raise IAToolkitException(IAToolkitException.ErrorType.LOAD_DOCUMENT_ERROR, str(e))
 
 
@@ -167,10 +232,13 @@ class VisualKnowledgeBaseService:
 
             formatted_results.append({
                 "id": item['document_id'],
+                "image_id": item.get('document_image_id'),
                 "filename": item['filename'],
                 "url": url,
                 "score": item['score'],
-                "meta": item['meta']
+                "meta": item.get('meta', {}),
+                "page": item.get('page'),
+                "image_index": item.get('image_index')
             })
         return formatted_results
 
