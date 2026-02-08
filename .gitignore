@@ -1,9 +1,13 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Environments
-.env*
-!.env.template
-.envrc*
-.venv
-env/
+# Pytest
+.pytest_cache/
+
+# Virtualenv
 venv/
-
+.env/
+.env
