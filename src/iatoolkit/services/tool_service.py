@@ -4,6 +4,8 @@
 # IAToolkit is open source software.
 
 from injector import inject
+import os
+import json
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.services.visual_kb_service import VisualKnowledgeBaseService
@@ -43,10 +45,137 @@ class ToolService:
             "iat_generate_excel": self.excel_service.excel_generator,
             "iat_send_email": self.mail_service.send_mail,
             "iat_sql_query": self.sql_service.exec_sql,
-            "iat_image_search": self.visual_tool_service.image_search,
-            "iat_visual_search": self.visual_tool_service.visual_search,
-            "iat_document_search": self.knowledge_base_service.search
+            "iat_image_search": self._handle_image_search_tool,
+            "iat_visual_search": self._handle_visual_search_tool,
+            "iat_document_search": self._handle_document_search_tool
         }
+
+    def _handle_document_search_tool(self,
+                                     company_short_name: str,
+                                     query: str,
+                                     collection: str = None,
+                                     metadata_filter=None,
+                                     n_results: int = 5,
+                                     **kwargs):
+        chunks = self.knowledge_base_service.search(
+            company_short_name=company_short_name,
+            query=query,
+            n_results=n_results,
+            collection=collection,
+            metadata_filter=metadata_filter,
+        )
+        typed_chunks = self._normalize_chunks_for_tool(chunks)
+
+        return {
+            "status": "success",
+            "query": query,
+            "collection": collection,
+            "count": len(typed_chunks),
+            "chunks": typed_chunks,
+            "serialized_context": self._serialize_document_chunks(typed_chunks),
+        }
+
+    def _handle_image_search_tool(self,
+                                  company_short_name: str,
+                                  query: str,
+                                  collection: str = None,
+                                  metadata_filter=None,
+                                  n_results: int = 5,
+                                  request_images: list | None = None,
+                                  **kwargs):
+        return self.visual_tool_service.image_search(
+            company_short_name=company_short_name,
+            query=query,
+            collection=collection,
+            metadata_filter=metadata_filter,
+            request_images=request_images or [],
+            n_results=n_results,
+            structured_output=True,
+        )
+
+    def _handle_visual_search_tool(self,
+                                   company_short_name: str,
+                                   request_images: list,
+                                   n_results: int = 5,
+                                   image_index: int = 0,
+                                   collection: str = None,
+                                   metadata_filter=None,
+                                   **kwargs):
+        return self.visual_tool_service.visual_search(
+            company_short_name=company_short_name,
+            request_images=request_images,
+            n_results=n_results,
+            image_index=image_index,
+            collection=collection,
+            metadata_filter=metadata_filter,
+            structured_output=True,
+        )
+
+    @staticmethod
+    def _serialize_document_chunks(chunks: list[dict]) -> str:
+        if not chunks:
+            return "No chunks found."
+
+        max_chars = int(os.getenv("TOOL_SERIALIZED_CONTEXT_MAX_CHARS", "12000"))
+        lines = []
+
+        for index, item in enumerate(chunks, start=1):
+            chunk_meta = item.get("chunk_meta") or {}
+            doc_meta = item.get("meta") or {}
+            source_type = chunk_meta.get("source_type", "unknown")
+            filename = item.get("filename", "unknown")
+            page = chunk_meta.get("page") or chunk_meta.get("page_start")
+            caption = chunk_meta.get("caption_text")
+
+            header = {
+                "index": index,
+                "filename": filename,
+                "source_type": source_type,
+                "page": page,
+                "caption_text": caption,
+                "document_id": item.get("document_id"),
+            }
+            lines.append(json.dumps(header, ensure_ascii=False))
+            text_content = (item.get("text") or "").strip()
+            if text_content:
+                lines.append(text_content)
+
+            if source_type == "table":
+                table_json = chunk_meta.get("table_json")
+                if table_json:
+                    lines.append(f"table_json={table_json}")
+
+            # include a small JSON summary of doc metadata for traceability
+            if doc_meta:
+                lines.append(f"doc_meta={json.dumps(doc_meta, ensure_ascii=False)}")
+
+            lines.append("")
+
+        serialized = "\n".join(lines).strip()
+        if len(serialized) <= max_chars:
+            return serialized
+
+        truncated = serialized[:max_chars]
+        return f"{truncated}\n...[truncated]"
+
+    @staticmethod
+    def _normalize_chunks_for_tool(chunks: list[dict]) -> list[dict]:
+        normalized = []
+        for item in chunks or []:
+            chunk = dict(item)
+            chunk_meta = dict(chunk.get("chunk_meta") or {})
+
+            table_json = chunk_meta.get("table_json")
+            if isinstance(table_json, str) and table_json.strip():
+                try:
+                    chunk_meta["table_json"] = json.loads(table_json)
+                except Exception:
+                    # keep original string if it cannot be decoded
+                    pass
+
+            chunk["chunk_meta"] = chunk_meta
+            normalized.append(chunk)
+        return normalized
 
     def register_system_tools(self):
         """

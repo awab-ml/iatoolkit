@@ -4,6 +4,7 @@
 # IAToolkit is open source software.
 
 from injector import inject
+import json
 from iatoolkit.services.visual_kb_service import VisualKnowledgeBaseService
 from iatoolkit.common.util import Utility
 from iatoolkit.services.i18n_service import I18nService
@@ -19,28 +20,67 @@ class VisualToolService:
         self.util = util
         self.i18n_service = i18n_service
 
-    def image_search(self, company_short_name: str, query: str, collection: str = None, request_images: list = []):
+    def image_search(self,
+                     company_short_name: str,
+                     query: str,
+                     collection: str = None,
+                     metadata_filter: dict | None = None,
+                     request_images: list | None = None,
+                     n_results: int = 5,
+                     structured_output: bool = False):
         """
         Handle the search for text to image (iat_image_search).
         """
         results = self.visual_kb_service.search_images(
             company_short_name=company_short_name,
             query=query,
-            collection=collection
+            n_results=n_results,
+            collection=collection,
+            metadata_filter=metadata_filter,
         )
-        return self._format_response(results, self.i18n_service.t('rag.visual.found_images'))
+        title = self.i18n_service.t('rag.visual.found_images')
+        if structured_output:
+            return self._build_visual_payload(results, title)
+        return self._format_response(results, title)
 
-    def visual_search(self, company_short_name: str, request_images: list, n_results: int = 5, image_index: int = 0, collection: str = None, ):
+    def visual_search(self,
+                      company_short_name: str,
+                      request_images: list,
+                      n_results: int = 5,
+                      image_index: int = 0,
+                      collection: str = None,
+                      metadata_filter: dict | None = None,
+                      structured_output: bool = False):
         """
         Handle the visual search (image to image) (iat_visual_search).
         Receive the full list of images from the request, decode and call the KB service.
         """
         if not request_images:
-            return self.i18n_service.t('rag.visual.no_images_attached')
+            message = self.i18n_service.t('rag.visual.no_images_attached')
+            if structured_output:
+                return {
+                    "status": "error",
+                    "message": message,
+                    "count": 0,
+                    "results": [],
+                    "serialized_context": message,
+                    "summary_html": "",
+                }
+            return message
 
         # validate image index
         if image_index < 0 or image_index >= len(request_images):
-            return self.i18n_service.t('rag.visual.invalid_index', index=image_index, total=len(request_images))
+            message = self.i18n_service.t('rag.visual.invalid_index', index=image_index, total=len(request_images))
+            if structured_output:
+                return {
+                    "status": "error",
+                    "message": message,
+                    "count": 0,
+                    "results": [],
+                    "serialized_context": message,
+                    "summary_html": "",
+                }
+            return message
 
         try:
             target_image = request_images[image_index]
@@ -53,13 +93,27 @@ class VisualToolService:
                 company_short_name=company_short_name,
                 image_content=image_bytes,
                 n_results=n_results,
-                collection=collection
+                collection=collection,
+                metadata_filter=metadata_filter,
             )
 
-            return self._format_response(results, self.i18n_service.t('rag.visual.similar_images_found'))
+            title = self.i18n_service.t('rag.visual.similar_images_found')
+            if structured_output:
+                return self._build_visual_payload(results, title)
+            return self._format_response(results, title)
 
         except Exception as e:
-            return self.i18n_service.t('rag.visual.processing_error', error=str(e))
+            message = self.i18n_service.t('rag.visual.processing_error', error=str(e))
+            if structured_output:
+                return {
+                    "status": "error",
+                    "message": message,
+                    "count": 0,
+                    "results": [],
+                    "serialized_context": message,
+                    "summary_html": "",
+                }
+            return message
 
 
     def _format_response(self, results: list, title: str) -> str:
@@ -73,8 +127,29 @@ class VisualToolService:
             filename = item.get("filename", "imagen")
             score = item.get("score", 0.0)
             url = item.get("url")
+            page = item.get("page")
+            image_index = item.get("image_index")
+            image_meta = item.get("meta") or {}
+            doc_meta = item.get("document_meta") or {}
+            caption_text = image_meta.get("caption_text")
 
             response += f"<li><strong>{filename}</strong> (Score: {score:.2f})"
+            if page is not None:
+                response += f"<br><small>Page: {page}</small>"
+            if image_index is not None:
+                response += f"<br><small>Image index: {image_index}</small>"
+            if caption_text:
+                response += f"<br><small>Caption: {caption_text}</small>"
+
+            if image_meta:
+                response += (
+                    f"<br><details><summary>Image metadata</summary><pre>{self._safe_json(image_meta)}</pre></details>"
+                )
+            if doc_meta:
+                response += (
+                    f"<br><details><summary>Document metadata</summary><pre>{self._safe_json(doc_meta)}</pre></details>"
+                )
+
             if url:
                 view_text = self.i18n_service.t('rag.visual.view_image')
                 response += (
@@ -88,3 +163,40 @@ class VisualToolService:
 
         response += "</ul>"
         return response
+
+    def _build_visual_payload(self, results: list, title: str) -> dict:
+        return {
+            "status": "success",
+            "title": title,
+            "count": len(results),
+            "results": results,
+            "serialized_context": self._serialize_visual_results(results),
+            "summary_html": self._format_response(results, title),
+        }
+
+    @staticmethod
+    def _serialize_visual_results(results: list) -> str:
+        if not results:
+            return "No image results found."
+
+        lines = []
+        for index, item in enumerate(results, start=1):
+            meta = item.get("meta") or {}
+            doc_meta = item.get("document_meta") or {}
+            lines.append(
+                f"[image {index}] filename={item.get('filename')} score={item.get('score')} "
+                f"page={item.get('page')} image_index={item.get('image_index')} url={item.get('url')}"
+            )
+            if meta:
+                lines.append(f"meta={json.dumps(meta, ensure_ascii=False, default=str)}")
+            if doc_meta:
+                lines.append(f"document_meta={json.dumps(doc_meta, ensure_ascii=False, default=str)}")
+            lines.append("")
+        return "\n".join(lines).strip()
+
+    @staticmethod
+    def _safe_json(value: dict) -> str:
+        try:
+            return json.dumps(value, ensure_ascii=False, indent=2, default=str)
+        except Exception:
+            return str(value)

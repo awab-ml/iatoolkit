@@ -22,7 +22,6 @@ class TestDocumentRepo:
         self.repo = DocumentRepo(self.mock_db_manager)
         self.mock_document = Document(company_id=1,
                                  filename='test.txt',
-                                 content='123',
                                  storage_key='iatoolkit/document-key',
                                  meta={'repertorio_id': 10})
         self.mock_company = Company(name='company')
@@ -73,4 +72,3 @@ class TestDocumentRepo:
 
         assert result == self.mock_document
         self.session.query.assert_called()
-

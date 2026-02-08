@@ -89,7 +89,6 @@ class TestKnowledgeBaseService:
 
         assert new_doc.status == DocumentStatus.ACTIVE
         assert new_doc.storage_key == "new/path/success.pdf"
-        assert new_doc.content == "New fresh content"
 
     def test_ingest_document_sync_success_flow(self):
         self.mock_doc_repo.get_by_hash.return_value = None
@@ -108,7 +107,6 @@ class TestKnowledgeBaseService:
         inserted_doc = self.mock_doc_repo.insert.call_args[0][0]
         assert inserted_doc.status == DocumentStatus.ACTIVE
         assert inserted_doc.storage_key == fake_key
-        assert inserted_doc.content == "New fresh content"
 
         self.mock_parsing_service.parse_document.assert_called_once()
 
@@ -145,6 +143,29 @@ class TestKnowledgeBaseService:
         inserted_doc = self.mock_doc_repo.insert.call_args[0][0]
         assert inserted_doc.collection_type_id == 99
 
+    def test_ingest_compacts_small_text_units_before_embedding(self):
+        self.mock_doc_repo.get_by_hash.return_value = None
+        self.mock_storage.upload_document.return_value = "key"
+        self.mock_parsing_service.parse_document.return_value = ParseResult(
+            provider="docling",
+            provider_version="1.0",
+            texts=[
+                ParsedText(text="Introduccion", meta={"source_type": "text", "source_label": "title", "section_title": "Intro"}),
+                ParsedText(text="Linea corta uno.", meta={"source_type": "text", "source_label": "text", "section_title": "Intro", "page_start": 1, "page_end": 1}),
+                ParsedText(text="Linea corta dos.", meta={"source_type": "text", "source_label": "text", "section_title": "Intro", "page_start": 1, "page_end": 1}),
+            ],
+            tables=[],
+            images=[],
+        )
+
+        self.service.ingest_document_sync(self.company, "file.pdf", b"data")
+
+        vs_docs = self.mock_vs_repo.add_document.call_args[0][1]
+        assert len(vs_docs) == 1
+        assert "Introduccion" in vs_docs[0].text
+        assert "Linea corta uno." in vs_docs[0].text
+        assert "Linea corta dos." in vs_docs[0].text
+
     def test_get_document_content_from_storage(self):
         mock_doc = Document(id=1, filename="test.pdf", storage_key="path/to/file")
         mock_doc.company = self.company
@@ -176,3 +197,40 @@ class TestKnowledgeBaseService:
         result = self.service.delete_document(999)
         assert result is False
         self.mock_storage.delete_file.assert_not_called()
+
+    def test_sync_collection_types_accepts_object_format(self):
+        self.mock_profile_service.get_company_by_short_name.return_value = self.company
+        self.mock_session.query.return_value.filter_by.return_value.all.return_value = []
+
+        self.service.sync_collection_types("acme", [
+            {"name": "Invoices", "parser_provider": "docling"},
+            {"name": "Contracts"},
+            "legacy_collection",
+        ])
+
+        assert self.mock_session.add.call_count == 3
+        inserted = [c[0][0] for c in self.mock_session.add.call_args_list]
+        inserted_names = sorted([item.name for item in inserted])
+        assert inserted_names == ["contracts", "invoices", "legacy_collection"]
+        invoices = [item for item in inserted if item.name == "invoices"][0]
+        assert invoices.parser_provider == "docling"
+
+    def test_search_passes_metadata_filter_to_vs_repo(self):
+        self.mock_profile_service.get_company_by_short_name.return_value = self.company
+        self.mock_doc_repo.get_collection_id_by_name.return_value = 7
+        self.mock_vs_repo.query.return_value = []
+
+        self.service.search(
+            company_short_name="acme",
+            query="find invoice",
+            collection="invoices",
+            metadata_filter={"source_type": "table", "doc.category": "finance"}
+        )
+
+        self.mock_vs_repo.query.assert_called_with(
+            company_short_name="acme",
+            query_text="find invoice",
+            n_results=5,
+            metadata_filter={"source_type": "table", "doc.category": "finance"},
+            collection_id=7,
+        )

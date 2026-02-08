@@ -56,6 +56,15 @@ class DocumentRepo:
         ).first()
         return ct.id if ct else None
 
+    def get_collection_by_name(self, company_short_name: str, collection_name: str) -> Optional[CollectionType]:
+        if not collection_name:
+            return None
+
+        return self.session.query(CollectionType).join(Company).filter(
+            Company.short_name == company_short_name,
+            CollectionType.name == collection_name.lower()
+        ).first()
+
     def get_collection_by_id(self, collection_id) -> Optional[CollectionType]:
         if not collection_id:
             return None

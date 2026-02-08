@@ -599,6 +599,12 @@ First, let's look at the `knowledge_base` section in `companies/sample_company/c
 # Knowledge Base (RAG)
 # Defines the sources of unstructured documents for indexing.
 knowledge_base:
+  parsing_provider: auto
+  collections:
+    - name: supplier_manual
+      parser_provider: docling
+    - name: employee_contract
+      parser_provider: legacy
 
   # Document Sources define the logical groups of documents to be indexed.
   # Each key (e.g., "supplier_manuals") is a unique source identifier.
@@ -732,7 +738,6 @@ When contributing to IAToolkit:
 IAToolkit's architecture is designed for clarity, testability, and extensibility. By following the patterns and practices outlined in this guide, you'll be able to navigate the codebase confidently, add new features safely, and contribute to the framework's continued evolution.
 For specific questions or advanced topics, refer to the inline code documentation or reach out to the community.
 Happy coding! 🚀
-
 
 
 

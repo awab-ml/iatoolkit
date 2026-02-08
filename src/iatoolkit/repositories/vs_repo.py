@@ -3,18 +3,50 @@
 #
 # IAToolkit is open source software.
 
-from sqlalchemy import  text
+import logging
+import re
+from typing import Dict
+
+from sqlalchemy import text
 from injector import inject
+
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.repositories.database_manager import DatabaseManager
+from iatoolkit.repositories.models import Company, VSDoc, VSImage
 from iatoolkit.services.embedding_service import EmbeddingService
 from iatoolkit.services.storage_service import StorageService
-from iatoolkit.repositories.models import Document, VSDoc, Company, VSImage
-from typing import Dict
-import logging
 
 
 class VSRepo:
+    _FILTER_KEY_PATTERN = re.compile(r"^[A-Za-z0-9_:-]+(?:\.[A-Za-z0-9_:-]+)*$")
+    _TEXT_CHUNK_HINT_KEYS = {
+        "source_type",
+        "source_label",
+        "block_index",
+        "chunk_index",
+        "page",
+        "page_start",
+        "page_end",
+        "section_title",
+        "table_index",
+        "image_index",
+        "caption_text",
+        "caption_source",
+        "title_prefixed",
+    }
+    _IMAGE_META_HINT_KEYS = {
+        "source_type",
+        "page",
+        "image_index",
+        "caption_text",
+        "caption_source",
+        "width",
+        "height",
+        "format",
+        "mime_type",
+        "color_mode",
+    }
+
     @inject
     def __init__(self,
                  db_manager: DatabaseManager,
@@ -108,27 +140,16 @@ class VSRepo:
                 sql_query_parts.append(" AND iat_documents.collection_type_id = :collection_id")
                 params['collection_id'] = collection_id
 
-                # add metadata filter, if exists
-                if metadata_filter and isinstance(metadata_filter, dict):
-                    for key, value in metadata_filter.items():
-                        # FIX: Lógica híbrida.
-                        # 1. Si la key es específica de estructura (ej: page, block_type), buscamos en vsdocs.meta
-                        # 2. Si no, asumimos que es del documento global (ej: category, user) o buscamos en ambos.
-
-                        param_name = f"value_{key}_filter"
-
-                        # Lista de keys que sabemos que viven en el chunk (generados por docling)
-                        chunk_keys = ['page_start', 'page_end', 'block_type', 'section_title', 'table_index', 'image_index']
-
-                        if key in chunk_keys:
-                            # Filtro a nivel de Chunk
-                            sql_query_parts.append(f" AND iat_vsdocs.meta->>'{key}' = :{param_name}")
-                        else:
-                            # Filtro a nivel de Documento (comportamiento original)
-                            # Opcional: podrías usar OR para buscar en ambos lados si no estás seguro
-                            sql_query_parts.append(f" AND iat_documents.meta->>'{key}' = :{param_name}")
-
-                        params[param_name] = str(value)
+            metadata_sql, metadata_params = self._build_metadata_filter_sql(
+                metadata_filter=metadata_filter,
+                mode="text",
+                target_columns={
+                    "doc": "iat_documents.meta",
+                    "chunk": "iat_vsdocs.meta",
+                },
+            )
+            sql_query_parts.extend(metadata_sql)
+            params.update(metadata_params)
 
             # join all the query parts
             sql_query = "".join(sql_query_parts)
@@ -179,7 +200,12 @@ class VSRepo:
         finally:
             self.session.close()
 
-    def query_images(self, company_short_name: str, query_text: str, n_results: int = 5, collection_id: int = None) -> list[Dict]:
+    def query_images(self,
+                     company_short_name: str,
+                     query_text: str,
+                     n_results: int = 5,
+                     collection_id: int = None,
+                     metadata_filter: dict | None = None) -> list[Dict]:
         """
         Searches for images semantically similar to the query text.
         """
@@ -188,7 +214,13 @@ class VSRepo:
             query_embedding = self.embedding_service.embed_text(company_short_name, query_text, model_type='image')
 
             # 2. Delegate to internal vector search
-            return self._query_images_by_vector(company_short_name, query_embedding, n_results, collection_id)
+            return self._query_images_by_vector(
+                company_short_name=company_short_name,
+                query_vector=query_embedding,
+                n_results=n_results,
+                collection_id=collection_id,
+                metadata_filter=metadata_filter,
+            )
 
         except Exception as e:
             logging.error(f"Error querying images by text: {e}")
@@ -198,7 +230,8 @@ class VSRepo:
                               company_short_name: str,
                               image_bytes: bytes,
                               n_results: int = 5,
-                              collection_id: int = None) -> list[Dict]:
+                              collection_id: int = None,
+                              metadata_filter: dict | None = None) -> list[Dict]:
         """
         Searches for images visually similar to the query image.
         """
@@ -210,13 +243,24 @@ class VSRepo:
                 image_bytes=image_bytes)
 
             # 2. Delegate to internal vector search
-            return self._query_images_by_vector(company_short_name, query_embedding, n_results, collection_id)
+            return self._query_images_by_vector(
+                company_short_name=company_short_name,
+                query_vector=query_embedding,
+                n_results=n_results,
+                collection_id=collection_id,
+                metadata_filter=metadata_filter,
+            )
 
         except Exception as e:
             logging.error(f"Error querying images by image: {e}")
             raise IAToolkitException(IAToolkitException.ErrorType.VECTOR_STORE_ERROR, str(e))
 
-    def _query_images_by_vector(self, company_short_name: str, query_vector: list, n_results: int, collection_id: int = None) -> list[Dict]:
+    def _query_images_by_vector(self,
+                                company_short_name: str,
+                                query_vector: list,
+                                n_results: int,
+                                collection_id: int = None,
+                                metadata_filter: dict | None = None) -> list[Dict]:
         """
         Internal method to execute the SQL vector search.
         """
@@ -234,6 +278,7 @@ class VSRepo:
                       img_ref.meta,
                       img_ref.page,
                       img_ref.image_index,
+                      doc.meta,
                       (img.embedding <=> CAST(:query_embedding AS VECTOR)) as distance
                   FROM iat_vsimages img
                            JOIN iat_document_images img_ref ON img.document_image_id = img_ref.id
@@ -251,6 +296,17 @@ class VSRepo:
                 sql += " AND doc.collection_type_id = :collection_id"
                 params["collection_id"] = collection_id
 
+            metadata_sql, metadata_params = self._build_metadata_filter_sql(
+                metadata_filter=metadata_filter,
+                mode="image",
+                target_columns={
+                    "doc": "doc.meta",
+                    "image": "img_ref.meta",
+                },
+            )
+            sql += "".join(metadata_sql)
+            params.update(metadata_params)
+
             sql += " ORDER BY distance ASC LIMIT :n_results"
 
             result = self.session.execute(text(sql), params)
@@ -258,7 +314,7 @@ class VSRepo:
 
             image_results = []
             for row in rows:
-                score = 1 - row[7]
+                score = 1 - row[8]
                 image_results.append({
                     'document_id': row[0],
                     'filename': row[1],
@@ -267,9 +323,134 @@ class VSRepo:
                     'meta': row[4] or {},
                     'page': row[5],
                     'image_index': row[6],
+                    'document_meta': row[7] or {},
                     'score': score
                 })
 
             return image_results
         except Exception as e:
             raise e
+
+    def _build_metadata_filter_sql(self,
+                                   metadata_filter,
+                                   mode: str,
+                                   target_columns: dict[str, str]) -> tuple[list[str], dict]:
+        metadata_filter = self._normalize_metadata_filter_input(metadata_filter)
+        if metadata_filter is None:
+            return [], {}
+
+        sql_parts = []
+        params = {}
+
+        for index, (raw_key, raw_value) in enumerate(metadata_filter.items()):
+            target, path = self._resolve_metadata_target_and_path(raw_key, mode)
+            column = target_columns.get(target)
+            if not column:
+                raise ValueError(f"Unsupported metadata filter target '{target}' for mode '{mode}'")
+
+            expr = self._build_json_extract_expression(
+                column_expression=column,
+                path=path,
+                params=params,
+                key_param_prefix=f"mf_{mode}_{index}",
+            )
+
+            if raw_value is None:
+                sql_parts.append(f" AND {expr} IS NULL")
+                continue
+
+            value_param = f"mf_{mode}_{index}_value"
+            params[value_param] = self._normalize_filter_value(raw_value, raw_key)
+            sql_parts.append(f" AND {expr} = :{value_param}")
+
+        return sql_parts, params
+
+    @staticmethod
+    def _normalize_metadata_filter_input(metadata_filter):
+        if metadata_filter is None:
+            return None
+
+        if isinstance(metadata_filter, dict):
+            return metadata_filter
+
+        if isinstance(metadata_filter, list):
+            normalized = {}
+            for index, item in enumerate(metadata_filter):
+                if not isinstance(item, dict):
+                    raise ValueError(f"metadata_filter[{index}] must be an object with key/value")
+                if "key" not in item:
+                    raise ValueError(f"metadata_filter[{index}] is missing 'key'")
+                key = item.get("key")
+                value = item.get("value")
+                normalized[key] = value
+            return normalized
+
+        raise ValueError("metadata_filter must be a dictionary or a list of {key, value}")
+
+    def _resolve_metadata_target_and_path(self, raw_key: str, mode: str) -> tuple[str, list[str]]:
+        if not isinstance(raw_key, str):
+            raise ValueError("metadata_filter keys must be strings")
+
+        key = raw_key.strip()
+        if not key:
+            raise ValueError("metadata_filter keys cannot be empty")
+
+        if not self._FILTER_KEY_PATTERN.match(key):
+            raise ValueError(f"Invalid metadata_filter key '{raw_key}'")
+
+        lowered = key.lower()
+        key_prefix, _, remainder = key.partition(".")
+        prefix = key_prefix.lower()
+
+        if prefix in {"doc", "document"} and remainder:
+            return "doc", self._split_filter_key_path(remainder)
+
+        if prefix in {"chunk", "vsdoc"} and remainder:
+            if mode != "text":
+                raise ValueError(f"metadata_filter key '{raw_key}' is not valid for image search")
+            return "chunk", self._split_filter_key_path(remainder)
+
+        if prefix in {"image", "img"} and remainder:
+            if mode != "image":
+                raise ValueError(f"metadata_filter key '{raw_key}' is not valid for text search")
+            return "image", self._split_filter_key_path(remainder)
+
+        if mode == "text" and lowered in self._TEXT_CHUNK_HINT_KEYS:
+            return "chunk", self._split_filter_key_path(key)
+
+        if mode == "image" and lowered in self._IMAGE_META_HINT_KEYS:
+            return "image", self._split_filter_key_path(key)
+
+        return "doc", self._split_filter_key_path(key)
+
+    @staticmethod
+    def _split_filter_key_path(key: str) -> list[str]:
+        segments = [segment.strip() for segment in key.split(".")]
+        if not segments or any(not segment for segment in segments):
+            raise ValueError(f"Invalid metadata filter key path '{key}'")
+        return segments
+
+    @staticmethod
+    def _build_json_extract_expression(column_expression: str,
+                                       path: list[str],
+                                       params: dict,
+                                       key_param_prefix: str) -> str:
+        placeholders = []
+        for index, key_part in enumerate(path):
+            key_param = f"{key_param_prefix}_key_{index}"
+            params[key_param] = key_part
+            placeholders.append(f":{key_param}")
+
+        return f"jsonb_extract_path_text({column_expression}, {', '.join(placeholders)})"
+
+    @staticmethod
+    def _normalize_filter_value(value, key: str) -> str:
+        if isinstance(value, bool):
+            return "true" if value else "false"
+
+        if isinstance(value, (str, int, float)):
+            return str(value)
+
+        raise ValueError(
+            f"metadata_filter value for key '{key}' must be scalar (str/int/float/bool/null)"
+        )

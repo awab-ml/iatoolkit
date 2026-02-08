@@ -172,7 +172,8 @@ class TestVisualKnowledgeBaseService:
             company_short_name='test_co',
             query_text='dog',
             n_results=5,
-            collection_id=99
+            collection_id=99,
+            metadata_filter=None
         )
         assert len(results) == 1
         assert results[0]['url'] == "https://signed.url/pic.jpg"
@@ -202,7 +203,8 @@ class TestVisualKnowledgeBaseService:
             company_short_name='test_co',
             image_bytes=query_image_bytes,
             n_results=5,
-            collection_id=None
+            collection_id=None,
+            metadata_filter=None
         )
         assert len(results) == 1
         assert results[0]['url'] == "https://signed.url/similar.jpg"
@@ -237,7 +239,8 @@ class TestVisualKnowledgeBaseService:
             company_short_name='test_co',
             image_bytes=query_image_bytes,
             n_results=5,
-            collection_id=collection_id
+            collection_id=collection_id,
+            metadata_filter=None
         )
         assert len(results) == 1
 
@@ -246,3 +249,39 @@ class TestVisualKnowledgeBaseService:
         results = self.service.search_images('test_co', '')
         assert results == []
         self.mock_vs_repo.query_images.assert_not_called()
+
+    def test_search_images_passes_metadata_filter(self):
+        self.mock_vs_repo.query_images.return_value = []
+        self.mock_doc_repo.get_collection_id_by_name.return_value = None
+
+        self.service.search_images(
+            company_short_name='test_co',
+            query='dog',
+            metadata_filter={'doc.category': 'catalog'}
+        )
+
+        self.mock_vs_repo.query_images.assert_called_with(
+            company_short_name='test_co',
+            query_text='dog',
+            n_results=5,
+            collection_id=None,
+            metadata_filter={'doc.category': 'catalog'}
+        )
+
+    def test_search_similar_images_passes_metadata_filter(self):
+        self.mock_vs_repo.query_images_by_image.return_value = []
+        self.mock_doc_repo.get_collection_id_by_name.return_value = None
+
+        self.service.search_similar_images(
+            company_short_name='test_co',
+            image_content=b'img',
+            metadata_filter={'image.page': 1}
+        )
+
+        self.mock_vs_repo.query_images_by_image.assert_called_with(
+            company_short_name='test_co',
+            image_bytes=b'img',
+            n_results=5,
+            collection_id=None,
+            metadata_filter={'image.page': 1}
+        )

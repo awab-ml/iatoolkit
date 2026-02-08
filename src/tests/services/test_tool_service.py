@@ -254,6 +254,55 @@ class TestToolService:
             self.service.delete_tool(self.company_short_name, 1)
 
         assert exc.value.error_type == IAToolkitException.ErrorType.INVALID_OPERATION
+
+    def test_system_document_search_returns_structured_payload(self):
+        self.knowledge_base_service.search.return_value = [{
+            "id": 1,
+            "document_id": 10,
+            "filename": "invoice.pdf",
+            "text": "Total amount is 1200",
+            "meta": {"type": "invoice"},
+            "chunk_meta": {"source_type": "table", "caption_text": "Invoice totals", "table_json": "{\"a\":1}"}
+        }]
+
+        handler = self.service.get_system_handler("iat_document_search")
+        result = handler(
+            company_short_name=self.company_short_name,
+            query="total amount",
+            collection="invoices",
+            metadata_filter=[{"key": "doc.type", "value": "invoice"}]
+        )
+
+        assert result["status"] == "success"
+        assert result["count"] == 1
+        assert isinstance(result["chunks"], list)
+        assert isinstance(result["chunks"][0]["chunk_meta"]["table_json"], dict)
+        assert "serialized_context" in result
+        assert "Total amount is 1200" in result["serialized_context"]
+        assert "table_json=" in result["serialized_context"]
+
+    def test_system_image_search_returns_structured_payload(self):
+        self.mock_visual_tool_service.image_search.return_value = {"status": "success", "count": 1, "results": [{}]}
+
+        handler = self.service.get_system_handler("iat_image_search")
+        result = handler(
+            company_short_name=self.company_short_name,
+            query="logo",
+            collection="brand",
+            metadata_filter=[{"key": "image.page", "value": 1}],
+            n_results=3
+        )
+
+        self.mock_visual_tool_service.image_search.assert_called_once_with(
+            company_short_name=self.company_short_name,
+            query="logo",
+            collection="brand",
+            metadata_filter=[{"key": "image.page", "value": 1}],
+            request_images=[],
+            n_results=3,
+            structured_output=True,
+        )
+        assert result["status"] == "success"
     def test_get_tools_for_llm_format(self):
         """
         GIVEN a company with tools
@@ -279,4 +328,3 @@ class TestToolService:
         assert result[0]['parameters']['prop'] == 1
         assert result[0]['parameters']['additionalProperties'] is False
         assert result[0]['strict'] is True
-

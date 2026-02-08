@@ -105,9 +105,12 @@ help_files:
   onboarding_cards: onboarding_cards.yaml
   help_content: help_content.yaml
 knowledge_base:
+  parsing_provider: auto
   collections:
-  - supplier_manual
-  - employee_contract
+  - name: supplier_manual
+    parser_provider: docling
+  - name: employee_contract
+    parser_provider: legacy
   connectors:
     development:
       type: s3

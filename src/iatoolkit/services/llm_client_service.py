@@ -179,7 +179,7 @@ class llmClient:
                         "type": "function_call_output",
                         "call_id": tool_call.call_id,
                         "status": "completed",
-                        "output": str(result)
+                        "output": self._serialize_tool_output(result)
                     })
                     function_calls = True
 
@@ -288,6 +288,16 @@ class llmClient:
                 error_message = 'La respuesta es muy extensa, trata de filtrar/restringuir tu consulta'
 
             raise IAToolkitException(IAToolkitException.ErrorType.LLM_ERROR, error_message)
+
+    @staticmethod
+    def _serialize_tool_output(result) -> str:
+        if isinstance(result, str):
+            return result
+
+        try:
+            return json.dumps(result, ensure_ascii=False, default=str)
+        except Exception:
+            return str(result)
 
     def set_company_context(self,
             company: Company,

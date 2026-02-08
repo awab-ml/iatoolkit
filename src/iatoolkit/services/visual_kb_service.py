@@ -82,7 +82,6 @@ class VisualKnowledgeBaseService:
                 filename=filename,
                 hash=file_hash,
                 user_identifier=user_identifier,
-                content="",                         # No text content for images
                 storage_key=storage_key,
                 meta=image_meta,
                 status=DocumentStatus.ACTIVE        # Ready immediately
@@ -176,7 +175,8 @@ class VisualKnowledgeBaseService:
                               company_short_name: str,
                               image_content: bytes,
                               n_results: int = 5,
-                              collection: str = None
+                              collection: str = None,
+                              metadata_filter: dict | None = None
                               ) -> list[dict]:
         """
         Searches for images visually similar to the provided image content.
@@ -189,7 +189,8 @@ class VisualKnowledgeBaseService:
             company_short_name=company_short_name,
             image_bytes=image_content,
             n_results=n_results,
-            collection_id=self.document_repo.get_collection_id_by_name(company_short_name, collection)
+            collection_id=self.document_repo.get_collection_id_by_name(company_short_name, collection),
+            metadata_filter=metadata_filter,
         )
 
         # 2. Format Results (Reuse logic or refactor to helper)
@@ -199,7 +200,8 @@ class VisualKnowledgeBaseService:
                       company_short_name: str,
                       query: str,
                       n_results: int = 5,
-                      collection: str = None
+                      collection: str = None,
+                      metadata_filter: dict | None = None
                       ) -> list[dict]:
         """
         Searches for images semantically similar to the query text.
@@ -214,7 +216,8 @@ class VisualKnowledgeBaseService:
             company_short_name=company_short_name,
             query_text=query,
             n_results=n_results,
-            collection_id=collection_id
+            collection_id=collection_id,
+            metadata_filter=metadata_filter,
         )
         return self._format_search_results(company_short_name, results)
 
@@ -237,6 +240,7 @@ class VisualKnowledgeBaseService:
                 "url": url,
                 "score": item['score'],
                 "meta": item.get('meta', {}),
+                "document_meta": item.get('document_meta', {}),
                 "page": item.get('page'),
                 "image_index": item.get('image_index')
             })

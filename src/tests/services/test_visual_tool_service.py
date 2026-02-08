@@ -41,7 +41,10 @@ class TestVisualToolService:
         """Debe retornar HTML formateado con traducciones cuando se encuentran resultados."""
         # Arrange
         mock_results = [
-            {'filename': 'logo.png', 'score': 0.95, 'url': 'http://img.url/1'},
+            {'filename': 'logo.png', 'score': 0.95, 'url': 'http://img.url/1',
+             'page': 2, 'image_index': 1,
+             'meta': {'caption_text': 'Logo principal'},
+             'document_meta': {'type': 'brand_asset'}},
             {'filename': 'banner.jpg', 'score': 0.88, 'url': None}  # Sin URL pública
         ]
         self.mock_visual_kb_service.search_images.return_value = mock_results
@@ -54,7 +57,9 @@ class TestVisualToolService:
         self.mock_visual_kb_service.search_images.assert_called_with(
             company_short_name=self.company_short_name,
             query="buscar logo",
-            collection=None
+            n_results=5,
+            collection=None,
+            metadata_filter=None
         )
 
         # Verificar título traducido
@@ -63,6 +68,8 @@ class TestVisualToolService:
         # Verificar item con URL
         assert "translated[rag.visual.view_image]" in response
         assert '<a href="http://img.url/1"' in response
+        assert "Logo principal" in response
+        assert "Document metadata" in response
 
         # Verificar item sin URL
         assert "translated[rag.visual.image_unavailable]" in response
@@ -97,7 +104,13 @@ class TestVisualToolService:
         response = self.service.visual_search(self.company_short_name, request_images)
 
         # Assert
-        self.mock_visual_kb_service.search_similar_images.assert_called()
+        self.mock_visual_kb_service.search_similar_images.assert_called_with(
+            company_short_name=self.company_short_name,
+            image_content=b'bytes',
+            n_results=5,
+            collection=None,
+            metadata_filter=None
+        )
         assert "translated[rag.visual.similar_images_found]" in response
 
     def test_visual_search_no_images_provided(self):
@@ -123,3 +136,39 @@ class TestVisualToolService:
         response = self.service.visual_search(self.company_short_name, request_images)
 
         assert "translated[rag.visual.processing_error|error=DecodeError]" in response
+
+    def test_image_search_passes_metadata_filter(self):
+        self.mock_visual_kb_service.search_images.return_value = []
+
+        self.service.image_search(
+            self.company_short_name,
+            "buscar logo",
+            metadata_filter={"image.page": 1}
+        )
+
+        self.mock_visual_kb_service.search_images.assert_called_with(
+            company_short_name=self.company_short_name,
+            query="buscar logo",
+            n_results=5,
+            collection=None,
+            metadata_filter={"image.page": 1}
+        )
+
+    def test_visual_search_passes_metadata_filter(self):
+        request_images = [{'name': 'q.jpg', 'base64': 'AAAA'}]
+        self.mock_util.normalize_base64_payload.return_value = b'bytes'
+        self.mock_visual_kb_service.search_similar_images.return_value = []
+
+        self.service.visual_search(
+            self.company_short_name,
+            request_images,
+            metadata_filter={"doc.type": "invoice"}
+        )
+
+        self.mock_visual_kb_service.search_similar_images.assert_called_with(
+            company_short_name=self.company_short_name,
+            image_content=b'bytes',
+            n_results=5,
+            collection=None,
+            metadata_filter={"doc.type": "invoice"}
+        )

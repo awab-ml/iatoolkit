@@ -184,6 +184,7 @@ class CollectionType(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('iat_companies.id', ondelete='CASCADE'), nullable=False)
     name = Column(String, nullable=False)  # e.g., "Contracts", "Manuals"
+    parser_provider = Column(String, nullable=True)
 
     # description - optional for the LLM to understand what's inside'
     description = Column(Text, nullable=True)
@@ -207,7 +208,6 @@ class Document(Base):
     status = Column(Enum(DocumentStatus), default=DocumentStatus.PENDING, nullable=False)
     meta = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
-    content = Column(Text, nullable=False)
 
     # Stores the path in the cloud storage (S3/GCS)
     storage_key = Column(String, index=True, nullable=True)

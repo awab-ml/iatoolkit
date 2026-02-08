@@ -20,6 +20,7 @@ import json
 from iatoolkit.common.exceptions import IAToolkitException
 import logging
 import hashlib
+import os
 from typing import List, Optional, Union
 from datetime import datetime
 from injector import inject
@@ -54,6 +55,8 @@ class KnowledgeBaseService:
             chunk_overlap=100,
             separators=["\n\n", "\n", ".", " ", ""]
         )
+        self.min_chunk_chars = int(os.getenv("RAG_MIN_CHUNK_CHARS", "250"))
+        self.merge_target_chars = int(os.getenv("RAG_MERGE_TARGET_CHARS", "800"))
 
     def ingest_document_sync(self,
                              company: Company,
@@ -138,7 +141,6 @@ class KnowledgeBaseService:
                 filename=filename,
                 hash=file_hash,
                 user_identifier=user_identifier,
-                content="",                     # Will be populated after text extraction
                 storage_key=storage_key,        # Reference to cloud storage
                 meta=metadata,
                 status=DocumentStatus.PENDING
@@ -147,7 +149,7 @@ class KnowledgeBaseService:
             self.document_repo.insert(new_doc)
 
             # 3. Start processing (Extraction + Vectorization)
-            self._process_document_content(company, new_doc, content)
+            self._process_document_content(company, new_doc, content, collection_name=collection_name)
 
             return new_doc
 
@@ -161,7 +163,8 @@ class KnowledgeBaseService:
     def _process_document_content(self,
                                   company: Company,
                                   document: Document,
-                                  raw_content: bytes):
+                                  raw_content: bytes,
+                                  collection_name: str | None = None):
         """
         Internal method to handle the heavy lifting of extraction and vectorization.
         Updates the document status directly via the session.
@@ -179,16 +182,10 @@ class KnowledgeBaseService:
                 filename=document.filename,
                 content=raw_content,
                 metadata=document.meta or {},
+                collection_name=collection_name,
                 collection_id=document.collection_type_id,
                 document_id=document.id,
             )
-
-            extracted_text = "\n\n".join([item.text for item in parse_result.texts if item.text]).strip()
-            if not extracted_text and parse_result.tables:
-                extracted_text = "\n\n".join([item.text for item in parse_result.tables if item.text]).strip()
-
-            # Backward compatibility until document.content is removed in phase 2
-            document.content = extracted_text or ""
 
             # Persist parser traceability
             doc_meta = dict(document.meta or {})
@@ -244,10 +241,12 @@ class KnowledgeBaseService:
         vs_docs = []
         block_index = start_block_index
 
-        for item in parsed_texts:
-            if not item.text:
+        compacted_units = self._compact_text_units(parsed_texts)
+
+        for unit in compacted_units:
+            if not unit["text"]:
                 continue
-            chunks = self.text_splitter.split_text(item.text)
+            chunks = self.text_splitter.split_text(unit["text"])
             for chunk_index, chunk_text in enumerate(chunks):
                 meta = {
                     "source_type": "text",
@@ -257,8 +256,8 @@ class KnowledgeBaseService:
                 if document.meta:
                     meta.update(document.meta)
 
-                if item.meta:
-                    meta.update(item.meta)
+                if unit["meta"]:
+                    meta.update(unit["meta"])
                 vs_docs.append(VSDoc(
                     company_id=document.company_id,
                     document_id=document.id,
@@ -267,6 +266,114 @@ class KnowledgeBaseService:
                 ))
             block_index += 1
         return vs_docs, block_index
+
+    def _compact_text_units(self, parsed_texts) -> list[dict]:
+        """
+        Merges short adjacent text units before splitting to avoid tiny chunks.
+        Also avoids emitting standalone title chunks by prefixing them to the next block.
+        """
+        compacted: list[dict] = []
+        pending_title: Optional[str] = None
+        current_text = ""
+        current_meta: dict = {}
+
+        def flush_current():
+            nonlocal current_text, current_meta
+            if current_text.strip():
+                compacted.append({"text": current_text.strip(), "meta": dict(current_meta)})
+            current_text = ""
+            current_meta = {}
+
+        for item in parsed_texts or []:
+            text = (item.text or "").strip()
+            if not text:
+                continue
+
+            item_meta = dict(item.meta or {})
+            source_label = (item_meta.get("source_label") or "").lower()
+
+            # Titles should enrich the next text instead of creating tiny standalone chunks.
+            if source_label == "title" and len(text) <= self.min_chunk_chars:
+                pending_title = f"{pending_title}\n{text}".strip() if pending_title else text
+                continue
+
+            if pending_title:
+                text = f"{pending_title}\n\n{text}"
+                item_meta.setdefault("section_title", pending_title.splitlines()[-1])
+                item_meta["title_prefixed"] = True
+                pending_title = None
+
+            if not current_text:
+                current_text = text
+                current_meta = item_meta
+                continue
+
+            if self._should_merge_text_units(current_text, current_meta, text, item_meta):
+                current_text = f"{current_text}\n\n{text}"
+                current_meta = self._merge_text_meta(current_meta, item_meta)
+            else:
+                flush_current()
+                current_text = text
+                current_meta = item_meta
+
+        if pending_title:
+            if current_text:
+                current_text = f"{current_text}\n\n{pending_title}"
+            else:
+                current_text = pending_title
+
+        flush_current()
+        return compacted
+
+    def _should_merge_text_units(self, current_text: str, current_meta: dict, next_text: str, next_meta: dict) -> bool:
+        current_len = len(current_text)
+        next_len = len(next_text)
+        merged_len = current_len + 2 + next_len
+
+        if current_len >= self.merge_target_chars:
+            return False
+
+        current_section = (current_meta.get("section_title") or "").strip().lower()
+        next_section = (next_meta.get("section_title") or "").strip().lower()
+        if current_section and next_section and current_section != next_section:
+            return False
+
+        current_page_end = current_meta.get("page_end") or current_meta.get("page") or current_meta.get("page_start")
+        next_page_start = next_meta.get("page_start") or next_meta.get("page")
+        if isinstance(current_page_end, int) and isinstance(next_page_start, int):
+            if abs(next_page_start - current_page_end) > 1:
+                return False
+
+        if merged_len <= self.merge_target_chars:
+            return True
+
+        if current_len < self.min_chunk_chars and merged_len <= (self.merge_target_chars + self.min_chunk_chars):
+            return True
+
+        return False
+
+    @staticmethod
+    def _merge_text_meta(current_meta: dict, next_meta: dict) -> dict:
+        merged = dict(current_meta)
+
+        next_page_start = next_meta.get("page_start") or next_meta.get("page")
+        next_page_end = next_meta.get("page_end") or next_meta.get("page")
+        if next_page_start is not None and merged.get("page_start") is None:
+            merged["page_start"] = next_page_start
+        if next_page_end is not None:
+            merged["page_end"] = next_page_end
+
+        if not merged.get("section_title") and next_meta.get("section_title"):
+            merged["section_title"] = next_meta.get("section_title")
+
+        labels = []
+        for src in (merged.get("source_label"), next_meta.get("source_label")):
+            if src and src not in labels:
+                labels.append(src)
+        if labels:
+            merged["source_labels"] = labels
+
+        return merged
 
     def _create_table_chunks(self, document: Document, parsed_tables, start_block_index: int) -> tuple[List[VSDoc], int, int]:
         """Helper 2: Creates chunks for parsed tables."""
@@ -538,14 +645,60 @@ class KnowledgeBaseService:
         existing_names = {ct.name.lower(): ct for ct in existing_types}
 
         # 2. Add new types
-        current_config_names = set()
-        for cat_name in categories_config:
-            current_config_names.add(cat_name)
+        normalized_entries = self._normalize_collection_config_entries(categories_config)
+        for entry in normalized_entries:
+            cat_name = entry["name"]
+            parser_provider = entry["parser_provider"]
             if cat_name not in existing_names:
-                new_type = CollectionType(company_id=company.id, name=cat_name.lower())
+                new_type = CollectionType(
+                    company_id=company.id,
+                    name=cat_name,
+                    parser_provider=parser_provider
+                )
                 session.add(new_type)
+            else:
+                existing = existing_names[cat_name]
+                if parser_provider is not None:
+                    existing.parser_provider = parser_provider
 
         session.commit()
+
+    @staticmethod
+    def _normalize_collection_config_entries(categories_config: list) -> list[dict]:
+        """
+        Accepts legacy list[str] and new list[dict{name, parser_provider,...}].
+        Returns normalized entries:
+            [{"name": "contracts", "parser_provider": "docling"|None}, ...]
+        """
+        normalized: list[dict] = []
+        seen_names = set()
+
+        for item in categories_config or []:
+            name = None
+            parser_provider = None
+
+            if isinstance(item, str):
+                name = item.strip().lower()
+            elif isinstance(item, dict):
+                raw_name = item.get("name")
+                if isinstance(raw_name, str):
+                    name = raw_name.strip().lower()
+                raw_provider = item.get("parser_provider")
+                if isinstance(raw_provider, str) and raw_provider.strip():
+                    parser_provider = raw_provider.strip().lower()
+            else:
+                continue
+
+            if not name or name in seen_names:
+                continue
+
+            normalized.append({
+                "name": name,
+                "parser_provider": parser_provider,
+            })
+            seen_names.add(name)
+
+        return normalized
 
 
     def get_collection_names(self, company_short_name: str) -> List[str]:

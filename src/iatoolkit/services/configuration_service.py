@@ -406,6 +406,41 @@ class ConfigurationService:
         if kb_config and not isinstance(kb_config, dict):
             add_error("knowledge_base", "Section must be a dictionary.")
         elif kb_config:
+            parsing_provider = kb_config.get("parsing_provider")
+            allowed_parsing_providers = {"auto", "docling", "legacy", "document_service"}
+            if parsing_provider is not None:
+                if not isinstance(parsing_provider, str):
+                    add_error("knowledge_base.parsing_provider", "Must be a string.")
+                elif parsing_provider.strip().lower() not in allowed_parsing_providers:
+                    add_error("knowledge_base.parsing_provider",
+                              f"Unsupported provider '{parsing_provider}'. Must be one of: {sorted(allowed_parsing_providers)}")
+
+            collections_config = kb_config.get("collections", [])
+            if collections_config is not None:
+                if not isinstance(collections_config, list):
+                    add_error("knowledge_base.collections", "Must be a list.")
+                else:
+                    for i, item in enumerate(collections_config):
+                        if isinstance(item, str):
+                            if not item.strip():
+                                add_error(f"knowledge_base.collections[{i}]", "Collection name cannot be empty.")
+                        elif isinstance(item, dict):
+                            name = item.get("name")
+                            if not isinstance(name, str) or not name.strip():
+                                add_error(f"knowledge_base.collections[{i}].name",
+                                          "Missing required key: 'name' (non-empty string).")
+                            parser_provider = item.get("parser_provider")
+                            if parser_provider is not None:
+                                if not isinstance(parser_provider, str):
+                                    add_error(f"knowledge_base.collections[{i}].parser_provider",
+                                              "Must be a string if provided.")
+                                elif parser_provider.strip().lower() not in allowed_parsing_providers:
+                                    add_error(f"knowledge_base.collections[{i}].parser_provider",
+                                              f"Unsupported provider '{parser_provider}'. Must be one of: {sorted(allowed_parsing_providers)}")
+                        else:
+                            add_error(f"knowledge_base.collections[{i}]",
+                                      "Each collection must be a string or an object with keys like {name, parser_provider}.")
+
             prod_connector = kb_config.get("connectors", {}).get("production", {})
             if prod_connector.get("type") == "s3":
                 for key in ["bucket", "prefix", "aws_access_key_id_env", "aws_secret_access_key_env", "aws_region_env"]:
@@ -585,4 +620,3 @@ class ConfigurationService:
             categories_config = config.get('prompt_categories', [])
 
         return prompt_list, categories_config
-

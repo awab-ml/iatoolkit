@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 import os
 import sys
+from PIL import Image
 
 from iatoolkit.services.parsers.providers.docling_provider import DoclingParsingProvider
 from iatoolkit.services.i18n_service import I18nService
@@ -91,3 +92,47 @@ class TestDoclingParsingProvider:
         texts = provider._extract_texts(doc_dict, markdown="")
         assert len(texts) == 1
         assert texts[0].text == "B"
+
+    def test_extract_tables_fallback_caption_from_table_dict(self, provider):
+        class FakeTable:
+            prov = [{"page_no": 2}]
+
+            @staticmethod
+            def export_to_markdown(_doc):
+                return "| col | val |"
+
+            @staticmethod
+            def export_to_dict():
+                return {"caption": "Tabla de costos", "cells": []}
+
+        doc = MagicMock()
+        doc.tables = [FakeTable()]
+
+        tables = provider._extract_tables(doc, doc_dict={})
+        assert len(tables) == 1
+        assert tables[0].meta.get("caption_text") == "Tabla de costos"
+        assert tables[0].meta.get("caption_source") == "extracted"
+
+    @patch("iatoolkit.services.parsers.providers.docling_provider.normalize_image")
+    def test_extract_images_fallback_caption_from_doc_dict(self, mock_normalize, provider):
+        class FakePicture:
+            prov = [{"page_no": 3}]
+
+            @staticmethod
+            def get_image(_doc):
+                return Image.new("RGB", (20, 20), "white")
+
+        mock_normalize.return_value = (b"pngbytes", "img.png", "image/png", "rgb", 20, 20)
+
+        doc = MagicMock()
+        doc.pictures = [FakePicture()]
+        doc_dict = {
+            "body": [
+                {"type": "figure_caption", "text": "Figura 3: Diagrama general", "prov": [{"page_no": 3}]}
+            ]
+        }
+
+        images = provider._extract_images(doc, "test.pdf", doc_dict=doc_dict)
+        assert len(images) == 1
+        assert images[0].meta.get("caption_text") == "Figura 3: Diagrama general"
+        assert images[0].meta.get("caption_source") == "inferred"

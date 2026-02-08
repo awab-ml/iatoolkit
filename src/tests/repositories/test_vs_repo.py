@@ -118,6 +118,69 @@ class TestVSRepo:
         with pytest.raises(IAToolkitException, match="Error en la consulta"):
             self.vs_repo.query(company_short_name=self.MOCK_COMPANY_SHORT_NAME, query_text="test query")
 
+    def test_query_applies_metadata_filter_without_collection(self):
+        """Metadata filters should work even when no collection filter is used."""
+        mock_company = Company(id=self.MOCK_COMPANY_ID, short_name=self.MOCK_COMPANY_SHORT_NAME)
+        self.mock_session.query.return_value.filter.return_value.one_or_none.return_value = mock_company
+        self.mock_session.execute.return_value.fetchall.return_value = []
+
+        self.vs_repo.query(
+            company_short_name=self.MOCK_COMPANY_SHORT_NAME,
+            query_text="test query",
+            metadata_filter={
+                "source_type": "table",
+                "doc.category": "finance",
+                "chunk.page_start": 2,
+            },
+        )
+
+        sql = str(self.mock_session.execute.call_args[0][0])
+        params = self.mock_session.execute.call_args[0][1]
+
+        assert "jsonb_extract_path_text(iat_vsdocs.meta" in sql
+        assert "jsonb_extract_path_text(iat_documents.meta" in sql
+        assert params["mf_text_0_key_0"] == "source_type"
+        assert params["mf_text_0_value"] == "table"
+        assert params["mf_text_1_key_0"] == "category"
+        assert params["mf_text_1_value"] == "finance"
+        assert params["mf_text_2_key_0"] == "page_start"
+        assert params["mf_text_2_value"] == "2"
+
+    def test_query_rejects_invalid_metadata_filter_key(self):
+        """Invalid filter keys should fail fast."""
+        mock_company = Company(id=self.MOCK_COMPANY_ID, short_name=self.MOCK_COMPANY_SHORT_NAME)
+        self.mock_session.query.return_value.filter.return_value.one_or_none.return_value = mock_company
+
+        with pytest.raises(IAToolkitException, match="Invalid metadata_filter key"):
+            self.vs_repo.query(
+                company_short_name=self.MOCK_COMPANY_SHORT_NAME,
+                query_text="test query",
+                metadata_filter={"bad key": "value"},
+            )
+
+        self.mock_session.execute.assert_not_called()
+
+    def test_query_accepts_metadata_filter_as_key_value_list(self):
+        """LLM tool schema uses metadata_filter as a list of {key, value} objects."""
+        mock_company = Company(id=self.MOCK_COMPANY_ID, short_name=self.MOCK_COMPANY_SHORT_NAME)
+        self.mock_session.query.return_value.filter.return_value.one_or_none.return_value = mock_company
+        self.mock_session.execute.return_value.fetchall.return_value = []
+
+        self.vs_repo.query(
+            company_short_name=self.MOCK_COMPANY_SHORT_NAME,
+            query_text="test query",
+            metadata_filter=[
+                {"key": "doc.category", "value": "finance"},
+                {"key": "chunk.source_type", "value": "table"},
+            ],
+        )
+
+        params = self.mock_session.execute.call_args[0][1]
+        assert params["mf_text_0_key_0"] == "category"
+        assert params["mf_text_0_value"] == "finance"
+        assert params["mf_text_1_key_0"] == "source_type"
+        assert params["mf_text_1_value"] == "table"
+
     # --- Image Tests (Repository Layer) ---
 
     def test_add_image_success(self):
@@ -137,8 +200,8 @@ class TestVSRepo:
         # 2. Embedding mock (must use model_type='image')
         self.mock_embedding_service.embed_text.return_value = [0.9] # Vector query
 
-        # 3. DB Result (doc_id, filename, image_id, key, meta, page, index, distance)
-        db_rows = [(10, "img.jpg", 501, "path/img.jpg", {"w": 100}, 2, 1, 0.1)]
+        # 3. DB Result (doc_id, filename, image_id, key, image_meta, page, index, doc_meta, distance)
+        db_rows = [(10, "img.jpg", 501, "path/img.jpg", {"w": 100}, 2, 1, {"type": "manual"}, 0.1)]
         self.mock_session.execute.return_value.fetchall.return_value = db_rows
 
         # Act
@@ -155,6 +218,33 @@ class TestVSRepo:
         assert results[0]['filename'] == "img.jpg"
         assert results[0]['score'] == 0.9 # 1 - 0.1 distance
         assert results[0]['document_image_id'] == 501
+        assert results[0]['document_meta'] == {"type": "manual"}
+
+    def test_query_images_applies_metadata_filter(self):
+        """Visual query should support metadata filters in image and document scopes."""
+        mock_company = Company(id=self.MOCK_COMPANY_ID, short_name=self.MOCK_COMPANY_SHORT_NAME)
+        self.mock_session.query.return_value.filter.return_value.one_or_none.return_value = mock_company
+        self.mock_embedding_service.embed_text.return_value = [0.7]
+        self.mock_session.execute.return_value.fetchall.return_value = []
+
+        self.vs_repo.query_images(
+            company_short_name=self.MOCK_COMPANY_SHORT_NAME,
+            query_text="cat",
+            metadata_filter={
+                "caption_text": "living room",
+                "doc.category": "catalog",
+            },
+        )
+
+        sql = str(self.mock_session.execute.call_args[0][0])
+        params = self.mock_session.execute.call_args[0][1]
+
+        assert "jsonb_extract_path_text(img_ref.meta" in sql
+        assert "jsonb_extract_path_text(doc.meta" in sql
+        assert params["mf_image_0_key_0"] == "caption_text"
+        assert params["mf_image_0_value"] == "living room"
+        assert params["mf_image_1_key_0"] == "category"
+        assert params["mf_image_1_value"] == "catalog"
 
     def test_query_images_company_not_found(self):
         """Should return empty list if company doesn't exist."""
@@ -169,6 +259,18 @@ class TestVSRepo:
             self.vs_repo.query_images("co", "q")
         assert exc.value.error_type == IAToolkitException.ErrorType.VECTOR_STORE_ERROR
 
+    def test_query_images_rejects_chunk_prefix_metadata_filter(self):
+        """Chunk-prefixed filters are not valid for visual search."""
+        mock_company = Company(id=self.MOCK_COMPANY_ID, short_name=self.MOCK_COMPANY_SHORT_NAME)
+        self.mock_session.query.return_value.filter.return_value.one_or_none.return_value = mock_company
+
+        with pytest.raises(IAToolkitException, match="not valid for image search"):
+            self.vs_repo.query_images(
+                company_short_name=self.MOCK_COMPANY_SHORT_NAME,
+                query_text="cat",
+                metadata_filter={"chunk.page_start": 1},
+            )
+
     def test_query_images_by_image_success(self):
         """Tests the visual search flow using an image as query."""
         # Arrange
@@ -179,8 +281,8 @@ class TestVSRepo:
         # 2. Embedding mock (must use embed_image)
         self.mock_embedding_service.embed_image.return_value = [0.8, 0.1, 0.1] # Visual vector
 
-        # 3. DB Result (doc_id, filename, image_id, key, meta, page, index, distance)
-        db_rows = [(20, "similar_photo.png", 702, "path/photo.png", {"w": 500}, 1, 1, 0.05)]
+        # 3. DB Result (doc_id, filename, image_id, key, image_meta, page, index, doc_meta, distance)
+        db_rows = [(20, "similar_photo.png", 702, "path/photo.png", {"w": 500}, 1, 1, {"type": "photo"}, 0.05)]
         self.mock_session.execute.return_value.fetchall.return_value = db_rows
 
         fake_image_bytes = b"fake_content"
@@ -202,6 +304,7 @@ class TestVSRepo:
         assert results[0]['filename'] == "similar_photo.png"
         assert results[0]['score'] == 0.95 # 1 - 0.05 distance
         assert results[0]['document_image_id'] == 702
+        assert results[0]['document_meta'] == {"type": "photo"}
 
     def test_query_images_by_image_embedding_failure(self):
         """Should raise IAToolkitException if image embedding fails."""

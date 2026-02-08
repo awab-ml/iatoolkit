@@ -450,6 +450,17 @@ documents into an interactive knowledge base that your AI can query and reason o
 # Knowledge Base (RAG)
 # Defines the sources of unstructured documents for indexing.
 knowledge_base:
+  # Global parsing provider fallback for document ingestion
+  # Supported: auto, docling, legacy
+  parsing_provider: "auto"
+
+  # Collections can be defined as strings (legacy) or objects.
+  # Object format allows setting a default parser per collection.
+  collections:
+    - name: "supplier_manual"
+      parser_provider: "docling"
+    - name: "employee_contract"
+      parser_provider: "legacy"
 
   # Connectors
   # Defines how to connect to the document storage for different environments.
@@ -483,7 +494,16 @@ knowledge_base:
 
 *   **`document_sources`**: A map of logical document groups. Each source has:
     *   **`path`**: The local or S3 path where the documents are located.
-    *   **`metadata`**: Key-value pairs that will be automatically attached to every document indexed from this source. This is extremely useful for filtering searches later (e.g., searching *only* within employee contracts using `metadata_filter={"type": "employee_contract"}`).
+    *   **`metadata`**: Key-value pairs attached to each indexed document. They are searchable with `metadata_filter`.
+      API/UI calls can send dict format, for example:
+      `{"type": "employee_contract"}` (document metadata),
+      `{"chunk.source_type": "table"}` (chunk metadata in text search),
+      `{"image.caption_text": "total amount"}` (image metadata in visual search).
+      LLM tool calls must send list format:
+      `[{"key":"doc.type","value":"invoice"},{"key":"chunk.source_type","value":"table"}]`.
+      By default, unprefixed keys are resolved as document metadata, except canonical parser keys such as `source_type`, `page`, `page_start`, `page_end`, `section_title`, `table_index`, `image_index`, and `caption_text`, which resolve to chunk/image metadata depending on the search mode.
+*   **`parsing_provider`**: Global default parser for document ingestion. `auto` selects `docling` when available and supported, with fallback to `legacy`.
+*   **`collections`**: Optional logical groups. The object format supports `parser_provider` per collection. Legacy list-of-strings remains supported for backward compatibility.
 ---
 
 ### 3.7 Branding

@@ -113,9 +113,33 @@ SYSTEM_TOOLS_DEFINITIONS = [
                 "collection": {
                     "type": "string",
                     "description": "Opcional. Nombre de la colección donde buscar (ej: 'Planos', 'Marketing')."
+                },
+                "metadata_filter": {
+                    "type": "array",
+                    "description": "Opcional. Filtros de metadata como lista de pares key/value. Ejemplo: [{'key':'doc.type','value':'invoice'},{'key':'chunk.source_type','value':'table'}].",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "description": "Clave del filtro (ej: doc.type, chunk.source_type, image.page)."
+                            },
+                            "value": {
+                                "anyOf": [
+                                    {"type": "string"},
+                                    {"type": "number"},
+                                    {"type": "boolean"},
+                                    {"type": "null"}
+                                ],
+                                "description": "Valor escalar del filtro."
+                            }
+                        },
+                        "required": ["key", "value"],
+                        "additionalProperties": False
+                    }
                 }
             },
-            "required": ["query", "collection"]
+            "required": ["query", "collection", "metadata_filter"]
         }
     },
     {
@@ -133,9 +157,33 @@ SYSTEM_TOOLS_DEFINITIONS = [
                 "collection": {
                     "type": "string",
                     "description": "Opcional. Nombre de la colección donde buscar (ej: 'Planos', 'Marketing')."
+                },
+                "metadata_filter": {
+                    "type": "array",
+                    "description": "Opcional. Filtros de metadata como lista de pares key/value. Ejemplo: [{'key':'doc.type','value':'invoice'},{'key':'image.page','value':1}].",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "description": "Clave del filtro (ej: doc.type, image.page, image.caption_text)."
+                            },
+                            "value": {
+                                "anyOf": [
+                                    {"type": "string"},
+                                    {"type": "number"},
+                                    {"type": "boolean"},
+                                    {"type": "null"}
+                                ],
+                                "description": "Valor escalar del filtro."
+                            }
+                        },
+                        "required": ["key", "value"],
+                        "additionalProperties": False
+                    }
                 }
             },
-            "required": ["query", "collection"]
+            "required": ["query", "collection", "metadata_filter"]
         }
     },
     {
@@ -158,9 +206,33 @@ SYSTEM_TOOLS_DEFINITIONS = [
                 "collection": {
                     "type": "string",
                     "description": "Opcional. Nombre de la colección donde buscar (ej: 'Planos', 'Marketing')."
+                },
+                "metadata_filter": {
+                    "type": "array",
+                    "description": "Opcional. Filtros de metadata como lista de pares key/value. Ejemplo: [{'key':'doc.type','value':'invoice'},{'key':'image.caption_text','value':'logo'}].",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "description": "Clave del filtro (ej: doc.type, image.caption_text)."
+                            },
+                            "value": {
+                                "anyOf": [
+                                    {"type": "string"},
+                                    {"type": "number"},
+                                    {"type": "boolean"},
+                                    {"type": "null"}
+                                ],
+                                "description": "Valor escalar del filtro."
+                            }
+                        },
+                        "required": ["key", "value"],
+                        "additionalProperties": False
+                    }
                 }
             },
-            "required": ["n_results", "image_index", "collection"]
+            "required": ["n_results", "image_index", "collection",  "metadata_filter"]
         }
     },
 ]

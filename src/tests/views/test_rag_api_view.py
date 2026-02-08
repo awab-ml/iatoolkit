@@ -288,6 +288,29 @@ class TestRagApiView:
             collection="Technical" # Verify new param
         )
 
+    def test_search_with_metadata_filter(self):
+        self.mock_kb_service.search.return_value = []
+        payload = {
+            "query": "tables",
+            "metadata_filter": {
+                "chunk.source_type": "table",
+                "doc.type": "invoice",
+            }
+        }
+
+        self.client.post(f'/{self.company_short_name}/api/rag/search', json=payload)
+
+        self.mock_kb_service.search.assert_called_with(
+            company_short_name=self.company_short_name,
+            query="tables",
+            n_results=5,
+            metadata_filter={
+                "chunk.source_type": "table",
+                "doc.type": "invoice",
+            },
+            collection=None
+        )
+
     def test_search_missing_query(self):
         """Should return 400 if query is missing."""
         response = self.client.post(f'/{self.company_short_name}/api/rag/search', json={"k": 5})
