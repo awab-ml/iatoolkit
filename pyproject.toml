@@ -11,6 +11,11 @@ readme = "readme.md"
 license = "MIT"
 authors = [{ name = "Fernando Libedinsky" }]
 
+[project.optional-dependencies]
+docling = [
+    "docling==2.72.0",
+]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
