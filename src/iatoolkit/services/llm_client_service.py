@@ -44,8 +44,8 @@ class llmClient:
         self.util = util
         self._dispatcher = None # Cache for the lazy-loaded dispatcher
 
-        # library for counting tokens
-        self.encoding = tiktoken.encoding_for_model("gpt-4o")
+        # Lazy init to avoid network/bootstrap failures during app startup.
+        self.encoding = None
 
         # max number of sql retries
         self.MAX_SQL_RETRIES = 1
@@ -513,6 +513,21 @@ class llmClient:
         return html_answer
 
     def count_tokens(self, text, history = []):
-        # Codifica el texto y cuenta la cantidad de tokens
-        tokens = self.encoding.encode(text + json.dumps(history))
-        return len(tokens)
+        content = (text or "") + json.dumps(history)
+
+        try:
+            if self.encoding is None:
+                try:
+                    # Preferred encoder for GPT-4o family.
+                    self.encoding = tiktoken.encoding_for_model("gpt-4o")
+                except Exception as model_error:
+                    logging.warning(f"tiktoken encoding_for_model failed, fallback to cl100k_base: {model_error}")
+                    # Local fallback for startup/offline compatibility.
+                    self.encoding = tiktoken.get_encoding("cl100k_base")
+
+            tokens = self.encoding.encode(content)
+            return len(tokens)
+        except Exception as e:
+            # Safe approximation to keep request flow alive.
+            logging.warning(f"Token counting fallback in use: {e}")
+            return max(1, len(content) // 4)
