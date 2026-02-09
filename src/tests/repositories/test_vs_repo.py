@@ -137,8 +137,8 @@ class TestVSRepo:
         sql = str(self.mock_session.execute.call_args[0][0])
         params = self.mock_session.execute.call_args[0][1]
 
-        assert "jsonb_extract_path_text(iat_vsdocs.meta" in sql
-        assert "jsonb_extract_path_text(iat_documents.meta" in sql
+        assert "jsonb_extract_path_text(CAST(iat_vsdocs.meta AS jsonb)" in sql
+        assert "jsonb_extract_path_text(CAST(iat_documents.meta AS jsonb)" in sql
         assert params["mf_text_0_key_0"] == "source_type"
         assert params["mf_text_0_value"] == "table"
         assert params["mf_text_1_key_0"] == "category"
@@ -239,8 +239,8 @@ class TestVSRepo:
         sql = str(self.mock_session.execute.call_args[0][0])
         params = self.mock_session.execute.call_args[0][1]
 
-        assert "jsonb_extract_path_text(img_ref.meta" in sql
-        assert "jsonb_extract_path_text(doc.meta" in sql
+        assert "jsonb_extract_path_text(CAST(img_ref.meta AS jsonb)" in sql
+        assert "jsonb_extract_path_text(CAST(doc.meta AS jsonb)" in sql
         assert params["mf_image_0_key_0"] == "caption_text"
         assert params["mf_image_0_value"] == "living room"
         assert params["mf_image_1_key_0"] == "category"

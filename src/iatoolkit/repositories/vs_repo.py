@@ -441,7 +441,9 @@ class VSRepo:
             params[key_param] = key_part
             placeholders.append(f":{key_param}")
 
-        return f"jsonb_extract_path_text({column_expression}, {', '.join(placeholders)})"
+        # `meta` can be stored as JSON or JSONB depending on deployment/migration history.
+        # Cast to jsonb to keep a single extraction function working across both schemas.
+        return f"jsonb_extract_path_text(CAST({column_expression} AS jsonb), {', '.join(placeholders)})"
 
     @staticmethod
     def _normalize_filter_value(value, key: str) -> str:

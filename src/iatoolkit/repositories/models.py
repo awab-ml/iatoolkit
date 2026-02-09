@@ -8,6 +8,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import relationship, class_mapper
 from sqlalchemy.sql import func
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
 from pgvector.sqlalchemy import Vector
 import enum
@@ -206,7 +207,7 @@ class Document(Base):
     user_identifier = Column(String, nullable=True)
     filename = Column(String, nullable=False, index=True)
     status = Column(Enum(DocumentStatus), default=DocumentStatus.PENDING, nullable=False)
-    meta = Column(JSON, nullable=True)
+    meta = Column(JSONB, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
 
     # Stores the path in the cloud storage (S3/GCS)
@@ -244,7 +245,7 @@ class DocumentImage(Base):
     page = Column(Integer, nullable=True)
     image_index = Column(Integer, nullable=True)
     storage_key = Column(String, index=True, nullable=True)
-    meta = Column(JSON, nullable=True)
+    meta = Column(JSONB, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
 
     document = relationship("Document", back_populates="document_images")
@@ -290,7 +291,7 @@ class VSDoc(Base):
     document_id = Column(Integer, ForeignKey('iat_documents.id',
                         ondelete='CASCADE'), nullable=False)
     text = Column(Text, nullable=False)
-    meta = Column(JSON, nullable=True)
+    meta = Column(JSONB, nullable=True)
 
     # the size of this vector is dynamic to support multiple models
     # (e.g. OpenAI=1536, HuggingFace=384, etc.)
