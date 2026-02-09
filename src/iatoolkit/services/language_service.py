@@ -111,9 +111,16 @@ class LanguageService:
         # Priority 1: User Profile
         user_identifier = SessionManager.get('user_identifier')
         if user_identifier:
-            user = self.profile_repo.get_user_by_email(user_identifier)
-            if user and user.preferred_language:
-                return user.preferred_language
+            try:
+                user = self.profile_repo.get_user_by_email(user_identifier)
+                if user and user.preferred_language:
+                    return user.preferred_language
+            except Exception as e:
+                logging.warning(f"Error fetching user preferred language for '{user_identifier}': {e}")
+                try:
+                    self.profile_repo.session.rollback()
+                except Exception:
+                    pass
 
         # Priority 2: Company Config
         company_short_name = self._get_company_short_name()

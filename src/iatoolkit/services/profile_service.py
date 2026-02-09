@@ -42,6 +42,15 @@ class ProfileService:
         self.mail_service = mail_service
         self.bcrypt = Bcrypt()
 
+    def _safe_rollback(self):
+        """
+        Best-effort rollback to recover the scoped session after DB failures.
+        """
+        try:
+            self.profile_repo.session.rollback()
+        except Exception as rollback_error:
+            logging.warning(f"ProfileService rollback failed: {rollback_error}")
+
     def login(self, company_short_name: str, email: str, password: str) -> dict:
         try:
             # check if user exists
@@ -87,6 +96,7 @@ class ProfileService:
 
             return {'success': True, "user_identifier": user_identifier, "message": "Login ok"}
         except Exception as e:
+            self._safe_rollback()
             logging.error(f"Error in login: {e}")
             return {'success': False, "message": str(e)}
 
@@ -145,6 +155,7 @@ class ProfileService:
             self.update_user(user_identifier, preferred_language=new_lang)
             return {'success': True, 'message': 'Language updated successfully.'}
         except Exception as e:
+            self._safe_rollback()
             # Log the error and return a generic failure message.
             logging.error(f"Failed to update language for {user_identifier}: {e}")
             return {'success': False, 'error_message': self.i18n_service.t('errors.general.unexpected_error', error=str(e))}
@@ -236,6 +247,7 @@ class ProfileService:
 
             return {"message": message}
         except Exception as e:
+            self._safe_rollback()
             return {"error": self.i18n_service.t('errors.general.unexpected_error', error=str(e))}
 
     def update_user(self, email: str, **kwargs) -> User:
@@ -253,6 +265,7 @@ class ProfileService:
             return {"message": self.i18n_service.t('flash_messages.account_verified_success')}
 
         except Exception as e:
+            self._safe_rollback()
             return {"error": self.i18n_service.t('errors.general.unexpected_error')}
 
     def change_password(self,
@@ -276,6 +289,7 @@ class ProfileService:
 
             return {"message": self.i18n_service.t('flash_messages.password_changed_success')}
         except Exception as e:
+            self._safe_rollback()
             return {"error": self.i18n_service.t('errors.general.unexpected_error')}
 
     def forgot_password(self, company_short_name: str, email: str, reset_url: str):
@@ -294,6 +308,7 @@ class ProfileService:
 
             return {"message": self.i18n_service.t('flash_messages.forgot_password_success')}
         except Exception as e:
+            self._safe_rollback()
             return {"error": self.i18n_service.t('errors.general.unexpected_error')}
 
     def validate_password(self, password):

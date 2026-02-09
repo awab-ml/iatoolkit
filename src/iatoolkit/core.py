@@ -217,7 +217,11 @@ class IAToolkit:
             It ensures the SQLAlchemy session is properly closed
             and the DB connection is returned to the pool.
             """
-            self.db_manager.scoped_session.remove()
+            try:
+                self.db_manager.scoped_session.remove()
+            except Exception as e:
+                # Avoid masking the original request error with teardown failures.
+                logging.warning(f"Error removing SQLAlchemy scoped session: {e}")
 
     def _setup_redis_sessions(self):
         redis_url = self._get_config_value('REDIS_URL')
