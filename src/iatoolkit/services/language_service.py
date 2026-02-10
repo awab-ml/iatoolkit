@@ -103,24 +103,11 @@ class LanguageService:
         return g.locale_ctx
 
     def _resolve_locale_string(self) -> str:
-        # Priority 0: Query param
+        # Priority 1: Query param
         lang_arg = request.args.get('lang')
         if lang_arg:
             return lang_arg
 
-        # Priority 1: User Profile
-        user_identifier = SessionManager.get('user_identifier')
-        if user_identifier:
-            try:
-                user = self.profile_repo.get_user_by_email(user_identifier)
-                if user and user.preferred_language:
-                    return user.preferred_language
-            except Exception as e:
-                logging.warning(f"Error fetching user preferred language for '{user_identifier}': {e}")
-                try:
-                    self.profile_repo.session.rollback()
-                except Exception:
-                    pass
 
         # Priority 2: Company Config
         company_short_name = self._get_company_short_name()

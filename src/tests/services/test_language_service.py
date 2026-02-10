@@ -37,28 +37,6 @@ class TestLanguageService:
         def dummy_route_for_test(company_short_name):
             return "ok"
 
-    # --- Priority 1 Tests: User Preference ---
-
-    @patch('iatoolkit.services.language_service.SessionManager')
-    def test_returns_user_language_when_user_has_preference(self, mock_session_manager):
-        """
-        GIVEN a logged-in user with a preferred language ('de')
-        WHEN the current language is requested
-        THEN the user's preferred language is returned, ignoring other contexts.
-        """
-        # Arrange
-        mock_session_manager.get.return_value = 'user-de@acme.com'
-        self.mock_profile_repo.get_user_by_email.return_value = self.user_with_lang_de
-
-        with self.app.test_request_context():
-            # Act
-            lang = self.language_service.get_current_language()
-
-            # Assert
-            assert lang == 'en'
-            self.mock_profile_repo.get_user_by_email.assert_called_once_with('user-de@acme.com')
-            # Verify no downstream calls were made
-            self.mock_config_service.get_configuration.assert_not_called()
 
     # --- Priority 2 Tests: Company Default ---
 
@@ -85,7 +63,6 @@ class TestLanguageService:
 
             # Assert
             assert lang == 'en'  # Should extract 'en' from 'en_US'
-            self.mock_profile_repo.get_user_by_email.assert_called_once_with('user-no-lang@acme.com')
             self.mock_config_service.get_configuration.assert_called_once_with('acme-en', 'locale')
 
     @patch('iatoolkit.services.language_service.SessionManager')
