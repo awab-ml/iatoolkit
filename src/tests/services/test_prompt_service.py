@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from iatoolkit.services.prompt_service import PromptService
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.services.sql_service import SqlService
+from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.common.interfaces.asset_storage import AssetRepository, AssetType
 from iatoolkit.repositories.profile_repo import ProfileRepo
@@ -22,6 +23,8 @@ class TestPromptService:
         self.mock_i18n_service = MagicMock(spec=I18nService)
         self.mock_asset_repo = MagicMock(spec=AssetRepository)
         self.mock_sql_service = MagicMock(spec=SqlService)
+        self.mock_configuration_service = MagicMock(spec=ConfigurationService)
+        self.mock_configuration_service.get_configuration.return_value = {}
 
         self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
 
@@ -30,7 +33,8 @@ class TestPromptService:
             profile_repo=self.profile_repo,
             i18n_service=self.mock_i18n_service,
             asset_repo=self.mock_asset_repo,
-            sql_service=self.mock_sql_service
+            sql_service=self.mock_sql_service,
+            configuration_service=self.mock_configuration_service,
         )
         self.mock_company = MagicMock(spec=Company)
         self.mock_company.id = 1
@@ -243,9 +247,11 @@ properties:
     type: string
   score:
     type: number
-""",
+                """,
                 'output_schema_mode': 'strict',
                 'output_response_mode': 'structured_only',
+                'attachment_mode': 'native_only',
+                'attachment_fallback': 'fail',
             },
         )
 
@@ -257,6 +263,28 @@ properties:
         assert "customer_id" in saved_prompt.output_schema_yaml
         assert saved_prompt.output_schema_mode == "strict"
         assert saved_prompt.output_response_mode == "structured_only"
+        assert saved_prompt.attachment_mode == "native_only"
+        assert saved_prompt.attachment_fallback == "fail"
+
+    def test_save_prompt_uses_company_default_attachment_policy_when_not_provided(self):
+        self.profile_repo.get_company_by_short_name.return_value = self.mock_company
+        self.llm_query_repo.get_category_by_name.return_value = None
+        self.mock_configuration_service.get_configuration.return_value = {
+            "default_attachment_mode": "native_only",
+            "default_attachment_fallback": "fail",
+        }
+
+        self.prompt_service.save_prompt(
+            "test_co",
+            "default_attachment_prompt",
+            {
+                "content": "Prompt text",
+            },
+        )
+
+        saved_prompt = self.llm_query_repo.create_or_update_prompt.call_args[0][0]
+        assert saved_prompt.attachment_mode == "native_only"
+        assert saved_prompt.attachment_fallback == "fail"
 
     # --- Tests para sync_company_prompts ---
 

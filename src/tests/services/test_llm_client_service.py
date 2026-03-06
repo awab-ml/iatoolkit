@@ -67,6 +67,7 @@ class TestLLMClient:
         self.mock_proxy.create_response.assert_called_once()
         call_kwargs = self.mock_proxy.create_response.call_args.kwargs
         assert call_kwargs['images'] == []
+        assert call_kwargs['attachments'] == []
 
         assert result['valid_response'] is True
         assert 'Test response' in result['answer']
@@ -145,6 +146,7 @@ class TestLLMClient:
         self.mock_proxy.create_response.assert_called_once()
         call_kwargs = self.mock_proxy.create_response.call_args.kwargs
         assert call_kwargs['images'] == fake_images
+        assert call_kwargs['attachments'] == []
 
         assert result['valid_response'] is True
         self.llmquery_repo.add_query.assert_called_once()
@@ -195,6 +197,30 @@ class TestLLMClient:
         function_output_message = second_call_args['input'][1]
         assert function_output_message.get('type') == 'function_call_output'
         assert function_output_message.get('output') == '{"status": "ok"}'
+        assert second_call_args['attachments'] == []
+
+    def test_invoke_passes_native_attachments_to_llm_proxy(self):
+        self.mock_proxy.create_response.return_value = self.mock_llm_response
+        native_attachments = [
+            {"name": "sales.csv", "mime_type": "text/csv", "base64": "U0FNUExF"}
+        ]
+
+        self.client.invoke(
+            company=self.company,
+            user_identifier='user1',
+            previous_response_id='prev1',
+            model='gpt-5',
+            question='q',
+            context='c',
+            tools=[],
+            text={},
+            images=[],
+            attachments=native_attachments,
+        )
+
+        self.mock_proxy.create_response.assert_called_once()
+        call_kwargs = self.mock_proxy.create_response.call_args.kwargs
+        assert call_kwargs['attachments'] == native_attachments
 
     def test_invoke_serializes_dict_function_output_as_json(self):
         dispatcher_mock = MagicMock()

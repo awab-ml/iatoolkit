@@ -129,6 +129,35 @@ class TestOpenAIAdapter:
         assert img2['type'] == 'input_image'
         assert img2['image_url'] == 'data:image/png;base64,BBBB'
 
+    def test_create_response_multimodal_with_native_attachments(self):
+        mock_response = MagicMock()
+        mock_response.id = 'chatcmpl-mm-file'
+        mock_response.model = 'gpt-4.1'
+        mock_response.status = 'completed'
+        mock_response.output = []
+        mock_response.usage = None
+        mock_response.output_text = ""
+        self.mock_openai_client.responses.create.return_value = mock_response
+
+        input_data = [{'role': 'user', 'content': 'Analiza este CSV'}]
+        attachments = [
+            {'name': 'sales.csv', 'mime_type': 'text/csv', 'base64': 'U0FNUExF'}
+        ]
+
+        self.adapter.create_response(
+            model='gpt-4.1',
+            input=input_data,
+            attachments=attachments,
+        )
+
+        call_kwargs = self.mock_openai_client.responses.create.call_args.kwargs
+        user_msg = call_kwargs['input'][0]
+        assert isinstance(user_msg['content'], list)
+        assert user_msg['content'][0] == {'type': 'input_text', 'text': 'Analiza este CSV'}
+        assert user_msg['content'][1]['type'] == 'input_file'
+        assert user_msg['content'][1]['filename'] == 'sales.csv'
+        assert user_msg['content'][1]['file_data'] == 'data:text/csv;base64,U0FNUExF'
+
     def test_create_response_api_error(self):
         """Prueba que los errores de la API se capturan y lanzan como IAToolkitException."""
         # Arrange

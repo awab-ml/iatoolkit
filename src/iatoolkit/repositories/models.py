@@ -384,6 +384,8 @@ class Prompt(Base):
     output_schema_yaml = Column(Text, nullable=True, default=None)
     output_schema_mode = Column(String, nullable=False, default="best_effort")
     output_response_mode = Column(String, nullable=False, default="chat_compatible")
+    attachment_mode = Column(String, nullable=False, default="extracted_only")
+    attachment_fallback = Column(String, nullable=False, default="extract")
     created_at = Column(DateTime, default=datetime.now)
     def to_dict(self):
         return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}

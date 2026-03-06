@@ -365,6 +365,7 @@ class IAToolkit:
         from iatoolkit.services.embedding_service import EmbeddingService
         from iatoolkit.services.history_manager_service import HistoryManagerService
         from iatoolkit.services.tool_service import ToolService
+        from iatoolkit.services.attachment_policy_service import AttachmentPolicyService
         from iatoolkit.services.llm_client_service import llmClient
         from iatoolkit.services.auth_service import AuthService
         from iatoolkit.services.sql_service import SqlService
@@ -399,6 +400,7 @@ class IAToolkit:
         binder.bind(EmbeddingService, to=EmbeddingService)
         binder.bind(HistoryManagerService, to=HistoryManagerService)
         binder.bind(ToolService, to=ToolService)
+        binder.bind(AttachmentPolicyService, to=AttachmentPolicyService)
         binder.bind(llmClient, to=llmClient)
         binder.bind(AuthService, to=AuthService)
         binder.bind(SqlService, to=SqlService)

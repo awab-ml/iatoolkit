@@ -12,6 +12,7 @@ import json
 import uuid
 import mimetypes
 import re
+import base64
 
 
 class GeminiAdapter:
@@ -49,6 +50,7 @@ class GeminiAdapter:
                         reasoning: Optional[Dict] = None,
                         tool_choice: str = "auto",
                         images: Optional[List[Dict]] = None,
+                        attachments: Optional[List[Dict]] = None,
                         ) -> LLMResponse:
         try:
 
@@ -60,7 +62,8 @@ class GeminiAdapter:
             # prepare tools and contents
             contents = self._prepare_gemini_contents(
                 (context_history or []) + input,
-                images
+                images=images,
+                attachments=attachments,
             )
 
             config_kwargs = {
@@ -146,13 +149,18 @@ class GeminiAdapter:
         system_str = "\n".join(system_parts) if system_parts else None
         return system_str, filtered_messages
 
-    def _prepare_gemini_contents(self, input: List[Dict], images: Optional[List[Dict]] = None) -> List[types.Content]:
+    def _prepare_gemini_contents(
+        self,
+        input: List[Dict],
+        images: Optional[List[Dict]] = None,
+        attachments: Optional[List[Dict]] = None,
+    ) -> List[types.Content]:
         gemini_contents = []
 
         # Encontrar el último mensaje de usuario para las imágenes
         last_user_idx = -1
         for i, m in enumerate(input):
-            if m.get("role") == "user" and m.get("content"):
+            if m.get("role") == "user":
                 last_user_idx = i
 
         for i, message in enumerate(input):
@@ -170,9 +178,29 @@ class GeminiAdapter:
 
                 if images and i == last_user_idx:
                     for img in images:
+                        image_bytes = self._decode_base64_payload(img.get('base64', ''))
+                        if not image_bytes:
+                            continue
                         parts.append(types.Part.from_bytes(
-                            data=img.get('base64', ''),
+                            data=image_bytes,
                             mime_type=mimetypes.guess_type(img.get('name', ''))[0] or 'image/jpeg'
+                        ))
+                if attachments and i == last_user_idx:
+                    for attachment in attachments:
+                        payload = attachment.get("base64") or attachment.get("content")
+                        attachment_bytes = self._decode_base64_payload(payload)
+                        if not attachment_bytes:
+                            continue
+                        filename = attachment.get("name") or attachment.get("filename") or "attachment"
+                        mime_type = (
+                            attachment.get("mime_type")
+                            or attachment.get("type")
+                            or mimetypes.guess_type(filename)[0]
+                            or "application/octet-stream"
+                        )
+                        parts.append(types.Part.from_bytes(
+                            data=attachment_bytes,
+                            mime_type=mime_type
                         ))
 
             # 2. Turno del Modelo (Asistente)
@@ -212,6 +240,25 @@ class GeminiAdapter:
                 gemini_contents.append(types.Content(role=role, parts=parts))
 
         return gemini_contents
+
+    @staticmethod
+    def _decode_base64_payload(payload: Any) -> bytes:
+        if payload is None:
+            return b""
+        if isinstance(payload, bytes):
+            return payload
+
+        payload_str = str(payload).strip()
+        if not payload_str:
+            return b""
+        if payload_str.lower().startswith("data:") and "," in payload_str:
+            payload_str = payload_str.split(",", 1)[1]
+
+        try:
+            return base64.b64decode(payload_str)
+        except Exception:
+            logging.warning("GeminiAdapter: invalid base64 payload for attachment/image; skipping part.")
+            return b""
 
     def _prepare_gemini_tools(self, tools: List[Dict]) -> Optional[List[types.Tool]]:
         """Prepara las herramientas en el formato correcto para el SDK google-genai."""

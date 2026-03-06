@@ -174,8 +174,42 @@ class TestGeminiAdapter:
         # Verificar que from_bytes fue llamado con los datos correctos
         calls = self.mock_types.Part.from_bytes.call_args_list
         assert len(calls) == 2
-        assert calls[0].kwargs == {'data': 'AAAA', 'mime_type': 'image/jpeg'}
-        assert calls[1].kwargs == {'data': 'BBBB', 'mime_type': 'image/png'}
+        assert calls[0].kwargs == {'data': b'\x00\x00\x00', 'mime_type': 'image/jpeg'}
+        assert calls[1].kwargs == {'data': b'\x04\x10A', 'mime_type': 'image/png'}
+
+    def test_create_response_multimodal_input_with_native_attachments(self):
+        self.mock_types.Content = MagicMock(side_effect=lambda **kwargs: MagicMock(**kwargs))
+        self.mock_types.Part.from_text = MagicMock(side_effect=lambda text: MagicMock(text=text, inline_data=None))
+
+        def mock_from_bytes(data, mime_type):
+            mock_part = MagicMock()
+            mock_part.text = None
+            mock_part.inline_data = MagicMock(data=data, mime_type=mime_type)
+            return mock_part
+
+        self.mock_types.Part.from_bytes = MagicMock(side_effect=mock_from_bytes)
+        self.mock_types.SafetySetting = MagicMock()
+        self.mock_types.GenerateContentConfig = MagicMock()
+        self.mock_types.Tool = MagicMock()
+        self.mock_types.FunctionDeclaration = MagicMock()
+
+        mock_response = self._create_mock_gemini_response(text_content="ok")
+        self.mock_generative_model.generate_content.return_value = mock_response
+
+        input_data = [{"role": "user", "content": "Analiza adjuntos"}]
+        attachments = [
+            {'name': 'sales.csv', 'mime_type': 'text/csv', 'base64': 'U0FNUExF'}
+        ]
+
+        self.adapter.create_response(
+            model="gemini-1.5-flash",
+            input=input_data,
+            attachments=attachments,
+        )
+
+        calls = self.mock_types.Part.from_bytes.call_args_list
+        assert len(calls) == 1
+        assert calls[0].kwargs == {'data': b'SAMPLE', 'mime_type': 'text/csv'}
 
 
     def test_history_not_modified_if_no_content_in_response(self):

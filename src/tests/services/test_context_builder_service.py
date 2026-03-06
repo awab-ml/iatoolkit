@@ -180,6 +180,8 @@ required:
 """,
             output_schema_mode="best_effort",
             output_response_mode="chat_compatible",
+            attachment_mode=None,
+            attachment_fallback=None,
         )
 
         contract = self.service.get_prompt_output_contract(self.mock_company, "employee_prompt")
@@ -187,6 +189,8 @@ required:
         assert isinstance(contract.get("schema"), dict)
         assert contract["schema"]["type"] == "object"
         assert "employees" in contract["schema"]["properties"]
+        assert contract["attachment_mode"] is None
+        assert contract["attachment_fallback"] is None
 
     def test_get_prompt_output_contract_accepts_json_string_schema(self):
         self.mock_prompt_service.get_prompt_definition.return_value = SimpleNamespace(
@@ -195,6 +199,8 @@ required:
             output_schema_yaml=None,
             output_schema_mode="strict",
             output_response_mode="structured_only",
+            attachment_mode="native_only",
+            attachment_fallback="fail",
         )
 
         contract = self.service.get_prompt_output_contract(self.mock_company, "employee_prompt")
@@ -203,3 +209,23 @@ required:
         assert contract["schema"]["type"] == "object"
         assert contract["schema_mode"] == "strict"
         assert contract["response_mode"] == "structured_only"
+        assert contract["attachment_mode"] == "native_only"
+        assert contract["attachment_fallback"] == "fail"
+
+    def test_get_prompt_output_contract_returns_attachment_policy_even_without_schema(self):
+        self.mock_prompt_service.get_prompt_definition.return_value = SimpleNamespace(
+            name="employee_prompt",
+            output_schema=None,
+            output_schema_yaml=None,
+            output_schema_mode="best_effort",
+            output_response_mode="chat_compatible",
+            attachment_mode="native_only",
+            attachment_fallback="fail",
+        )
+
+        contract = self.service.get_prompt_output_contract(self.mock_company, "employee_prompt")
+
+        assert contract["prompt_name"] == "employee_prompt"
+        assert contract["schema"] is None
+        assert contract["attachment_mode"] == "native_only"
+        assert contract["attachment_fallback"] == "fail"

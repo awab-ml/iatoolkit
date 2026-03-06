@@ -12,6 +12,7 @@ from iatoolkit.services.dispatcher_service import Dispatcher
 from iatoolkit.services.user_session_context_service import UserSessionContextService
 from iatoolkit.services.history_manager_service import HistoryManagerService
 from iatoolkit.services.context_builder_service import ContextBuilderService
+from iatoolkit.services.attachment_policy_service import AttachmentPolicyService
 from iatoolkit.common.model_registry import ModelRegistry
 from injector import inject
 import logging
@@ -46,7 +47,8 @@ class QueryService:
                  configuration_service: ConfigurationService,
                  history_manager: HistoryManagerService,
                  model_registry: ModelRegistry,
-                 context_builder: ContextBuilderService
+                 context_builder: ContextBuilderService,
+                 attachment_policy_service: AttachmentPolicyService | None = None,
                  ):
         self.profile_repo = profile_repo
         self.tool_service = tool_service
@@ -58,6 +60,7 @@ class QueryService:
         self.history_manager = history_manager
         self.model_registry = model_registry
         self.context_builder = context_builder
+        self.attachment_policy_service = attachment_policy_service
 
     @classmethod
     def register_tool_selector_hook(cls, hook: Callable | None):
@@ -212,10 +215,19 @@ class QueryService:
             contract = self.context_builder.get_prompt_output_contract(company, prompt_name)
             if not isinstance(contract, dict):
                 return {}
-            if not isinstance(contract.get("schema"), dict):
-                return {}
+            schema = contract.get("schema")
+            if not isinstance(schema, dict):
+                contract["schema"] = None
             contract["schema_mode"] = str(contract.get("schema_mode") or "best_effort").strip().lower()
             contract["response_mode"] = str(contract.get("response_mode") or "chat_compatible").strip().lower()
+            raw_attachment_mode = contract.get("attachment_mode")
+            raw_attachment_fallback = contract.get("attachment_fallback")
+            contract["attachment_mode"] = (
+                str(raw_attachment_mode).strip().lower() if raw_attachment_mode is not None else None
+            )
+            contract["attachment_fallback"] = (
+                str(raw_attachment_fallback).strip().lower() if raw_attachment_fallback is not None else None
+            )
             contract["provider"] = self._get_provider(contract.get("model") or "")
             return contract
         except Exception as e:
@@ -226,6 +238,33 @@ class QueryService:
                 e,
             )
             return {}
+
+    def _resolve_company_attachment_defaults(self, company_short_name: str) -> dict:
+        if self.attachment_policy_service:
+            return self.attachment_policy_service.get_company_default_policy(company_short_name)
+
+        llm_config = self.configuration_service.get_configuration(company_short_name, "llm") or {}
+        return {
+            "attachment_mode": str(llm_config.get("default_attachment_mode") or "extracted_only").strip().lower(),
+            "attachment_fallback": str(llm_config.get("default_attachment_fallback") or "extract").strip().lower(),
+        }
+
+    def _resolve_effective_attachment_policy(self, company_short_name: str, prompt_output_contract: dict | None) -> dict:
+        prompt_policy = prompt_output_contract or {}
+        company_defaults = self._resolve_company_attachment_defaults(company_short_name)
+        candidate_mode = prompt_policy.get("attachment_mode") or company_defaults.get("attachment_mode")
+        candidate_fallback = prompt_policy.get("attachment_fallback") or company_defaults.get("attachment_fallback")
+
+        if self.attachment_policy_service:
+            return {
+                "attachment_mode": self.attachment_policy_service.normalize_mode(candidate_mode),
+                "attachment_fallback": self.attachment_policy_service.normalize_fallback(candidate_fallback),
+            }
+
+        return {
+            "attachment_mode": str(candidate_mode or "extracted_only").strip().lower() or "extracted_only",
+            "attachment_fallback": str(candidate_fallback or "extract").strip().lower() or "extract",
+        }
 
     def _sanitize_schema_name(self, raw_name: str) -> str:
         candidate = re.sub(r"[^a-zA-Z0-9_]", "_", (raw_name or "").strip())
@@ -502,18 +541,57 @@ class QueryService:
 
             prompt_output_contract = self._resolve_prompt_output_contract(company, prompt_name)
             output_schema = self._build_output_text_schema_payload(effective_model, prompt_output_contract)
+            provider = self._get_provider(effective_model)
+            effective_attachment_policy = self._resolve_effective_attachment_policy(
+                company_short_name=company_short_name,
+                prompt_output_contract=prompt_output_contract,
+            )
+
+            attachment_plan = {
+                "files_for_context": files or [],
+                "native_attachments": [],
+                "errors": [],
+                "policy": effective_attachment_policy,
+                "capabilities": {},
+                "stats": {
+                    "total_files": len(files or []),
+                    "native_sent_count": 0,
+                    "extract_candidates": len(files or []),
+                    "fallback_to_extract": 0,
+                    "errors": 0,
+                },
+            }
+            if self.attachment_policy_service:
+                attachment_plan = self.attachment_policy_service.build_attachment_plan(
+                    company_short_name=company_short_name,
+                    provider=provider,
+                    files=files or [],
+                    policy=effective_attachment_policy,
+                )
+
+            if attachment_plan.get("errors"):
+                attachment_errors = "; ".join(attachment_plan["errors"])
+                logging.warning(
+                    "Attachment policy rejected files for company '%s' prompt '%s': %s",
+                    company_short_name,
+                    prompt_name,
+                    attachment_errors,
+                )
+                return {
+                    "error": True,
+                    "error_message": f"No se pudieron procesar los archivos adjuntos: {attachment_errors}",
+                }
 
             # --- Build User-Facing Prompt (Delegated to Builder) ---
             user_turn_prompt, effective_question, images = self.context_builder.build_user_turn_prompt(
                 company=company,
                 user_identifier=user_identifier,
                 client_data=client_data,
-                files=files,
+                files=attachment_plan.get("files_for_context", []),
                 prompt_name=prompt_name,
                 question=question
             )
 
-            provider = self._get_provider(effective_model)
             if prompt_output_contract.get("schema") and (
                 not output_schema or provider == "gemini"
             ):
@@ -590,8 +668,14 @@ class QueryService:
                     "enabled": True,
                     "schema_mode": prompt_output_contract.get("schema_mode", "best_effort"),
                     "response_mode": prompt_output_contract.get("response_mode", "chat_compatible"),
-                    "provider": self._get_provider(effective_model),
+                    "provider": provider,
                 }
+            execution_metadata["attachments"] = {
+                "policy": attachment_plan.get("policy", {}),
+                "stats": attachment_plan.get("stats", {}),
+                "provider": provider,
+                "company_defaults": self._resolve_company_attachment_defaults(company_short_name),
+            }
 
             # Safely extract parameters for invoke using the handle
             # The handle is guaranteed to have request_params populated if no error returned
@@ -611,6 +695,7 @@ class QueryService:
                 tools=tools,
                 text=output_schema,
                 images=images,
+                attachments=attachment_plan.get("native_attachments", []),
                 execution_metadata=execution_metadata,
                 response_contract=prompt_output_contract if prompt_output_contract.get("schema") else None,
             )

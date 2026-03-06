@@ -15,6 +15,7 @@ from iatoolkit.services.llm_client_service import llmClient
 from iatoolkit.services.dispatcher_service import Dispatcher
 from iatoolkit.services.tool_service import ToolService
 from iatoolkit.common.model_registry import ModelRegistry
+from iatoolkit.services.attachment_policy_service import AttachmentPolicyService
 
 # --- Constantes para los Tests ---
 MOCK_COMPANY_SHORT_NAME = "test_company"
@@ -40,9 +41,46 @@ class TestQueryService:
         self.mock_configuration_service = MagicMock(spec=ConfigurationService)
         self.mock_history_manager = MagicMock(spec=HistoryManagerService)
         self.model_registry = MagicMock(spec=ModelRegistry)
+        self.model_registry.get_provider.return_value = "openai"
 
         # New dependency mock
         self.mock_context_builder = MagicMock(spec=ContextBuilderService)
+        self.mock_attachment_policy_service = MagicMock(spec=AttachmentPolicyService)
+        self.mock_attachment_policy_service.normalize_mode.side_effect = (
+            lambda mode: str(mode or "extracted_only").strip().lower()
+            if str(mode or "extracted_only").strip().lower() in {"extracted_only", "native_only", "native_plus_extracted", "auto"}
+            else "extracted_only"
+        )
+        self.mock_attachment_policy_service.normalize_fallback.side_effect = (
+            lambda fallback: str(fallback or "extract").strip().lower()
+            if str(fallback or "extract").strip().lower() in {"extract", "fail"}
+            else "extract"
+        )
+        self.mock_attachment_policy_service.get_company_default_policy.side_effect = (
+            lambda company_short_name: {
+                "attachment_mode": "extracted_only",
+                "attachment_fallback": "extract",
+            }
+        )
+        self.mock_attachment_policy_service.build_attachment_plan.side_effect = (
+            lambda company_short_name, provider, files, policy: {
+                "files_for_context": files or [],
+                "native_attachments": [],
+                "errors": [],
+                "policy": {
+                    "attachment_mode": (policy or {}).get("attachment_mode") or "extracted_only",
+                    "attachment_fallback": (policy or {}).get("attachment_fallback") or "extract",
+                },
+                "capabilities": {},
+                "stats": {
+                    "total_files": len(files or []),
+                    "native_sent_count": 0,
+                    "extract_candidates": len(files or []),
+                    "fallback_to_extract": 0,
+                    "errors": 0,
+                },
+            }
+        )
 
         QueryService.clear_tool_selector_hook()
 
@@ -57,7 +95,8 @@ class TestQueryService:
             configuration_service=self.mock_configuration_service,
             history_manager=self.mock_history_manager,
             model_registry=self.model_registry,
-            context_builder=self.mock_context_builder
+            context_builder=self.mock_context_builder,
+            attachment_policy_service=self.mock_attachment_policy_service,
         )
 
         self.mock_i18n_service.t.side_effect = lambda key, **kwargs: f"translated:{key}"
@@ -214,6 +253,180 @@ class TestQueryService:
 
         # Verificar actualización de historia
         self.mock_history_manager.update_history.assert_called_once()
+
+    def test_llm_query_sends_native_attachments_when_policy_requires_it(self):
+        self.mock_attachment_policy_service.build_attachment_plan.side_effect = None
+        self.mock_context_builder.get_prompt_output_contract.return_value = {
+            "schema": None,
+            "attachment_mode": "native_only",
+            "attachment_fallback": "extract",
+        }
+        self.mock_attachment_policy_service.build_attachment_plan.return_value = {
+            "files_for_context": [],
+            "native_attachments": [
+                {
+                    "name": "sales.csv",
+                    "mime_type": "text/csv",
+                    "base64": "U0FNUExF",
+                }
+            ],
+            "errors": [],
+            "policy": {"attachment_mode": "native_only", "attachment_fallback": "extract"},
+            "capabilities": {"supports_native_files": True},
+            "stats": {
+                "total_files": 1,
+                "native_sent_count": 1,
+                "extract_candidates": 0,
+                "fallback_to_extract": 0,
+                "errors": 0,
+            },
+        }
+        self.mock_context_builder.build_user_turn_prompt.return_value = ("prompt", "q", [])
+        self.mock_history_manager.populate_request_params.side_effect = (
+            lambda handle, prompt, ignore: setattr(handle, "request_params", {"previous_response_id": None, "context_history": None}) or False
+        )
+        self.mock_llm_client.invoke.return_value = {"valid_response": True, "answer": "ok"}
+
+        result = self.service.llm_query(
+            company_short_name=MOCK_COMPANY_SHORT_NAME,
+            user_identifier=MOCK_LOCAL_USER_ID,
+            prompt_name="sales_prompt",
+            question="ventas 2025",
+            files=[{"filename": "sales.csv", "base64": "U0FNUExF"}],
+            model="gpt-test",
+        )
+
+        assert result["valid_response"] is True
+        self.mock_context_builder.build_user_turn_prompt.assert_called_once()
+        build_kwargs = self.mock_context_builder.build_user_turn_prompt.call_args.kwargs
+        assert build_kwargs["files"] == []
+
+        invoke_kwargs = self.mock_llm_client.invoke.call_args.kwargs
+        assert len(invoke_kwargs["attachments"]) == 1
+        assert invoke_kwargs["attachments"][0]["name"] == "sales.csv"
+        assert invoke_kwargs["execution_metadata"]["attachments"]["stats"]["native_sent_count"] == 1
+
+    def test_llm_query_returns_error_when_attachment_policy_fails(self):
+        self.mock_attachment_policy_service.build_attachment_plan.side_effect = None
+        self.mock_context_builder.get_prompt_output_contract.return_value = {
+            "schema": None,
+            "attachment_mode": "native_only",
+            "attachment_fallback": "fail",
+        }
+        self.mock_attachment_policy_service.build_attachment_plan.return_value = {
+            "files_for_context": [],
+            "native_attachments": [],
+            "errors": ["Attachment 'sales.csv' cannot be sent as native file for provider 'openai'."],
+            "policy": {"attachment_mode": "native_only", "attachment_fallback": "fail"},
+            "capabilities": {"supports_native_files": False},
+            "stats": {
+                "total_files": 1,
+                "native_sent_count": 0,
+                "extract_candidates": 0,
+                "fallback_to_extract": 0,
+                "errors": 1,
+            },
+        }
+
+        result = self.service.llm_query(
+            company_short_name=MOCK_COMPANY_SHORT_NAME,
+            user_identifier=MOCK_LOCAL_USER_ID,
+            prompt_name="sales_prompt",
+            question="ventas 2025",
+            files=[{"filename": "sales.csv", "base64": "U0FNUExF"}],
+            model="gpt-test",
+        )
+
+        assert result["error"] is True
+        assert "No se pudieron procesar los archivos adjuntos" in result["error_message"]
+        self.mock_context_builder.build_user_turn_prompt.assert_not_called()
+        self.mock_llm_client.invoke.assert_not_called()
+
+    def test_llm_query_without_prompt_name_uses_company_default_attachment_policy(self):
+        self.mock_attachment_policy_service.build_attachment_plan.side_effect = None
+        self.mock_attachment_policy_service.get_company_default_policy.side_effect = None
+        self.mock_attachment_policy_service.get_company_default_policy.return_value = {
+            "attachment_mode": "native_only",
+            "attachment_fallback": "fail",
+        }
+        self.mock_attachment_policy_service.build_attachment_plan.return_value = {
+            "files_for_context": [],
+            "native_attachments": [{"name": "sales.csv", "mime_type": "text/csv", "base64": "U0FNUExF"}],
+            "errors": [],
+            "policy": {"attachment_mode": "native_only", "attachment_fallback": "fail"},
+            "capabilities": {"supports_native_files": True},
+            "stats": {
+                "total_files": 1,
+                "native_sent_count": 1,
+                "extract_candidates": 0,
+                "fallback_to_extract": 0,
+                "errors": 0,
+            },
+        }
+        self.mock_context_builder.build_user_turn_prompt.return_value = ("prompt", "q", [])
+        self.mock_history_manager.populate_request_params.side_effect = (
+            lambda handle, prompt, ignore: setattr(handle, "request_params", {"previous_response_id": None, "context_history": None}) or False
+        )
+        self.mock_llm_client.invoke.return_value = {"valid_response": True, "answer": "ok"}
+
+        result = self.service.llm_query(
+            company_short_name=MOCK_COMPANY_SHORT_NAME,
+            user_identifier=MOCK_LOCAL_USER_ID,
+            question="ventas 2025",
+            files=[{"filename": "sales.csv", "base64": "U0FNUExF"}],
+            model="gpt-test",
+        )
+
+        assert result["valid_response"] is True
+        policy_kwargs = self.mock_attachment_policy_service.build_attachment_plan.call_args.kwargs["policy"]
+        assert policy_kwargs["attachment_mode"] == "native_only"
+        assert policy_kwargs["attachment_fallback"] == "fail"
+
+    def test_llm_query_prompt_policy_overrides_company_defaults(self):
+        self.mock_attachment_policy_service.build_attachment_plan.side_effect = None
+        self.mock_attachment_policy_service.get_company_default_policy.side_effect = None
+        self.mock_attachment_policy_service.get_company_default_policy.return_value = {
+            "attachment_mode": "native_only",
+            "attachment_fallback": "fail",
+        }
+        self.mock_context_builder.get_prompt_output_contract.return_value = {
+            "schema": None,
+            "attachment_mode": "extracted_only",
+            "attachment_fallback": "extract",
+        }
+        self.mock_attachment_policy_service.build_attachment_plan.return_value = {
+            "files_for_context": [{"filename": "sales.csv", "base64": "U0FNUExF"}],
+            "native_attachments": [],
+            "errors": [],
+            "policy": {"attachment_mode": "extracted_only", "attachment_fallback": "extract"},
+            "capabilities": {"supports_native_files": True},
+            "stats": {
+                "total_files": 1,
+                "native_sent_count": 0,
+                "extract_candidates": 1,
+                "fallback_to_extract": 0,
+                "errors": 0,
+            },
+        }
+        self.mock_context_builder.build_user_turn_prompt.return_value = ("prompt", "q", [])
+        self.mock_history_manager.populate_request_params.side_effect = (
+            lambda handle, prompt, ignore: setattr(handle, "request_params", {"previous_response_id": None, "context_history": None}) or False
+        )
+        self.mock_llm_client.invoke.return_value = {"valid_response": True, "answer": "ok"}
+
+        result = self.service.llm_query(
+            company_short_name=MOCK_COMPANY_SHORT_NAME,
+            user_identifier=MOCK_LOCAL_USER_ID,
+            prompt_name="sales_prompt",
+            question="ventas 2025",
+            files=[{"filename": "sales.csv", "base64": "U0FNUExF"}],
+            model="gpt-test",
+        )
+
+        assert result["valid_response"] is True
+        policy_kwargs = self.mock_attachment_policy_service.build_attachment_plan.call_args.kwargs["policy"]
+        assert policy_kwargs["attachment_mode"] == "extracted_only"
+        assert policy_kwargs["attachment_fallback"] == "extract"
 
     def test_llm_query_rebuilds_context_if_needed(self):
         """Prueba que llm_query reconstruye el contexto si el history manager lo indica."""

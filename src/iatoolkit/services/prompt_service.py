@@ -10,6 +10,7 @@ from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.services.sql_service import SqlService
+from iatoolkit.services.configuration_service import ConfigurationService
 from collections import defaultdict
 from iatoolkit.repositories.models import (Prompt, PromptCategory,
                                            Company, PromptType)
@@ -23,6 +24,12 @@ class PromptService:
     OUTPUT_SCHEMA_MODE_STRICT = "strict"
     OUTPUT_RESPONSE_MODE_CHAT = "chat_compatible"
     OUTPUT_RESPONSE_MODE_STRUCTURED = "structured_only"
+    ATTACHMENT_MODE_EXTRACTED_ONLY = "extracted_only"
+    ATTACHMENT_MODE_NATIVE_ONLY = "native_only"
+    ATTACHMENT_MODE_NATIVE_PLUS_EXTRACTED = "native_plus_extracted"
+    ATTACHMENT_MODE_AUTO = "auto"
+    ATTACHMENT_FALLBACK_EXTRACT = "extract"
+    ATTACHMENT_FALLBACK_FAIL = "fail"
 
     @inject
     def __init__(self,
@@ -30,12 +37,14 @@ class PromptService:
                  llm_query_repo: LLMQueryRepo,
                  profile_repo: ProfileRepo,
                  i18n_service: I18nService,
-                 sql_service: SqlService):
+                 sql_service: SqlService,
+                 configuration_service: ConfigurationService):
         self.asset_repo = asset_repo
         self.llm_query_repo = llm_query_repo
         self.profile_repo = profile_repo
         self.i18n_service = i18n_service
         self.sql_service = sql_service
+        self.configuration_service = configuration_service
 
     def _normalize_prompt_type(self, prompt_type: str | None) -> str:
         candidate = str(prompt_type or PromptType.COMPANY.value).strip().lower()
@@ -116,6 +125,35 @@ class PromptService:
         normalized_yaml = StructuredOutputService.dump_yaml_schema(normalized)
         return normalized, normalized_yaml
 
+    def _normalize_attachment_mode(self, attachment_mode: str | None) -> str:
+        candidate = str(attachment_mode or self.ATTACHMENT_MODE_EXTRACTED_ONLY).strip().lower()
+        allowed = {
+            self.ATTACHMENT_MODE_EXTRACTED_ONLY,
+            self.ATTACHMENT_MODE_NATIVE_ONLY,
+            self.ATTACHMENT_MODE_NATIVE_PLUS_EXTRACTED,
+            self.ATTACHMENT_MODE_AUTO,
+        }
+        if candidate in allowed:
+            return candidate
+        return self.ATTACHMENT_MODE_EXTRACTED_ONLY
+
+    def _normalize_attachment_fallback(self, attachment_fallback: str | None) -> str:
+        candidate = str(attachment_fallback or self.ATTACHMENT_FALLBACK_EXTRACT).strip().lower()
+        allowed = {
+            self.ATTACHMENT_FALLBACK_EXTRACT,
+            self.ATTACHMENT_FALLBACK_FAIL,
+        }
+        if candidate in allowed:
+            return candidate
+        return self.ATTACHMENT_FALLBACK_EXTRACT
+
+    def _get_company_default_attachment_policy(self, company_short_name: str) -> dict:
+        llm_config = self.configuration_service.get_configuration(company_short_name, "llm") or {}
+        return {
+            "attachment_mode": self._normalize_attachment_mode(llm_config.get("default_attachment_mode")),
+            "attachment_fallback": self._normalize_attachment_fallback(llm_config.get("default_attachment_fallback")),
+        }
+
     def get_prompts(self, company_short_name: str, include_all: bool = False) -> dict:
         try:
             # validate company
@@ -172,6 +210,8 @@ class PromptService:
                             'order': p.order,
                             'output_schema_mode': p.output_schema_mode,
                             'output_response_mode': p.output_response_mode,
+                            'attachment_mode': p.attachment_mode,
+                            'attachment_fallback': p.attachment_fallback,
                         }
                         for p in prompts
                     ]
@@ -249,6 +289,7 @@ class PromptService:
             self.asset_repo.write_text(company_short_name, AssetType.PROMPT, filename, data['content'])
 
         output_schema, output_schema_yaml = self._extract_output_schema_payload(data)
+        company_default_policy = self._get_company_default_attachment_policy(company_short_name)
 
         # 2. update the prompt in the database
         new_prompt = Prompt(
@@ -265,6 +306,12 @@ class PromptService:
             output_schema_yaml=output_schema_yaml,
             output_schema_mode=self._normalize_output_schema_mode(data.get("output_schema_mode")),
             output_response_mode=self._normalize_output_response_mode(data.get("output_response_mode")),
+            attachment_mode=self._normalize_attachment_mode(
+                data.get("attachment_mode", company_default_policy["attachment_mode"])
+            ),
+            attachment_fallback=self._normalize_attachment_fallback(
+                data.get("attachment_fallback", company_default_policy["attachment_fallback"])
+            ),
         )
         self.llm_query_repo.create_or_update_prompt(new_prompt)
 
@@ -387,6 +434,7 @@ class PromptService:
 
             # 2. Sync Prompts
             defined_prompt_names = set()
+            company_default_policy = self._get_company_default_attachment_policy(company_short_name)
 
             for prompt_data in prompt_list:
                 category_name = prompt_data.get('category')
@@ -416,6 +464,12 @@ class PromptService:
                     output_schema_yaml=StructuredOutputService.dump_yaml_schema(normalized_schema),
                     output_schema_mode=self._normalize_output_schema_mode(prompt_data.get("output_schema_mode")),
                     output_response_mode=self._normalize_output_response_mode(prompt_data.get("output_response_mode")),
+                    attachment_mode=self._normalize_attachment_mode(
+                        prompt_data.get("attachment_mode", company_default_policy["attachment_mode"])
+                    ),
+                    attachment_fallback=self._normalize_attachment_fallback(
+                        prompt_data.get("attachment_fallback", company_default_policy["attachment_fallback"])
+                    ),
                 )
 
                 self.llm_query_repo.create_or_update_prompt(new_prompt)

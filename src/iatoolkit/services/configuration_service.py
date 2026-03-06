@@ -342,6 +342,20 @@ class ConfigurationService:
                 add_error("llm", "Missing required key: 'model'")
             if not config.get("llm", {}).get("provider_api_keys"):
                 add_error("llm", "Missing required key: 'provider_api_keys'")
+            llm_defaults_mode = str(config.get("llm", {}).get("default_attachment_mode", "extracted_only")).strip().lower()
+            llm_defaults_fallback = str(config.get("llm", {}).get("default_attachment_fallback", "extract")).strip().lower()
+            allowed_attachment_modes = {"extracted_only", "native_only", "native_plus_extracted", "auto"}
+            allowed_attachment_fallbacks = {"extract", "fail"}
+            if llm_defaults_mode not in allowed_attachment_modes:
+                add_error(
+                    "llm.default_attachment_mode",
+                    f"Unsupported value '{llm_defaults_mode}'. Must be one of: {sorted(allowed_attachment_modes)}."
+                )
+            if llm_defaults_fallback not in allowed_attachment_fallbacks:
+                add_error(
+                    "llm.default_attachment_fallback",
+                    f"Unsupported value '{llm_defaults_fallback}'. Must be one of: {sorted(allowed_attachment_fallbacks)}."
+                )
 
         # 3. Embedding Provider
         if isinstance(config.get("embedding_provider"), dict):
@@ -395,6 +409,8 @@ class ConfigurationService:
         allowed_prompt_types = {"company", "agent"}
         allowed_output_schema_modes = {"best_effort", "strict"}
         allowed_output_response_modes = {"chat_compatible", "structured_only"}
+        allowed_attachment_modes = {"extracted_only", "native_only", "native_plus_extracted", "auto"}
+        allowed_attachment_fallbacks = {"extract", "fail"}
         for i, prompt in enumerate(prompt_list):
             prompt_name = prompt.get("name")
             if not prompt_name:
@@ -434,6 +450,20 @@ class ConfigurationService:
                 add_error(
                     f"prompts[{i}]",
                     f"Unsupported output_response_mode '{response_mode}'. Must be one of: {sorted(allowed_output_response_modes)}."
+                )
+
+            attachment_mode = str(prompt.get("attachment_mode", "extracted_only")).strip().lower()
+            if attachment_mode not in allowed_attachment_modes:
+                add_error(
+                    f"prompts[{i}]",
+                    f"Unsupported attachment_mode '{attachment_mode}'. Must be one of: {sorted(allowed_attachment_modes)}."
+                )
+
+            attachment_fallback = str(prompt.get("attachment_fallback", "extract")).strip().lower()
+            if attachment_fallback not in allowed_attachment_fallbacks:
+                add_error(
+                    f"prompts[{i}]",
+                    f"Unsupported attachment_fallback '{attachment_fallback}'. Must be one of: {sorted(allowed_attachment_fallbacks)}."
                 )
 
             output_schema = prompt.get("output_schema")

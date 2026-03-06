@@ -87,13 +87,11 @@ class ContextBuilderService:
             except Exception:
                 schema = None
 
-        if not isinstance(schema, dict):
-            return {}
-
-        try:
-            schema = StructuredOutputService.normalize_schema(schema)
-        except Exception:
-            return {}
+        if isinstance(schema, dict):
+            try:
+                schema = StructuredOutputService.normalize_schema(schema)
+            except Exception:
+                schema = None
 
         return {
             "prompt_name": prompt_obj.name,
@@ -101,6 +99,8 @@ class ContextBuilderService:
             "schema_yaml": prompt_obj.output_schema_yaml,
             "schema_mode": prompt_obj.output_schema_mode or "best_effort",
             "response_mode": prompt_obj.output_response_mode or "chat_compatible",
+            "attachment_mode": getattr(prompt_obj, "attachment_mode", None),
+            "attachment_fallback": getattr(prompt_obj, "attachment_fallback", None),
         }
 
     def build_system_context(
