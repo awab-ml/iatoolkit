@@ -539,8 +539,11 @@ class QueryService:
             # --- Model Resolution ---
             effective_model = self._resolve_model(company_short_name, model)
 
+            # output contract
             prompt_output_contract = self._resolve_prompt_output_contract(company, prompt_name)
             output_schema = self._build_output_text_schema_payload(effective_model, prompt_output_contract)
+
+            # attachment policy
             provider = self._get_provider(effective_model)
             effective_attachment_policy = self._resolve_effective_attachment_policy(
                 company_short_name=company_short_name,
