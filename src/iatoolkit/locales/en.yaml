@@ -4,6 +4,7 @@ ui:
     actions: "Actions"
     save: "Save"
     cancel: "Cancel"
+    close: "Close"
     apply: "Apply Changes"
     discard_changes: "Discard Changes"
     order: "Order"

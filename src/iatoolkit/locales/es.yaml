@@ -4,6 +4,7 @@ ui:
     actions: "Acciones"
     save: "Guardar"
     cancel: "Cancelar"
+    close: "Cerrar"
     time: "Hora"
     apply: "Aplicar Cambios"
     discard_changes: "Descartar Cambios"
