@@ -61,7 +61,7 @@ function selectPrompt(prompt) {
 function resetPromptSelection() {
     selectedPrompt = null;
 
-    const promptsAvailableLabel = t_js('ui.chat.prompts_available');
+    const promptsAvailableLabel = t_js('prompts_available');
     $('#prompt-select-button').text(`${promptsAvailableLabel} ....`).removeClass('item-selected');
     $('#clear-selection-button').hide();
     $('#prompt-select-value').val('');
