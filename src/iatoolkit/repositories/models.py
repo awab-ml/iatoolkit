@@ -111,6 +111,11 @@ class Company(Base):
         back_populates="company",
         cascade="all, delete-orphan"
     )
+    sql_sources = relationship(
+        "SqlSource",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
 
 
     def to_dict(self):
@@ -392,6 +397,46 @@ class Prompt(Base):
 
     company = relationship("Company", back_populates="prompts")
     category = relationship("PromptCategory", back_populates="prompts")
+
+
+class SqlSource(Base):
+    """
+    Canonical SQL source catalog per company.
+    Runtime SQL registration is resolved from this table (not directly from YAML).
+    """
+    __tablename__ = "iat_sql_sources"
+
+    SOURCE_YAML = "YAML"
+    SOURCE_USER = "USER"
+
+    CONNECTION_DIRECT = "direct"
+    CONNECTION_BRIDGE = "bridge"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(Integer, ForeignKey("iat_companies.id", ondelete="CASCADE"), nullable=False)
+
+    database = Column(String, nullable=False)
+    connection_type = Column(String(32), nullable=False, default=CONNECTION_DIRECT)
+    connection_string_env = Column(String, nullable=True)
+    schema = Column(String, nullable=False, default="public")
+    description = Column(Text, nullable=True)
+    bridge_id = Column(String, nullable=True)
+
+    source = Column(String(16), nullable=False, default=SOURCE_YAML)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "database", name="uix_company_sql_source_database"),
+    )
+
+    company = relationship("Company", back_populates="sql_sources")
+
+    def to_dict(self):
+        return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}
+
 
 class AccessLog(Base):
     # Modelo ORM para registrar cada intento de acceso a la plataforma.

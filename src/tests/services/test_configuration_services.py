@@ -130,6 +130,7 @@ class TestConfigurationService:
         mock_tool_service = Mock()
         mock_prompt_service = Mock()
         mock_sql_service = Mock()
+        mock_sql_source_service = Mock()
 
         # Simulate injector.get returning correct service based on requested class
         def get_side_effect(service_class):
@@ -137,6 +138,8 @@ class TestConfigurationService:
                 return mock_tool_service
             if "PromptService" in str(service_class):
                 return mock_prompt_service
+            if "SqlSourceService" in str(service_class):
+                return mock_sql_source_service
             if "SqlService" in str(service_class):
                 return mock_sql_service
             return Mock()
@@ -186,6 +189,10 @@ class TestConfigurationService:
             prompt_list=MOCK_VALID_CONFIG['prompts']['prompt_list'],
             categories_config=MOCK_VALID_CONFIG['prompts']['prompt_categories']
         )
+        mock_sql_source_service.sync_from_yaml.assert_called_once_with(
+            self.COMPANY_NAME,
+            MOCK_VALID_CONFIG["data_sources"]["sql"],
+        )
 
     def test_get_configuration_uses_cache_on_second_call(self):
         """
@@ -227,12 +234,15 @@ class TestConfigurationService:
         mock_tool_service = Mock()
         mock_prompt_service = Mock()
         mock_sql_service = Mock()
+        mock_sql_source_service = Mock()
 
         def get_side_effect(service_class):
             if "ToolService" in str(service_class):
                 return mock_tool_service
             if "PromptService" in str(service_class):
                 return mock_prompt_service
+            if "SqlSourceService" in str(service_class):
+                return mock_sql_source_service
             if "SqlService" in str(service_class):
                 return mock_sql_service
             return Mock()
@@ -268,6 +278,7 @@ class TestConfigurationService:
             prompt_list=[],
             categories_config=[]
         )
+        mock_sql_source_service.sync_from_yaml.assert_called_once_with('minimal_co', [])
 
     # --- New Tests for Update and Validation ---
 

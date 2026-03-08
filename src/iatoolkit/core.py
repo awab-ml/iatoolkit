@@ -325,6 +325,7 @@ class IAToolkit:
         from iatoolkit.repositories.document_repo import DocumentRepo
         from iatoolkit.repositories.profile_repo import ProfileRepo
         from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
+        from iatoolkit.repositories.sql_source_repo import SqlSourceRepo
         from iatoolkit.repositories.vs_repo import VSRepo
         from iatoolkit.repositories.filesystem_asset_repository import FileSystemAssetRepository
         from iatoolkit.repositories.env_secret_provider import EnvSecretProvider
@@ -333,6 +334,7 @@ class IAToolkit:
         binder.bind(DocumentRepo, to=DocumentRepo)
         binder.bind(ProfileRepo, to=ProfileRepo)
         binder.bind(LLMQueryRepo, to=LLMQueryRepo)
+        binder.bind(SqlSourceRepo, to=SqlSourceRepo)
         binder.bind(VSRepo, to=VSRepo)
 
         # this class can be setup befor by iatoolkit enterprise
@@ -357,6 +359,7 @@ class IAToolkit:
         from iatoolkit.services.mail_service import MailService
         from iatoolkit.services.profile_service import ProfileService
         from iatoolkit.services.jwt_service import JWTService
+        from iatoolkit.services.sql_source_service import SqlSourceService
         from iatoolkit.services.dispatcher_service import Dispatcher
         from iatoolkit.services.branding_service import BrandingService
         from iatoolkit.services.i18n_service import I18nService
@@ -392,6 +395,7 @@ class IAToolkit:
         binder.bind(MailService, to=MailService)
         binder.bind(ProfileService, to=ProfileService)
         binder.bind(JWTService, to=JWTService)
+        binder.bind(SqlSourceService, to=SqlSourceService)
         binder.bind(Dispatcher, to=Dispatcher)
         binder.bind(BrandingService, to=BrandingService)
         binder.bind(I18nService, to=I18nService)

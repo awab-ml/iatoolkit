@@ -5,7 +5,6 @@
 from iatoolkit.repositories.models import Company
 from iatoolkit.common.interfaces.asset_storage import AssetRepository, AssetType
 from iatoolkit.common.interfaces.secret_provider import SecretProvider
-from iatoolkit.common.secret_resolver import resolve_secret
 from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.common.util import Utility
@@ -66,6 +65,10 @@ class ConfigurationService:
 
             # 5. Register Knowledge base information
             self._register_knowledge_base(company_short_name, config)
+
+            # 6. Sync SQL source catalog from YAML to DB.
+            # Runtime registration is resolved from DB entries.
+            self._sync_sql_sources(company_short_name, config)
 
         # Keep runtime cache aligned with the latest loaded configuration.
         self._loaded_configs[company_short_name] = config or {}
@@ -203,8 +206,8 @@ class ConfigurationService:
                               company_short_name: str,
                               config: dict = None):
         """
-        Reads the data_sources config and registers databases with SqlService.
-        Uses Lazy Loading to avoid circular dependency.
+        Resolves runtime SQL registrations from the SQL source catalog table.
+        YAML data_sources are synchronized into the catalog before refresh.
 
         Public method: Can be called externally after initialization (e.g. by Enterprise)
         to re-register sources once new factories (like 'bridge') are available.
@@ -218,54 +221,35 @@ class ConfigurationService:
         if not config:
             return
 
+        self._sync_sql_sources(company_short_name, config or {})
+
         from iatoolkit import current_iatoolkit
-        from iatoolkit.services.sql_service import SqlService
-        sql_service = current_iatoolkit().get_injector().get(SqlService)
+        from iatoolkit.services.sql_source_service import SqlSourceService
+        sql_source_service = current_iatoolkit().get_injector().get(SqlSourceService)
 
-        data_sources = config.get('data_sources', {})
-        sql_sources = data_sources.get('sql', [])
+        result = sql_source_service.refresh_runtime(company_short_name)
+        logging.info(
+            "🛢️ Runtime SQL sources refreshed for '%s': registered=%s skipped=%s",
+            company_short_name,
+            result.get("registered", 0),
+            result.get("skipped", 0),
+        )
 
-        if not sql_sources:
-            return
+    def _sync_sql_sources(self, company_short_name: str, config: dict):
+        from iatoolkit import current_iatoolkit
+        from iatoolkit.services.sql_source_service import SqlSourceService
+        sql_source_service = current_iatoolkit().get_injector().get(SqlSourceService)
 
-        logging.info(f"🛢️ Registering databases  for '{company_short_name}'...")
-
-        for source in sql_sources:
-            db_name = source.get('database')
-            if not db_name:
-                continue
-
-            # Prepare the config dictionary for the factory
-            db_config = {
-                'database': db_name,
-                'schema': source.get('schema', 'public'),
-                'connection_type': source.get('connection_type', 'direct'),
-
-                # Pass through keys needed for Bridge or other plugins
-                'bridge_id': source.get('bridge_id'),
-                'timeout': source.get('timeout')
-            }
-
-            # Resolve URI if env var is present (Required for 'direct', optional for others)
-            db_secret_ref = source.get('connection_string_secret_ref') or source.get('connection_string_env')
-            if db_secret_ref:
-                db_uri = resolve_secret(self.secret_provider, company_short_name, db_secret_ref)
-                if db_uri:
-                    db_config['db_uri'] = db_uri
-
-            # Validation: 'direct' connections MUST have a URI
-            if db_config['connection_type'] == 'direct' and not db_config.get('db_uri'):
-                logging.error(
-                    f"-> Skipping DB '{db_name}' for '{company_short_name}': missing DB URI ref '{db_secret_ref}'.")
-                continue
-
-            elif db_config['connection_type'] == 'bridge' and not db_config.get('bridge_id'):
-                logging.error(
-                    f"-> Skipping DB '{db_name}' for '{company_short_name}': missing bridge_id in configuration.")
-                continue
-
-            # Register with the SQL service
-            sql_service.register_database(company_short_name, db_name, db_config)
+        data_sources = config.get('data_sources', {}) if isinstance(config, dict) else {}
+        sql_sources = data_sources.get('sql', []) if isinstance(data_sources, dict) else []
+        sync_result = sql_source_service.sync_from_yaml(company_short_name, sql_sources)
+        logging.info(
+            "🧩 SQL source sync for '%s': upserted=%s deleted=%s skipped=%s",
+            company_short_name,
+            sync_result.get("upserted", 0),
+            sync_result.get("deleted", 0),
+            sync_result.get("skipped", 0),
+        )
 
     def _register_tools(self, company_short_name: str, config: dict):
         """creates in the database each tool defined in the YAML."""

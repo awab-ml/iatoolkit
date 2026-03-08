@@ -4,14 +4,13 @@
 # IAToolkit is open source software.
 
 from iatoolkit.common.util import Utility
-from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.common.interfaces.asset_storage import AssetRepository, AssetType
+from iatoolkit.services.sql_source_service import SqlSourceService
 from iatoolkit.services.sql_service import SqlService
 import logging
 import yaml
 from injector import inject
 from typing import List, Dict
-import os
 
 
 class CompanyContextService:
@@ -24,11 +23,11 @@ class CompanyContextService:
     def __init__(self,
                  sql_service: SqlService,
                  utility: Utility,
-                 config_service: ConfigurationService,
+                 sql_source_service: SqlSourceService,
                  asset_repo: AssetRepository):
         self.sql_service = sql_service
         self.utility = utility
-        self.config_service = config_service
+        self.sql_source_service = sql_source_service
         self.asset_repo = asset_repo
 
     def get_company_context(self, company_short_name: str) -> str:
@@ -74,14 +73,14 @@ class CompanyContextService:
         It iterates over configured databases, fetches their enriched structure,
         and formats it into a prompt-friendly string.
         """
-        data_sources_config = self.config_service.get_configuration(company_short_name, 'data_sources')
-        if not data_sources_config or not data_sources_config.get('sql'):
+        sql_sources = self.sql_source_service.list_sources(company_short_name, include_inactive=False)
+        if not sql_sources:
             return '', []
 
         context_output = []
         db_tables=[]
 
-        for source in data_sources_config.get('sql', []):
+        for source in sql_sources:
             db_name = source.get('database')
             if not db_name:
                 continue
