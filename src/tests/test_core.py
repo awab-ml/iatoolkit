@@ -199,6 +199,33 @@ class TestIAToolkit(unittest.TestCase):
         mock_instance.create_iatoolkit.assert_called_once()
         self.assertEqual(app, "flask_app_instance")
 
+    def test_bootstrap_defaults_repairs_schema_and_loads_configuration(self):
+        toolkit = IAToolkit({})
+        toolkit.db_manager = MagicMock()
+
+        mock_tool_service = MagicMock()
+        mock_config_service = MagicMock()
+        mock_config = {"company": MagicMock()}
+        mock_config_service.load_configuration.return_value = (mock_config, [])
+
+        def injector_get(dependency):
+            if dependency.__name__ == "ConfigurationService":
+                return mock_config_service
+            if dependency.__name__ == "ToolService":
+                return mock_tool_service
+            raise AssertionError(f"Unexpected dependency requested: {dependency}")
+
+        toolkit._injector = MagicMock()
+        toolkit._injector.get.side_effect = injector_get
+
+        result = toolkit.bootstrap_defaults(" sample_company ")
+
+        toolkit.db_manager.create_all.assert_called_once()
+        mock_config_service.load_configuration.assert_called_once_with("sample_company")
+        mock_tool_service.register_system_tools.assert_called_once()
+        mock_config_service.register_data_sources.assert_called_once_with("sample_company", mock_config)
+        self.assertEqual(result, {"company_short_name": "sample_company", "errors": []})
+
     @patch('iatoolkit.company_registry.get_company_registry')
     @patch('iatoolkit.core.CORS')
     def test_setup_cors(self, mock_cors, mock_get_registry):

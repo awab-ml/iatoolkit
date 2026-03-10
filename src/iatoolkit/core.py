@@ -553,10 +553,29 @@ class IAToolkit:
         return self.db_manager
 
     def bootstrap_defaults(self, company_short_name: str):
+        from iatoolkit.services.configuration_service import ConfigurationService
         from iatoolkit.services.tool_service import ToolService
 
+        company_short_name = (company_short_name or "").strip()
+        if not company_short_name:
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.INVALID_NAME,
+                "company_short_name is required",
+            )
+
+        # Re-run schema bootstrap explicitly so the CLI can repair legacy installs on demand.
+        self.get_database_manager().create_all()
+
+        configuration_service = self.get_injector().get(ConfigurationService)
         tool_service = self.get_injector().get(ToolService)
+        config, errors = configuration_service.load_configuration(company_short_name)
         tool_service.register_system_tools()
+        configuration_service.register_data_sources(company_short_name, config)
+
+        return {
+            "company_short_name": company_short_name,
+            "errors": errors or [],
+        }
 
     def _setup_docling(self):
         from iatoolkit.services.parsers.parsing_service import ParsingService

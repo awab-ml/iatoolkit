@@ -63,6 +63,7 @@ src/iatoolkit/repositories/filesystem_asset_repository.py
 src/iatoolkit/repositories/llm_query_repo.py
 src/iatoolkit/repositories/models.py
 src/iatoolkit/repositories/profile_repo.py
+src/iatoolkit/repositories/sql_source_repo.py
 src/iatoolkit/repositories/vs_repo.py
 src/iatoolkit/services/__init__.py
 src/iatoolkit/services/api_key_service.py
@@ -92,6 +93,7 @@ src/iatoolkit/services/prompt_service.py
 src/iatoolkit/services/query_service.py
 src/iatoolkit/services/signup_policy_resolver.py
 src/iatoolkit/services/sql_service.py
+src/iatoolkit/services/sql_source_service.py
 src/iatoolkit/services/storage_service.py
 src/iatoolkit/services/structured_output_service.py
 src/iatoolkit/services/system_prompt_catalog.py

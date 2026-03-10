@@ -35,10 +35,22 @@ def register_core_commands(app):
     @app.cli.command("init-company")
     @click.argument("company_short_name")
     def init_company(company_short_name: str):
-        """⚙️ Bootstrap a new company."""
+        """⚙️ Bootstrap or repair an installation for a company."""
         try:
-            current_iatoolkit().bootstrap_defaults(company_short_name)
+            click.echo(f"⚙️ Bootstrapping installation for '{company_short_name}'...")
+            result = current_iatoolkit().bootstrap_defaults(company_short_name)
+            errors = result.get("errors", [])
+            if errors:
+                click.echo("⚠️ Configuration validation reported issues:")
+                for error in errors:
+                    click.echo(f" - {error}")
+                raise click.ClickException(
+                    f"bootstrap completed with configuration errors for '{company_short_name}'"
+                )
+
             click.echo(f"✅ Company {company_short_name} initialized successfully!")
+        except click.ClickException:
+            raise
         except Exception as e:
             logging.exception(e)
             click.echo(f"❌ unexpected error during bootstrap: {e}")
@@ -55,4 +67,3 @@ def register_core_commands(app):
         except Exception as e:
             logging.exception(e)
             click.echo(f"Error: {str(e)}")
-

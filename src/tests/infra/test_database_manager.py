@@ -17,6 +17,7 @@ class TestDatabaseManager(unittest.TestCase):
         """Configura mocks para las dependencias principales de DatabaseManager."""
         # Mock del motor y las sesiones
         self.mock_engine = MagicMock()
+        self.mock_engine.execution_options.return_value = self.mock_engine
         mock_create_engine.return_value = self.mock_engine
 
         self.mock_sessionmaker = MagicMock()
@@ -54,4 +55,3 @@ class TestDatabaseManager(unittest.TestCase):
         """Prueba que remove_session limpia la sesión actual."""
         self.db_manager.remove_session()
         self.mock_scoped_session.remove.assert_called_once()
-

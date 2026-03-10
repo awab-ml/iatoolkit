@@ -3,7 +3,7 @@
 #
 # IAToolkit is open source software.
 
-from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Enum, Text, JSON, Boolean, ForeignKey, Table
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Enum, Text, JSON, Boolean, ForeignKey, Table, MetaData
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import relationship, class_mapper
 from sqlalchemy.sql import func
@@ -14,9 +14,14 @@ from pgvector.sqlalchemy import Vector
 import enum
 
 
+# Canonical ORM schema for the platform tables.
+# SQLite tests translate this schema to None at engine level.
+ORM_SCHEMA = "iatoolkit"
+
+
 # base class for the ORM
 class Base(DeclarativeBase):
-    pass
+    metadata = MetaData(schema=ORM_SCHEMA)
 
 
 class DocumentStatus(str, enum.Enum):
@@ -40,10 +45,10 @@ JSON_NATIVE = JSON().with_variant(JSONB, "postgresql")
 user_company = Table('iat_user_company',
                      Base.metadata,
                     Column('user_id', Integer,
-                           ForeignKey('iat_users.id', ondelete='CASCADE'),
+                           ForeignKey(f'{ORM_SCHEMA}.iat_users.id', ondelete='CASCADE'),
                                 primary_key=True),
                      Column('company_id', Integer,
-                            ForeignKey('iat_companies.id',ondelete='CASCADE'),
+                            ForeignKey(f'{ORM_SCHEMA}.iat_companies.id',ondelete='CASCADE'),
                                 primary_key=True),
                      Column('role', String, nullable=True, default='user'),
                      Column('created_at', DateTime, default=datetime.now)
@@ -54,7 +59,7 @@ class ApiKey(Base):
     __tablename__ = 'iat_api_keys'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('iat_companies.id', ondelete='CASCADE'), nullable=False)
+    company_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_companies.id', ondelete='CASCADE'), nullable=False)
     key_name = Column(String, nullable=False)
     key = Column(String, unique=True, nullable=False, index=True) # La API Key en sí
     is_active = Column(Boolean, default=True, nullable=False)
@@ -175,7 +180,7 @@ class Tool(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer,
-                        ForeignKey('iat_companies.id',ondelete='CASCADE'),
+                        ForeignKey(f'{ORM_SCHEMA}.iat_companies.id',ondelete='CASCADE'),
                         nullable=True)
     name = Column(String, nullable=False)
     tool_type = Column(String, default=TYPE_NATIVE, nullable=False)
@@ -198,7 +203,7 @@ class CollectionType(Base):
     __tablename__ = 'iat_collection_types'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('iat_companies.id', ondelete='CASCADE'), nullable=False)
+    company_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_companies.id', ondelete='CASCADE'), nullable=False)
     name = Column(String, nullable=False)  # e.g., "Contracts", "Manuals"
     parser_provider = Column(String, nullable=True)
 
@@ -215,9 +220,9 @@ class Document(Base):
     __tablename__ = 'iat_documents'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('iat_companies.id',
+    company_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_companies.id',
                     ondelete='CASCADE'), nullable=False)
-    collection_type_id = Column(Integer, ForeignKey('iat_collection_types.id', ondelete='SET NULL'), nullable=True)
+    collection_type_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_collection_types.id', ondelete='SET NULL'), nullable=True)
 
     user_identifier = Column(String, nullable=True)
     filename = Column(String, nullable=False, index=True)
@@ -255,7 +260,7 @@ class DocumentImage(Base):
     __tablename__ = 'iat_document_images'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    document_id = Column(Integer, ForeignKey('iat_documents.id', ondelete='CASCADE'), nullable=False)
+    document_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_documents.id', ondelete='CASCADE'), nullable=False)
 
     page = Column(Integer, nullable=True)
     image_index = Column(Integer, nullable=True)
@@ -277,7 +282,7 @@ class LLMQuery(Base):
     __tablename__ = 'iat_queries'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('iat_companies.id',
+    company_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_companies.id',
                             ondelete='CASCADE'), nullable=False)
     user_identifier = Column(String, nullable=False)
     query = Column(Text, nullable=False)
@@ -301,9 +306,9 @@ class VSDoc(Base):
     __tablename__ = "iat_vsdocs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('iat_companies.id',
+    company_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_companies.id',
                     ondelete='CASCADE'), nullable=False)
-    document_id = Column(Integer, ForeignKey('iat_documents.id',
+    document_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_documents.id',
                         ondelete='CASCADE'), nullable=False)
     text = Column(Text, nullable=False)
     meta = Column(JSON_NATIVE, nullable=True)
@@ -321,9 +326,9 @@ class VSImage(Base):
     __tablename__ = "iat_vsimages"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('iat_companies.id',
+    company_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_companies.id',
                                             ondelete='CASCADE'), nullable=False)
-    document_image_id = Column(Integer, ForeignKey('iat_document_images.id',
+    document_image_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_document_images.id',
                                                    ondelete='CASCADE'), nullable=False)
 
     # Vector dimension depends on the multimodal model (e.g., CLIP uses 512 or 768)
@@ -341,7 +346,7 @@ class UserFeedback(Base):
     __tablename__ = 'iat_feedback'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('iat_companies.id',
+    company_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_companies.id',
                                             ondelete='CASCADE'), nullable=False)
     user_identifier = Column(String, default='', nullable=True)
     message = Column(Text, nullable=False)
@@ -357,7 +362,7 @@ class PromptCategory(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     order = Column(Integer, nullable=False, default=0)
-    company_id = Column(Integer, ForeignKey('iat_companies.id', ondelete='CASCADE'), nullable=False)
+    company_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_companies.id', ondelete='CASCADE'), nullable=False)
 
     prompts = relationship(
         "Prompt",
@@ -375,7 +380,7 @@ class Prompt(Base):
     __tablename__ = 'iat_prompt'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('iat_companies.id',
+    company_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_companies.id',
                                             ondelete='CASCADE'), nullable=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=False)
@@ -383,7 +388,7 @@ class Prompt(Base):
     active = Column(Boolean, default=True)
     prompt_type = Column(String, default=PromptType.COMPANY.value, nullable=False)
     order = Column(Integer, nullable=True, default=0)
-    category_id = Column(Integer, ForeignKey('iat_prompt_categories.id', ondelete='SET NULL'), nullable=True)
+    category_id = Column(Integer, ForeignKey(f'{ORM_SCHEMA}.iat_prompt_categories.id', ondelete='SET NULL'), nullable=True)
     custom_fields = Column(JSON, nullable=False, default=[])
     output_schema = Column(JSON, nullable=True, default=None)
     output_schema_yaml = Column(Text, nullable=True, default=None)
@@ -413,7 +418,7 @@ class SqlSource(Base):
     CONNECTION_BRIDGE = "bridge"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey("iat_companies.id", ondelete="CASCADE"), nullable=False)
+    company_id = Column(Integer, ForeignKey(f"{ORM_SCHEMA}.iat_companies.id", ondelete="CASCADE"), nullable=False)
 
     database = Column(String, nullable=False)
     connection_type = Column(String(32), nullable=False, default=CONNECTION_DIRECT)
