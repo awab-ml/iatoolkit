@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch, ANY
 import os
 import pytest
 from flask import Flask
+from datetime import timedelta
 from iatoolkit.core import IAToolkit, current_iatoolkit, create_app
 from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.repositories.database_manager import DatabaseManager
@@ -160,6 +161,14 @@ class TestIAToolkit(unittest.TestCase):
         mock_redis_cls.assert_called_once()
         mock_session_cls.assert_called_once_with(toolkit.app)
         self.assertEqual(toolkit.app.config['SESSION_TYPE'], 'redis')
+
+    def test_create_flask_instance_configures_idle_session_timeout(self):
+        toolkit = IAToolkit({})
+
+        toolkit._create_flask_instance()
+
+        self.assertEqual(toolkit.app.config['PERMANENT_SESSION_LIFETIME'], timedelta(minutes=60))
+        self.assertTrue(toolkit.app.config['SESSION_REFRESH_EACH_REQUEST'])
 
     @patch('iatoolkit.cli_commands.register_core_commands')
     @patch('iatoolkit.company_registry.get_company_registry')

@@ -119,6 +119,7 @@ class ProfileService:
 
     def set_session_for_user(self, company_short_name: str, user_identifier:str ):
         # save a min Flask session cookie for this user
+        SessionManager.set_permanent(True)
         SessionManager.set('company_short_name', company_short_name)
         SessionManager.set('user_identifier', user_identifier)
 

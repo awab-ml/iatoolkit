@@ -62,6 +62,7 @@ class TestProfileService:
 
         assert response['success'] is True
         self.mock_session_context.save_profile_data.assert_called_once()
+        mock_session_manager.set_permanent.assert_called_once_with(True)
         mock_session_manager.set.assert_any_call('user_identifier', str(self.mock_user.email))
         mock_session_manager.set.assert_any_call('company_short_name', self.mock_company.short_name)
 
@@ -87,6 +88,7 @@ class TestProfileService:
         """
         response = self.service.login(self.mock_company.short_name, 'test@email.com', 'password')
 
+        mock_session_manager.set_permanent.assert_called_once_with(True)
         mock_session_manager.set.assert_any_call('user_identifier', str(self.mock_user.email))
         self.mock_session_context.save_profile_data.assert_called_once()
         assert response['success'] and response['user_identifier'] == self.mock_user.email

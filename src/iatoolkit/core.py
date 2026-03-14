@@ -17,6 +17,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from injector import Binder, Injector, singleton
 from typing import Optional, Dict, Any
 from urllib.parse import urlparse
+from datetime import timedelta
 import redis
 import logging
 import os
@@ -192,6 +193,7 @@ class IAToolkit:
     def _create_flask_instance(self):
         static_folder = self._get_config_value('STATIC_FOLDER') or self._get_default_static_folder()
         template_folder = self._get_config_value('TEMPLATE_FOLDER') or self._get_default_template_folder()
+        idle_timeout_minutes = int(self._get_config_value('BROWSER_SESSION_IDLE_TIMEOUT_MINUTES', 60))
 
         self.app = Flask(__name__,
                          static_folder=static_folder,
@@ -203,6 +205,8 @@ class IAToolkit:
             'SESSION_COOKIE_SAMESITE': "None",
             'SESSION_COOKIE_SECURE': True,
             'SESSION_PERMANENT': False,
+            'PERMANENT_SESSION_LIFETIME': timedelta(minutes=idle_timeout_minutes),
+            'SESSION_REFRESH_EACH_REQUEST': True,
             'SESSION_USE_SIGNER': True,
             'IATOOLKIT_SECRET_KEY': self._get_config_value('IATOOLKIT_SECRET_KEY', 'iatoolkit-jwt-secret'),
             'JWT_ALGORITHM': 'HS256',
