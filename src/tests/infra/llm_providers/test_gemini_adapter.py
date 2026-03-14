@@ -84,6 +84,25 @@ class TestGeminiAdapter:
         assert isinstance(response, LLMResponse)
         assert response.output_text == "Hola mundo"
         assert len(response.output) == 0
+        assert response.usage.input_tokens == 0
+        assert response.usage.output_tokens == 0
+        assert response.usage.total_tokens == 0
+
+    def test_extract_usage_metadata_sums_prompt_and_candidates_when_total_is_missing(self):
+        usage = self.adapter._extract_usage_metadata(
+            self._create_mock_gemini_response(
+                text_content="Hola mundo",
+                usage_metadata={
+                    "prompt_token_count": 120,
+                    "candidates_token_count": 30,
+                    "total_token_count": 0,
+                },
+            )
+        )
+
+        assert usage.input_tokens == 120
+        assert usage.output_tokens == 30
+        assert usage.total_tokens == 150
 
     def test_create_response_text_with_history(self):
         """Prueba una llamada simple que devuelve solo texto."""

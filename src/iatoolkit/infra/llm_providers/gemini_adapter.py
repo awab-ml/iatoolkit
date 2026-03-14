@@ -516,24 +516,10 @@ class GeminiAdapter:
         except Exception as e:
             logging.warning(f"No se pudo extraer usage_metadata de Gemini: {e}")
 
-        # Si no hay datos de usage o son cero, hacer estimación básica
-        if total_tokens == 0 and output_tokens == 0:
-            # Obtener texto de salida para estimación
-            output_text = ""
-            if (hasattr(gemini_response, 'candidates') and
-                    gemini_response.candidates and
-                    len(gemini_response.candidates) > 0):
-
-                candidate = gemini_response.candidates[0]
-                if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
-                    for part in candidate.content.parts:
-                        if hasattr(part, 'text') and part.text:
-                            output_text += part.text
-
-            # Estimación básica (4 caracteres por token aproximadamente)
-            estimated_output_tokens = len(output_text) // 4 if output_text else 0
-            output_tokens = estimated_output_tokens
-            total_tokens = estimated_output_tokens
+        # Cuando Gemini no entrega total_token_count pero sí prompt/candidates,
+        # mantenemos una semántica consistente calculando el total desde esos valores.
+        if total_tokens == 0 and (input_tokens > 0 or output_tokens > 0):
+            total_tokens = input_tokens + output_tokens
 
         return Usage(
             input_tokens=input_tokens,
