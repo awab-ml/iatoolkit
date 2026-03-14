@@ -3,7 +3,6 @@
 #
 # IAToolkit is open source software.
 
-from flask import current_app, jsonify
 from iatoolkit.common.util import Utility
 import pandas as pd
 from uuid import uuid4
@@ -11,9 +10,7 @@ from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.services.storage_service import StorageService
 from injector import inject
-import os
 import io
-import logging
 import json
 
 EXCEL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -142,27 +139,3 @@ class ExcelService:
         except Exception as e:
             raise IAToolkitException(IAToolkitException.ErrorType.CALL_ERROR,
                                self.i18n_service.t('errors.services.cannot_create_excel')) from e
-
-    def validate_file_access(self, filename):
-        try:
-            if not filename:
-                return jsonify({"error": self.i18n_service.t('errors.services.invalid_filename')})
-            # Prevent path traversal attacks
-            if '..' in filename or filename.startswith('/') or '\\' in filename:
-                return jsonify({"error": self.i18n_service.t('errors.services.invalid_filename')})
-
-            temp_dir = os.path.join(current_app.root_path, 'static', 'temp')
-            file_path = os.path.join(temp_dir, filename)
-
-            if not os.path.exists(file_path):
-                return jsonify({"error": self.i18n_service.t('errors.services.file_not_exist')})
-
-            if not os.path.isfile(file_path):
-                return jsonify({"error": self.i18n_service.t('errors.services.path_is_not_a_file')})
-
-            return None
-
-        except Exception as e:
-            error_msg = f"File validation error {filename}: {str(e)}"
-            logging.error(error_msg)
-            return jsonify({"error": self.i18n_service.t('errors.services.file_validation_error')})
