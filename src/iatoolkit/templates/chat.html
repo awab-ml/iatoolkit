@@ -105,8 +105,9 @@
                        style="color: {{ branding.header_text_color }};">
                         <i class="bi bi-question-circle-fill"></i>
                 </a>
-                {% if user_role != "user" and license == 'enterprise' %}
-                    <a href="/{{ company_short_name }}/admin/dashboard"
+                {% set admin_dashboard_url = optional_url_for('admin_dashboard', company_short_name=company_short_name, _external=True) %}
+                {% if user_role != "user" and license == 'enterprise' and admin_dashboard_url %}
+                    <a href="{{ admin_dashboard_url }}"
                        target="_blank"
                            id="preferences-button"
                            class="ms-3 action-icon-style"

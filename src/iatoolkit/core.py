@@ -497,6 +497,11 @@ class IAToolkit:
             def translate_for_template(key: str, **kwargs):
                 return i18n_service.t(key, **kwargs)
 
+            def optional_url_for(endpoint: str, **kwargs):
+                if endpoint not in self.app.view_functions:
+                    return None
+                return url_for(endpoint, **kwargs)
+
             # Get user profile if a session exists
             user_profile = profile_service.get_current_session_info().get('profile', {})
 
@@ -513,6 +518,7 @@ class IAToolkit:
                 'iatoolkit_base_url': request.url_root,
                 'flashed_messages': get_flashed_messages(with_categories=True),
                 't': translate_for_template,
+                'optional_url_for': optional_url_for,
                 'google_analytics_id': self._get_config_value('GOOGLE_ANALYTICS_ID', ''),
             }
 
