@@ -27,7 +27,7 @@ class EmbeddingClientWrapper:
         self.model = model
         self.dimensions = dimensions
 
-    def get_embedding(self, text: str) -> list[float]:
+    def get_embedding(self, text: str, suppress_error_logging: bool = False) -> list[float]:
         """Generates and returns an embedding for the given text."""
         raise NotImplementedError
 
@@ -56,14 +56,15 @@ class HuggingFaceClientWrapper(EmbeddingClientWrapper):
         if not self.inference_service or not self.company_short_name or not self.tool_name:
             raise ValueError("HuggingFaceClientWrapper requires inference_service, company_short_name, and tool_name.")
 
-    def get_embedding(self, text: str) -> list[float]:
+    def get_embedding(self, text: str, suppress_error_logging: bool = False) -> list[float]:
         # Adapt text input to InferenceService payload structure
         input_data = {"mode": "text", "text": text}
 
         result = self.inference_service.predict(
             self.company_short_name,
             self.tool_name,
-            input_data
+            input_data,
+            suppress_error_logging=suppress_error_logging,
         )
         return result["embedding"]
 
@@ -90,7 +91,7 @@ class HuggingFaceClientWrapper(EmbeddingClientWrapper):
         return result["embedding"]
 
 class OpenAIClientWrapper(EmbeddingClientWrapper):
-    def get_embedding(self, text: str) -> list[float]:
+    def get_embedding(self, text: str, suppress_error_logging: bool = False) -> list[float]:
         # The OpenAI API expects the input text to be clean
         text = text.replace("\n", " ")
 
@@ -116,7 +117,7 @@ class CustomClassClientWrapper(EmbeddingClientWrapper):
         # We assume the instance has methods compatible with our needs
         # or we adapt them here. For simplicity, we assume Duck Typing.
 
-    def get_embedding(self, text: str) -> list[float]:
+    def get_embedding(self, text: str, suppress_error_logging: bool = False) -> list[float]:
         if hasattr(self.client, 'get_embedding'):
             embedding = self.client.get_embedding(text)
         else:
@@ -296,7 +297,14 @@ class EmbeddingService:
         self.i18n_service = i18n_service
         self.profile_repo = profile_repo
 
-    def embed_text(self, company_short_name: str, text: str, to_base64: bool = False, model_type: str = 'text') -> list[float] | str:
+    def embed_text(
+            self,
+            company_short_name: str,
+            text: str,
+            to_base64: bool = False,
+            model_type: str = 'text',
+            suppress_error_logging: bool = False
+    ) -> list[float] | str:
         """
         Generates the embedding for a given text using the appropriate company model.
         model_type: 'text' (default) or 'image_query' (for CLIP-like text encoders)
@@ -310,14 +318,15 @@ class EmbeddingService:
             client_wrapper = self.client_factory.get_client(company_short_name, model_type)
 
             # 2. Use the wrapper's common interface to get the embedding
-            embedding = client_wrapper.get_embedding(text)
+            embedding = client_wrapper.get_embedding(text, suppress_error_logging=suppress_error_logging)
             # 3. Process the result
             if to_base64:
                 return base64.b64encode(np.array(embedding, dtype=np.float32).tobytes()).decode('utf-8')
 
             return embedding
         except Exception as e:
-            logging.error(f"Error generating embedding for text: {text[:80]}... - {e}")
+            if not suppress_error_logging:
+                logging.error(f"Error generating embedding for text: {text[:80]}... - {e}")
             raise
 
     def embed_image(self, company_short_name: str,

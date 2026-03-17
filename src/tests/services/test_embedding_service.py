@@ -221,7 +221,7 @@ class TestEmbeddingService:
 
         # Assert
         self.client_factory.get_client.assert_called_once_with("any_company", "text")
-        mock_wrapper.get_embedding.assert_called_once_with("some text")
+        mock_wrapper.get_embedding.assert_called_once_with("some text", suppress_error_logging=False)
         assert result == self.SAMPLE_VECTOR
 
     def test_service_embed_image_returns_vector(self, mocker):
@@ -303,7 +303,8 @@ class TestEmbeddingService:
             self.mock_inference_service.predict.assert_called_once_with(
                 "test_co",
                 "test_tool",
-                {"mode": "text", "text": "hola"}
+                {"mode": "text", "text": "hola"},
+                suppress_error_logging=False,
             )
 
         def test_huggingface_wrapper_init_raises_missing_dependencies(self):

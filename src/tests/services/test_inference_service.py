@@ -291,5 +291,5 @@ class TestEmbeddingService:
 
         # Assert
         self.client_factory.get_client.assert_called_once_with("any_company", "text")
-        mock_wrapper.get_embedding.assert_called_once_with("some text")
+        mock_wrapper.get_embedding.assert_called_once_with("some text", suppress_error_logging=False)
         assert result == self.SAMPLE_VECTOR

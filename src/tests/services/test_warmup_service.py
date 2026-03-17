@@ -31,7 +31,11 @@ class TestWarmupService:
 
         self.service.warmup_company("acme", trigger="test")
 
-        self.mock_embedding_service.embed_text.assert_called_once_with("acme", "hello")
+        self.mock_embedding_service.embed_text.assert_called_once_with(
+            "acme",
+            "hello",
+            suppress_error_logging=True,
+        )
 
     def test_warmup_company_skips_when_provider_is_not_huggingface(self):
         self.mock_config_service.get_configuration.return_value = {"provider": "openai"}
@@ -70,7 +74,11 @@ class TestWarmupService:
 
         self.service.warmup_company("acme", trigger="test")
 
-        self.mock_embedding_service.embed_text.assert_called_once_with("acme", "hello")
+        self.mock_embedding_service.embed_text.assert_called_once_with(
+            "acme",
+            "hello",
+            suppress_error_logging=True,
+        )
 
     def test_warmup_registered_companies_calls_each_company(self):
         self.service.warmup_company = MagicMock()

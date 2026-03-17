@@ -65,7 +65,11 @@ class WarmupService:
             return
 
         # Prime the remote model/container.
-        self.embedding_service.embed_text(company_short_name, "hello")
+        self.embedding_service.embed_text(
+            company_short_name,
+            "hello",
+            suppress_error_logging=True,
+        )
 
     def _uses_remote_text_inference(self, company_short_name: str) -> bool:
         embedding_cfg = self.config_service.get_configuration(company_short_name, "embedding_provider") or {}

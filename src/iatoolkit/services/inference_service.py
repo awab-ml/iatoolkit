@@ -34,7 +34,13 @@ class InferenceService:
         self.i18n_service = i18n_service
         self.secret_provider = secret_provider
 
-    def predict(self, company_short_name: str, tool_name: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def predict(
+            self,
+            company_short_name: str,
+            tool_name: str,
+            input_data: Dict[str, Any],
+            suppress_error_logging: bool = False
+    ) -> Dict[str, Any]:
         """
         Executes an inference task by calling the configured HF endpoint.
 
@@ -86,7 +92,12 @@ class InferenceService:
 
         # 4. Execute Call
         logging.debug(f"Called inference tool {tool_name} with model {model_id}.")
-        response_data = self._call_endpoint(endpoint_url, api_key, payload)
+        response_data = self._call_endpoint(
+            endpoint_url,
+            api_key,
+            payload,
+            suppress_error_logging=suppress_error_logging,
+        )
 
         # 5. Post-Processing
 
@@ -209,7 +220,13 @@ class InferenceService:
 
         return resolved_config
 
-    def _call_endpoint(self, url: str, api_key: str, payload: dict) -> Any:
+    def _call_endpoint(
+            self,
+            url: str,
+            api_key: str,
+            payload: dict,
+            suppress_error_logging: bool = False
+    ) -> Any:
         """Performs the POST request to the HF Endpoint."""
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -228,11 +245,13 @@ class InferenceService:
                 error_msg = f"Inference Endpoint Error {status}"
                 if isinstance(resp, dict) and 'error' in resp:
                     error_msg += f": {resp['error']}"
-                logging.error(f"{error_msg} | Payload keys: {list(payload.keys())}")
+                if not suppress_error_logging:
+                    logging.error(f"{error_msg} | Payload keys: {list(payload.keys())}")
                 raise ValueError(error_msg)
 
             return resp
 
         except Exception as e:
-            logging.error(f"Failed to call inference endpoint: {e}")
+            if not suppress_error_logging:
+                logging.error(f"Failed to call inference endpoint: {e}")
             raise

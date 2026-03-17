@@ -67,12 +67,13 @@ class FakeInferenceService:
     def __init__(self):
         self.calls = []
 
-    def predict(self, company_short_name, tool_name, input_data):
+    def predict(self, company_short_name, tool_name, input_data, suppress_error_logging=False):
         self.calls.append(
             {
                 "company_short_name": company_short_name,
                 "tool_name": tool_name,
                 "input_data": input_data,
+                "suppress_error_logging": suppress_error_logging,
             }
         )
         return {"embedding": [0.11, 0.22, 0.33]}
@@ -378,5 +379,6 @@ def test_prompt_execution_with_gemini_document_search_and_inference_embeddings()
         "mode": "text",
         "text": "manual de seguridad",
     }
+    assert inference_call["suppress_error_logging"] is False
 
     assert len(llmquery_repo.saved_queries) == 1
