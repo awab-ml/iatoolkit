@@ -121,6 +121,11 @@ class Company(Base):
         back_populates="company",
         cascade="all, delete-orphan",
     )
+    sql_datasets = relationship(
+        "SqlDataset",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
 
 
     def to_dict(self):
@@ -439,6 +444,51 @@ class SqlSource(Base):
     )
 
     company = relationship("Company", back_populates="sql_sources")
+    sql_datasets = relationship("SqlDataset", back_populates="sql_source", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}
+
+
+class SqlDataset(Base):
+    """
+    Reusable SQL dataset definitions for pipelines and other batch features.
+    A dataset references a SQL connection and defines how to select rows.
+    """
+    __tablename__ = "iat_sql_datasets"
+
+    QUERY_MODE_TABLE_VIEW = "table_view"
+    QUERY_MODE_SQL_QUERY = "sql_query"
+
+    SOURCE_USER = "USER"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(Integer, ForeignKey(f"{ORM_SCHEMA}.iat_companies.id", ondelete="CASCADE"), nullable=False)
+    sql_source_id = Column(Integer, ForeignKey(f"{ORM_SCHEMA}.iat_sql_sources.id", ondelete="CASCADE"), nullable=False)
+
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    query_mode = Column(String(32), nullable=False, default=QUERY_MODE_TABLE_VIEW)
+    table_name = Column(String, nullable=True)
+    query_sql = Column(Text, nullable=True)
+    primary_key = Column(String, nullable=False)
+    selected_columns = Column(JSON_NATIVE, nullable=False, default=list)
+    filter_sql = Column(Text, nullable=True)
+    order_by_sql = Column(Text, nullable=True)
+    limit_rows = Column(Integer, nullable=True)
+
+    source = Column(String(16), nullable=False, default=SOURCE_USER)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "name", name="uix_company_sql_dataset_name"),
+    )
+
+    company = relationship("Company", back_populates="sql_datasets")
+    sql_source = relationship("SqlSource", back_populates="sql_datasets")
 
     def to_dict(self):
         return {column.key: getattr(self, column.key) for column in class_mapper(self.__class__).columns}

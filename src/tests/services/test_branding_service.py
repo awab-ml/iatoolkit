@@ -37,8 +37,8 @@ class TestBrandingService:
         # Assert
         assert branding['name'] == "Test Corp"
         # Verificamos que el valor por defecto se usó para construir la variable CSS.
-        expected_css_var = f"--brand-header-bg: {self.default_branding['header_background_color']};"
-        assert expected_css_var in branding['css_variables']
+        assert f"--brand-header-bg: {self.default_branding['brand_primary_color']};" in branding['css_variables']
+        assert f"--brand-header-text: {self.default_branding['brand_text_on_primary']};" in branding['css_variables']
         # Verificar las llamadas al mock.
         expected_calls = [call("test-corp", 'branding'), call("test-corp", 'name')]
         self.configuration_service.get_configuration.assert_has_calls(expected_calls, any_order=True)
@@ -67,7 +67,7 @@ class TestBrandingService:
         # Valida que el estilo personalizado se usó en la variable CSS.
         assert "--brand-header-bg: #123456;" in branding['css_variables']
         # Valida que una variable CSS de un estilo por defecto que no fue sobreescrito todavía existe.
-        expected_default_var = f"--brand-header-text: {self.default_branding['header_text_color']};"
+        expected_default_var = f"--brand-header-text: {self.default_branding['brand_text_on_primary']};"
         assert expected_default_var in branding['css_variables']
 
     def test_get_branding_with_full_custom_branding(self):
@@ -148,3 +148,27 @@ class TestBrandingService:
         branding = self.branding_service.get_company_branding("spinner-override-corp")
 
         assert "--brand-loading-spinner-color: #0B2D4F;" in branding['css_variables']
+
+    def test_header_defaults_follow_brand_primary_values(self):
+        """
+        If header colors are not provided, they should inherit the primary brand colors.
+        """
+        custom_styles = {
+            "brand_primary_color": "#145DA0",
+            "brand_text_on_primary": "#F8F9FA",
+        }
+
+        def side_effect(company_short_name, content_key):
+            if content_key == 'branding':
+                return custom_styles
+            if content_key == 'name':
+                return "Primary Header Corp"
+            return None
+
+        self.configuration_service.get_configuration.side_effect = side_effect
+
+        branding = self.branding_service.get_company_branding("primary-header-corp")
+
+        assert "--brand-header-bg: #145DA0;" in branding['css_variables']
+        assert "--brand-header-text: #F8F9FA;" in branding['css_variables']
+        assert branding["header_text_color"] == "#F8F9FA"

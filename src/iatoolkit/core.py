@@ -329,6 +329,7 @@ class IAToolkit:
         from iatoolkit.repositories.document_repo import DocumentRepo
         from iatoolkit.repositories.profile_repo import ProfileRepo
         from iatoolkit.repositories.llm_query_repo import LLMQueryRepo
+        from iatoolkit.repositories.sql_dataset_repo import SqlDatasetRepo
         from iatoolkit.repositories.sql_source_repo import SqlSourceRepo
         from iatoolkit.repositories.vs_repo import VSRepo
         from iatoolkit.repositories.filesystem_asset_repository import FileSystemAssetRepository
@@ -338,6 +339,7 @@ class IAToolkit:
         binder.bind(DocumentRepo, to=DocumentRepo)
         binder.bind(ProfileRepo, to=ProfileRepo)
         binder.bind(LLMQueryRepo, to=LLMQueryRepo)
+        binder.bind(SqlDatasetRepo, to=SqlDatasetRepo)
         binder.bind(SqlSourceRepo, to=SqlSourceRepo)
         binder.bind(VSRepo, to=VSRepo)
 
@@ -363,6 +365,7 @@ class IAToolkit:
         from iatoolkit.services.mail_service import MailService
         from iatoolkit.services.profile_service import ProfileService
         from iatoolkit.services.jwt_service import JWTService
+        from iatoolkit.services.sql_dataset_service import SqlDatasetService
         from iatoolkit.services.sql_source_service import SqlSourceService
         from iatoolkit.services.dispatcher_service import Dispatcher
         from iatoolkit.services.branding_service import BrandingService
@@ -399,6 +402,7 @@ class IAToolkit:
         binder.bind(MailService, to=MailService)
         binder.bind(ProfileService, to=ProfileService)
         binder.bind(JWTService, to=JWTService)
+        binder.bind(SqlDatasetService, to=SqlDatasetService)
         binder.bind(SqlSourceService, to=SqlSourceService)
         binder.bind(Dispatcher, to=Dispatcher)
         binder.bind(BrandingService, to=BrandingService)

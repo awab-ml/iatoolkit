@@ -20,8 +20,8 @@ class BrandingService:
         """
         self._default_branding = {
             # --- Estilos del Encabezado Principal ---
-            "header_background_color": "#FFFFFF",
-            "header_text_color": "#6C757D",
+            "header_background_color": None,
+            "header_text_color": None,
             "primary_font_weight": "600",
             "primary_font_size": "1.2rem",
             "secondary_font_weight": "400",
@@ -81,6 +81,11 @@ class BrandingService:
         branding_data = self.config_service.get_configuration(company_short_name, 'branding')
         if isinstance(branding_data, dict):
             final_branding_values.update(branding_data)
+
+        if not final_branding_values.get('header_background_color'):
+            final_branding_values['header_background_color'] = final_branding_values['brand_primary_color']
+        if not final_branding_values.get('header_text_color'):
+            final_branding_values['header_text_color'] = final_branding_values['brand_text_on_primary']
 
 
         # Función para convertir HEX a RGB
