@@ -233,6 +233,23 @@ class TestSqlDatasetService:
         assert result["query"].startswith("SELECT * FROM (SELECT ticket_id, subject FROM tickets")
         self.sql_service.exec_sql.assert_called_once()
 
+    def test_preview_dataset_accepts_multiline_select_query(self):
+        self.sql_service.exec_sql.return_value = [{"customerid": "ALFKI"}]
+
+        result = self.service.preview_dataset(
+            self.company_short_name,
+            {
+                "sql_source_id": self.sql_source.id,
+                "query_mode": "sql_query",
+                "query_sql": "select\n    c.customerid\nfrom sample_db.customers c\nlimit 5",
+                "primary_key": "customerid",
+            },
+            preview_limit=20,
+        )
+
+        assert result["row_count"] == 1
+        assert "sql_dataset_preview" in result["query"]
+
     def test_preview_dataset_rejects_non_select_queries(self):
         with pytest.raises(IAToolkitException) as exc_info:
             self.service.preview_dataset(

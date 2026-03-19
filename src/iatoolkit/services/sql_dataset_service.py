@@ -191,7 +191,7 @@ class SqlDatasetService:
             )
 
         lowered = normalized.lstrip().lower()
-        if not lowered.startswith("select "):
+        if not re.match(r"^select\b", lowered):
             raise IAToolkitException(
                 IAToolkitException.ErrorType.INVALID_PARAMETER,
                 "Only SELECT queries are allowed for SQL dataset preview",
