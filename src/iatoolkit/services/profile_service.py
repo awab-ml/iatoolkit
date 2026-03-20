@@ -16,10 +16,12 @@ from iatoolkit.services.user_session_context_service import UserSessionContextSe
 from iatoolkit.services.configuration_service import ConfigurationService
 from flask_bcrypt import Bcrypt
 from iatoolkit.services.mail_service import MailService
+from iatoolkit.infra.google_auth_client import GoogleIdentity
 import random
 import re
 import string
 import logging
+from datetime import datetime
 from typing import List, Dict
 from iatoolkit.common.interfaces.signup_policy_resolver import SignupPolicyResolver
 from iatoolkit.services.signup_policy_resolver import AllowAllSignupPolicyResolver
@@ -46,6 +48,12 @@ class ProfileService:
         self.signup_policy_resolver = signup_policy_resolver or AllowAllSignupPolicyResolver()
         self.bcrypt = Bcrypt()
 
+    @staticmethod
+    def _is_google_auth_user(user: User | None) -> bool:
+        if not user:
+            return False
+        return str(getattr(user, "auth_method", "local") or "local").lower() == "google"
+
     def _safe_rollback(self):
         """
         Best-effort rollback to recover the scoped session after DB failures.
@@ -55,6 +63,72 @@ class ProfileService:
         except Exception as rollback_error:
             logging.warning(f"ProfileService rollback failed: {rollback_error}")
 
+    @staticmethod
+    def _normalize_name_value(value: str | None, fallback: str) -> str:
+        text = str(value or "").strip()
+        if not text:
+            text = fallback
+        return text.lower()
+
+    def _resolve_google_names(self, email: str, google_identity: GoogleIdentity) -> tuple[str, str]:
+        given_name = str(google_identity.given_name or "").strip()
+        family_name = str(google_identity.family_name or "").strip()
+        full_name = str(google_identity.full_name or "").strip()
+
+        if not given_name and full_name:
+            parts = [part.strip() for part in full_name.split() if part.strip()]
+            if parts:
+                given_name = parts[0]
+            if len(parts) > 1:
+                family_name = " ".join(parts[1:])
+
+        local_part = str(email or "user").split("@", 1)[0].strip() or "user"
+        first_name = self._normalize_name_value(given_name, local_part)
+        last_name = self._normalize_name_value(family_name, "user")
+        return first_name, last_name
+
+    def _build_session_user_profile(self, user: User, company: Company, user_role: str | None) -> dict:
+        auth_method = str(getattr(user, "auth_method", "local") or "local").lower()
+        is_local = auth_method == "local"
+        user_identifier = user.email
+        user_profile = {
+            "user_email": user.email,
+            "user_fullname": f'{user.first_name} {user.last_name}',
+            "user_is_local": is_local,
+            "user_id": user.id,
+            "user_role": user_role,
+            "extras": {
+                "auth_method": auth_method,
+            }
+        }
+        if auth_method == "google":
+            user_profile["extras"]["google_email_verified"] = bool(user.google_email_verified)
+            if user.google_email:
+                user_profile["extras"]["google_email"] = user.google_email
+
+        self.save_user_profile(company, user_identifier, user_profile)
+        self.set_session_for_user(company.short_name, user_identifier)
+
+        return {
+            'success': True,
+            'user_identifier': user_identifier,
+            'message': 'Login ok',
+        }
+
+    def _link_user_to_google(self, user: User, google_identity: GoogleIdentity):
+        user.auth_method = 'google'
+        user.google_sub = google_identity.subject
+        user.google_email = google_identity.email
+        user.google_email_verified = bool(google_identity.email_verified)
+        user.google_linked_at = user.google_linked_at or datetime.now()
+        user.verified = True
+
+        first_name, last_name = self._resolve_google_names(google_identity.email, google_identity)
+        if not str(user.first_name or "").strip():
+            user.first_name = first_name
+        if not str(user.last_name or "").strip():
+            user.last_name = last_name
+
     def login(self, company_short_name: str, email: str, password: str) -> dict:
         try:
             # check if user exists
@@ -62,8 +136,14 @@ class ProfileService:
             if not user:
                 return {'success': False, 'message': self.i18n_service.t('errors.auth.user_not_found')}
 
+            if self._is_google_auth_user(user):
+                return {
+                    'success': False,
+                    'message': self.i18n_service.t('errors.auth.google_account_requires_google_login')
+                }
+
             # check the encrypted password
-            if not check_password_hash(user.password, password):
+            if not user.password or not check_password_hash(user.password, password):
                 return {'success': False, 'message': self.i18n_service.t('errors.auth.invalid_password')}
 
             company = self.profile_repo.get_company_by_short_name(company_short_name)
@@ -80,25 +160,7 @@ class ProfileService:
 
             user_role = self.profile_repo.get_user_role_in_company(company.id, user.id)
 
-            # 1. Build the local user profile dictionary here.
-            # the user_profile variables are used on the LLM templates also (see in query_main.prompt)
-            user_identifier = user.email
-            user_profile = {
-                "user_email": user.email,
-                "user_fullname": f'{user.first_name} {user.last_name}',
-                "user_is_local": True,
-                "user_id": user.id,
-                "user_role": user_role,
-                "extras": {}
-            }
-
-            # 2. create user_profile in context
-            self.save_user_profile(company, user_identifier, user_profile)
-
-            # 3. create the web session
-            self.set_session_for_user(company.short_name, user_identifier)
-
-            return {'success': True, "user_identifier": user_identifier, "message": "Login ok"}
+            return self._build_session_user_profile(user, company, user_role)
         except Exception as e:
             self._safe_rollback()
             logging.error(f"Error in login: {e}")
@@ -232,6 +294,134 @@ class ProfileService:
             return {}
         return self.session_context.get_profile_data(company_short_name, user_identifier)
 
+    def login_with_google(self, company_short_name: str, google_identity: GoogleIdentity) -> dict:
+        try:
+            company = self.profile_repo.get_company_by_short_name(company_short_name)
+            if not company:
+                return {
+                    "success": False,
+                    "message": self.i18n_service.t('errors.signup.company_not_found', company_name=company_short_name),
+                    "reason_code": "COMPANY_NOT_FOUND",
+                }
+
+            email = str(google_identity.email or "").strip().lower()
+            if not email or not google_identity.email_verified:
+                return {
+                    "success": False,
+                    "message": self.i18n_service.t('errors.auth.google_email_not_verified'),
+                    "reason_code": "GOOGLE_EMAIL_NOT_VERIFIED",
+                }
+
+            user = None
+            persisted = False
+            user_by_google_sub = self.profile_repo.get_user_by_google_sub(google_identity.subject)
+
+            if user_by_google_sub:
+                logging.debug(
+                    "Google login matched existing google_sub. company=%s email=%s user_id=%s",
+                    company_short_name,
+                    email,
+                    user_by_google_sub.id,
+                )
+                user = user_by_google_sub
+                if str(user.email or "").strip().lower() != email:
+                    return {
+                        "success": False,
+                        "message": self.i18n_service.t('errors.auth.google_account_email_changed'),
+                        "reason_code": "GOOGLE_EMAIL_CHANGED",
+                    }
+                self._link_user_to_google(user, google_identity)
+                persisted = True
+            else:
+                user = self.profile_repo.get_user_by_email(email)
+                if user:
+                    logging.debug(
+                        "Google login matched existing email. company=%s email=%s user_id=%s current_auth_method=%s",
+                        company_short_name,
+                        email,
+                        user.id,
+                        getattr(user, "auth_method", None),
+                    )
+                    if self._is_google_auth_user(user) and user.google_sub and user.google_sub != google_identity.subject:
+                        return {
+                            "success": False,
+                            "message": self.i18n_service.t('errors.auth.google_account_conflict'),
+                            "reason_code": "GOOGLE_ACCOUNT_CONFLICT",
+                        }
+                    self._link_user_to_google(user, google_identity)
+                    persisted = True
+                else:
+                    logging.debug(
+                        "Google login creating new user. company=%s email=%s",
+                        company_short_name,
+                        email,
+                    )
+                    first_name, last_name = self._resolve_google_names(email, google_identity)
+                    user = User(
+                        email=email,
+                        password=None,
+                        auth_method='google',
+                        first_name=first_name,
+                        last_name=last_name,
+                        verified=True,
+                        google_sub=google_identity.subject,
+                        google_email=email,
+                        google_email_verified=True,
+                        google_linked_at=datetime.now(),
+                    )
+
+            if company not in user.companies:
+                logging.debug(
+                    "Google login evaluating company association. company=%s email=%s",
+                    company_short_name,
+                    email,
+                )
+                policy_decision = self.signup_policy_resolver.evaluate_signup(
+                    company_short_name=company_short_name,
+                    email=email,
+                    invite_token=None,
+                )
+                if not policy_decision.allowed:
+                    if policy_decision.reason_message:
+                        message = policy_decision.reason_message
+                    elif policy_decision.reason_key:
+                        message = self.i18n_service.t(policy_decision.reason_key)
+                    else:
+                        message = self.i18n_service.t('errors.signup.signup_not_allowed')
+                    return {
+                        "success": False,
+                        "message": message,
+                        "reason_code": "SIGNUP_NOT_ALLOWED",
+                    }
+                user.companies.append(company)
+                persisted = True
+
+            if user.id is None:
+                logging.debug(
+                    "Google login persisting new user. company=%s email=%s",
+                    company_short_name,
+                    email,
+                )
+                self.profile_repo.create_user(user)
+            elif persisted:
+                logging.debug(
+                    "Google login saving existing user updates. company=%s email=%s user_id=%s",
+                    company_short_name,
+                    email,
+                    user.id,
+                )
+                self.profile_repo.save_user(user)
+
+            user_role = self.profile_repo.get_user_role_in_company(company.id, user.id)
+            return self._build_session_user_profile(user, company, user_role)
+        except Exception as e:
+            self._safe_rollback()
+            return {
+                "success": False,
+                "message": self.i18n_service.t('errors.general.unexpected_error', error=str(e)),
+                "reason_code": "UNEXPECTED_ERROR",
+            }
+
 
     def signup(self,
                company_short_name: str,
@@ -268,8 +458,11 @@ class ProfileService:
             # check if user exists
             existing_user = self.profile_repo.get_user_by_email(email)
             if existing_user:
+                if self._is_google_auth_user(existing_user):
+                    return {"error": self.i18n_service.t('errors.signup.google_account_requires_google_login', email=email)}
+
                 # validate password
-                if not self.bcrypt.check_password_hash(existing_user.password, password):
+                if not existing_user.password or not self.bcrypt.check_password_hash(existing_user.password, password):
                     return {"error": self.i18n_service.t('errors.signup.incorrect_password_for_existing_user', email=email)}
 
                 # check if register
@@ -303,6 +496,7 @@ class ProfileService:
             # create the new user
             new_user = User(email=email,
                             password=hashed_password,
+                            auth_method='local',
                             first_name=first_name.lower(),
                             last_name=last_name.lower(),
                             verified=verified,
@@ -354,6 +548,8 @@ class ProfileService:
 
             # check the temporary code
             user = self.profile_repo.get_user_by_email(email)
+            if self._is_google_auth_user(user):
+                return {"error": self.i18n_service.t('errors.change_password.google_account_password_disabled')}
             if not user or user.temp_code != temp_code:
                 return {"error": self.i18n_service.t('errors.change_password.invalid_temp_code')}
 
@@ -373,6 +569,9 @@ class ProfileService:
             user = self.profile_repo.get_user_by_email(email)
             if not user:
                 return {"error": self.i18n_service.t('errors.forgot_password.user_not_registered', email=email)}
+
+            if self._is_google_auth_user(user):
+                return {"error": self.i18n_service.t('errors.forgot_password.google_account_password_disabled')}
 
             # Gen a temporary code and store in the repositories
             temp_code = ''.join(random.choices(string.ascii_letters + string.digits, k=6)).upper()

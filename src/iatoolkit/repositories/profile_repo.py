@@ -26,6 +26,10 @@ class ProfileRepo:
         user = self.session.query(User).filter_by(email=email).first()
         return user
 
+    def get_user_by_google_sub(self, google_sub: str) -> User:
+        user = self.session.query(User).filter_by(google_sub=google_sub).first()
+        return user
+
     def create_user(self, new_user: User):
         self.session.add(new_user)
         self.session.commit()

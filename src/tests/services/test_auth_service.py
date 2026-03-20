@@ -7,6 +7,7 @@ from iatoolkit.services.jwt_service import JWTService
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.repositories.models import ApiKey, Company, AccessLog
+from iatoolkit.infra.google_auth_client import GoogleIdentity, GoogleAuthError
 from flask import Flask
 import hashlib
 
@@ -25,6 +26,7 @@ class TestAuthServiceVerify:
         self.mock_api_key_service = MagicMock(spec=ApiKeyService)
         self.mock_jwt_service = MagicMock(spec=JWTService)
         self.mock_db_manager = MagicMock(spec=DatabaseManager)
+        self.mock_google_auth_client = MagicMock()
         self.mock_i18n_service = MagicMock(spec=I18nService)
 
         self.service = AuthService(
@@ -32,6 +34,7 @@ class TestAuthServiceVerify:
             api_key_service=self.mock_api_key_service,
             jwt_service=self.mock_jwt_service,
             db_manager=self.mock_db_manager,
+            google_auth_client=self.mock_google_auth_client,
             i18n_service=self.mock_i18n_service
         )
         self.app = Flask(__name__)
@@ -197,6 +200,7 @@ class TestAuthServiceLoginFlows:
         self.mock_api_key_service = MagicMock(spec=ApiKeyService)
         self.mock_jwt_service = MagicMock(spec=JWTService)
         self.mock_db_manager = MagicMock(spec=DatabaseManager, scoped_session=MagicMock())
+        self.mock_google_auth_client = MagicMock()
         self.mock_i18n_service = MagicMock(spec=I18nService)
 
         self.mock_session = MagicMock()
@@ -207,6 +211,7 @@ class TestAuthServiceLoginFlows:
             api_key_service=self.mock_api_key_service,
             jwt_service=self.mock_jwt_service,
             db_manager=self.mock_db_manager,
+            google_auth_client=self.mock_google_auth_client,
             i18n_service=self.mock_i18n_service
         )
         self.app = Flask(__name__)
@@ -303,6 +308,95 @@ class TestAuthServiceLoginFlows:
             user_identifier=self.user_identifier
         )
 
+    def test_login_google_user_success(self):
+        self.mock_google_auth_client.exchange_code_for_identity.return_value = GoogleIdentity(
+            subject='sub-123',
+            email=self.email,
+            email_verified=True,
+            given_name='Test',
+            family_name='User',
+        )
+        self.mock_profile_service.login_with_google.return_value = {
+            'success': True,
+            'user_identifier': self.user_identifier,
+        }
+
+        with self.app.test_request_context():
+            result = self.service.login_google_user(
+                company_short_name=self.company_short_name,
+                code='auth-code',
+                state='oauth-state',
+                nonce='oauth-nonce',
+                redirect_uri='https://app.test/acme/login/google/callback',
+            )
+
+        assert result['success'] is True
+        self.mock_profile_service.login_with_google.assert_called_once()
+        self.mock_log_access.assert_called_once_with(
+            company_short_name=self.company_short_name,
+            auth_type='google',
+            outcome='success',
+            user_identifier=self.user_identifier
+        )
+
+    def test_login_google_user_handles_google_auth_error(self):
+        self.mock_google_auth_client.exchange_code_for_identity.side_effect = GoogleAuthError(
+            reason_code='GOOGLE_NONCE_MISMATCH',
+            message_key='errors.auth.google_login_failed'
+        )
+
+        with self.app.test_request_context():
+            result = self.service.login_google_user(
+                company_short_name=self.company_short_name,
+                code='auth-code',
+                state='oauth-state',
+                nonce='oauth-nonce',
+                redirect_uri='https://app.test/acme/login/google/callback',
+            )
+
+        assert result == {
+            'success': False,
+            'reason_code': 'GOOGLE_NONCE_MISMATCH',
+            'message': 'translated:errors.auth.google_login_failed',
+        }
+        self.mock_profile_service.login_with_google.assert_not_called()
+        self.mock_log_access.assert_called_once_with(
+            company_short_name=self.company_short_name,
+            auth_type='google',
+            outcome='failure',
+            reason_code='GOOGLE_NONCE_MISMATCH',
+        )
+
+    def test_login_google_user_logs_profile_service_failure(self):
+        self.mock_google_auth_client.exchange_code_for_identity.return_value = GoogleIdentity(
+            subject='sub-123',
+            email=self.email,
+            email_verified=True,
+        )
+        self.mock_profile_service.login_with_google.return_value = {
+            'success': False,
+            'message': 'blocked',
+            'reason_code': 'SIGNUP_NOT_ALLOWED',
+        }
+
+        with self.app.test_request_context():
+            result = self.service.login_google_user(
+                company_short_name=self.company_short_name,
+                code='auth-code',
+                state='oauth-state',
+                nonce='oauth-nonce',
+                redirect_uri='https://app.test/acme/login/google/callback',
+            )
+
+        assert result['success'] is False
+        self.mock_log_access.assert_called_once_with(
+            company_short_name=self.company_short_name,
+            auth_type='google',
+            outcome='failure',
+            reason_code='SIGNUP_NOT_ALLOWED',
+            user_identifier=self.email
+        )
+
 class TestAuthServiceLogAccess:
     """
     Tests the log_access() method directly to ensure it correctly
@@ -315,6 +409,7 @@ class TestAuthServiceLogAccess:
         self.mock_profile_service = MagicMock(spec=ProfileService)
         self.mock_api_key_service = MagicMock(spec=ApiKeyService)
         self.mock_jwt_service = MagicMock(spec=JWTService)
+        self.mock_google_auth_client = MagicMock()
 
         # Use create_autospec to create a mock that correctly reflects
         # an INSTANCE of DatabaseManager, including attributes created in __init__.
@@ -333,6 +428,7 @@ class TestAuthServiceLogAccess:
             api_key_service=self.mock_api_key_service,
             jwt_service=self.mock_jwt_service,
             db_manager=self.mock_db_manager,
+            google_auth_client=self.mock_google_auth_client,
             i18n_service=self.mock_i18n_service
         )
         self.app = Flask(__name__)

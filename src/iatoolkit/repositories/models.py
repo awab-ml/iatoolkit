@@ -141,7 +141,12 @@ class User(Base):
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
-    password = Column(String, nullable=False)
+    password = Column(String, nullable=True)
+    auth_method = Column(String(16), nullable=False, default='local', index=True)
+    google_sub = Column(String, unique=True, nullable=True, index=True)
+    google_email = Column(String, nullable=True)
+    google_email_verified = Column(Boolean, nullable=False, default=False)
+    google_linked_at = Column(DateTime, nullable=True)
     verified = Column(Boolean, nullable=False, default=False)
     preferred_language = Column(String, nullable=True)
     verification_url = Column(String, nullable=True)
@@ -163,6 +168,7 @@ class User(Base):
             'first_name': self.first_name,
             'last_name': self.last_name,
             'created_at': str(self.created_at),
+            'auth_method': self.auth_method,
             'verified': self.verified,
             'companies': [company.to_dict() for company in self.companies]
         }

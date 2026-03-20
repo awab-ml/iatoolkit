@@ -26,7 +26,12 @@ def register_views(app):
     from iatoolkit.views.help_content_api_view import HelpContentApiView
     from iatoolkit.views.profile_api_view import UserLanguageApiView
     from iatoolkit.views.embedding_api_view import EmbeddingApiView
-    from iatoolkit.views.login_view import LoginView, FinalizeContextView
+    from iatoolkit.views.login_view import (
+        LoginView,
+        GoogleLoginStartView,
+        GoogleLoginCallbackView,
+        FinalizeContextView,
+    )
     from iatoolkit.views.configuration_api_view import ConfigurationApiView, ValidateConfigurationApiView
     from iatoolkit.views.logout_api_view import LogoutApiView
     from iatoolkit.views.home_view import HomeView
@@ -48,6 +53,14 @@ def register_views(app):
 
     # login for the iatoolkit integrated frontend
     app.add_url_rule('/<company_short_name>/login', view_func=LoginView.as_view('login'))
+    app.add_url_rule(
+        '/<company_short_name>/login/google',
+        view_func=GoogleLoginStartView.as_view('login_google_start')
+    )
+    app.add_url_rule(
+        '/auth/google/callback',
+        view_func=GoogleLoginCallbackView.as_view('login_google_callback')
+    )
 
     # Chat Route (Direct Access)
     app.add_url_rule('/<company_short_name>/chat',

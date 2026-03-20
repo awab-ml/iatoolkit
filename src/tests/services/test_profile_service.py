@@ -14,6 +14,7 @@ from flask_bcrypt import generate_password_hash
 from iatoolkit.services.dispatcher_service import Dispatcher
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.services.language_service import LanguageService
+from iatoolkit.infra.google_auth_client import GoogleIdentity
 
 
 # The SessionManager is used inside the 'profile_service' module.
@@ -126,6 +127,17 @@ class TestProfileService:
         self.mock_session_context.save_profile_data.assert_called_once()
         assert response['success'] and response['user_identifier'] == self.mock_user.email
 
+    def test_login_when_google_auth_user_rejects_local_password(self, mock_session_manager):
+        self.mock_user.auth_method = 'google'
+
+        response = self.service.login(self.mock_company.short_name, 'test@email.com', 'password')
+
+        assert response == {
+            'success': False,
+            'message': 'translated:errors.auth.google_account_requires_google_login'
+        }
+        self.mock_session_context.save_profile_data.assert_not_called()
+
     def test_clear_session_for_company_preserves_other_company_sessions(self, mock_session_manager):
         mock_session_manager.get.side_effect = lambda key, default=None: {
             'company_sessions': {
@@ -163,6 +175,21 @@ class TestProfileService:
         )
 
         assert 'translated:errors.signup.incorrect_password_for_existing_user' == response['error']
+
+    def test_signup_when_existing_user_is_google_account(self, mock_session_manager):
+        self.mock_user.auth_method = 'google'
+        self.mock_user.password = None
+        self.mock_repo.get_user_by_email.return_value = self.mock_user
+
+        response = self.service.signup(
+            self.mock_company.short_name,
+            email='test@email.com',
+            first_name='Test', last_name='User',
+            password="Password$1", confirm_password="Password$1",
+            verification_url='http://verification'
+        )
+
+        assert response['error'] == 'translated:errors.signup.google_account_requires_google_login'
 
     def test_signup_when_user_exist_and_not_in_company(self, mock_session_manager):
         self.mock_repo.get_user_by_email.return_value = self.mock_user
@@ -401,6 +428,20 @@ class TestProfileService:
         assert 'translated:errors.general.unexpected_error' == response['error']
         self.mock_i18n.t.assert_called_with('errors.general.unexpected_error', error='db error')
 
+    def test_change_password_when_google_account(self, mock_session_manager):
+        self.mock_user.auth_method = 'google'
+        self.mock_user.password = None
+        self.mock_repo.get_user_by_email.return_value = self.mock_user
+
+        response = self.service.change_password(
+            email='test@email.com',
+            temp_code='ABC',
+            new_password='pass1',
+            confirm_password='pass1'
+        )
+
+        assert response['error'] == 'translated:errors.change_password.google_account_password_disabled'
+
     def test_forgot_password_when_user_not_exist(self,mock_session_manager):
         self.mock_repo.get_user_by_email.return_value = None
         response = self.service.forgot_password(
@@ -420,6 +461,20 @@ class TestProfileService:
         assert 'translated:flash_messages.forgot_password_success' == response['message']
         self.mock_mail_service.send_mail.assert_called()
 
+    def test_forgot_password_when_google_account(self, mock_session_manager):
+        self.mock_user.auth_method = 'google'
+        self.mock_user.password = None
+        self.mock_repo.get_user_by_email.return_value = self.mock_user
+
+        response = self.service.forgot_password(
+            company_short_name='test_company',
+            email='test@email.com',
+            reset_url='http://a_reset_utl'
+        )
+
+        assert response['error'] == 'translated:errors.forgot_password.google_account_password_disabled'
+        self.mock_mail_service.send_mail.assert_not_called()
+
     def test_forgot_password_when_exception(self,mock_session_manager):
         self.mock_repo.get_user_by_email.return_value = self.mock_user
         self.mock_mail_service.send_mail.side_effect = Exception('mail error')
@@ -431,6 +486,87 @@ class TestProfileService:
 
         assert 'translated:errors.general.unexpected_error' == response['error']
         self.mock_i18n.t.assert_called_with('errors.general.unexpected_error', error='mail error')
+
+    def test_login_with_google_converts_existing_local_user(self, mock_session_manager):
+        google_identity = GoogleIdentity(
+            subject='google-sub-1',
+            email='test@email.com',
+            email_verified=True,
+            given_name='Test',
+            family_name='User',
+        )
+        self.mock_repo.get_user_by_google_sub.return_value = None
+        self.mock_repo.get_user_by_email.return_value = self.mock_user
+        self.mock_repo.get_user_role_in_company.return_value = 'admin'
+
+        response = self.service.login_with_google(self.mock_company.short_name, google_identity)
+
+        assert response['success'] is True
+        assert self.mock_user.auth_method == 'google'
+        assert self.mock_user.google_sub == 'google-sub-1'
+        assert self.mock_repo.save_user.called is True
+        self.mock_session_context.save_profile_data.assert_called()
+
+    def test_login_with_google_creates_new_google_user(self, mock_session_manager):
+        google_identity = GoogleIdentity(
+            subject='google-sub-new',
+            email='newuser@email.com',
+            email_verified=True,
+            given_name='New',
+            family_name='User',
+        )
+        self.mock_repo.get_user_by_google_sub.return_value = None
+        self.mock_repo.get_user_by_email.return_value = None
+        self.mock_repo.get_user_role_in_company.return_value = None
+
+        created_users = []
+
+        def create_user_side_effect(user):
+            user.id = 999
+            created_users.append(user)
+            return user
+
+        self.mock_repo.create_user.side_effect = create_user_side_effect
+
+        response = self.service.login_with_google(self.mock_company.short_name, google_identity)
+
+        assert response['success'] is True
+        assert len(created_users) == 1
+        created_user = created_users[0]
+        assert created_user.auth_method == 'google'
+        assert created_user.password is None
+        assert created_user.google_sub == 'google-sub-new'
+
+    def test_login_with_google_requires_verified_email(self, mock_session_manager):
+        google_identity = GoogleIdentity(
+            subject='google-sub-new',
+            email='newuser@email.com',
+            email_verified=False,
+        )
+
+        response = self.service.login_with_google(self.mock_company.short_name, google_identity)
+
+        assert response['success'] is False
+        assert response['reason_code'] == 'GOOGLE_EMAIL_NOT_VERIFIED'
+
+    def test_login_with_google_respects_signup_policy(self, mock_session_manager):
+        google_identity = GoogleIdentity(
+            subject='google-sub-new',
+            email='newuser@email.com',
+            email_verified=True,
+        )
+        self.mock_repo.get_user_by_google_sub.return_value = None
+        self.mock_repo.get_user_by_email.return_value = None
+        signup_policy_resolver = MagicMock()
+        signup_policy_resolver.evaluate_signup.return_value.allowed = False
+        signup_policy_resolver.evaluate_signup.return_value.reason_message = None
+        signup_policy_resolver.evaluate_signup.return_value.reason_key = None
+        self.service.signup_policy_resolver = signup_policy_resolver
+
+        response = self.service.login_with_google(self.mock_company.short_name, google_identity)
+
+        assert response['success'] is False
+        assert response['reason_code'] == 'SIGNUP_NOT_ALLOWED'
 
     def test_update_user_language_success(self, mock_session_manager):
         """

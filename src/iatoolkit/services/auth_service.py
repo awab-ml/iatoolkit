@@ -11,6 +11,7 @@ from iatoolkit.services.jwt_service import JWTService
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.repositories.database_manager import DatabaseManager
 from iatoolkit.repositories.models import AccessLog
+from iatoolkit.infra.google_auth_client import GoogleAuthClient, GoogleAuthError
 from flask import request
 import logging
 import hashlib
@@ -27,12 +28,14 @@ class AuthService:
                  api_key_service: ApiKeyService,
                  jwt_service: JWTService,
                  db_manager: DatabaseManager,
+                 google_auth_client: GoogleAuthClient,
                  i18n_service: I18nService
                  ):
         self.profile_service = profile_service
         self.api_key_service = api_key_service
         self.jwt_service = jwt_service
         self.db_manager = db_manager
+        self.google_auth_client = google_auth_client
         self.i18n_service = i18n_service
 
     def login_local_user(self, company_short_name: str, email: str, password: str) -> dict:
@@ -96,6 +99,88 @@ class AuthService:
                 user_identifier=user_identifier
             )
             return {'success': False, 'error': self.i18n_service.t('errors.auth.session_creation_failed')}
+
+    def login_google_user(
+        self,
+        company_short_name: str,
+        code: str,
+        state: str,
+        nonce: str,
+        redirect_uri: str,
+    ) -> dict:
+        try:
+            google_identity = self.google_auth_client.exchange_code_for_identity(
+                code=code,
+                state=state,
+                nonce=nonce,
+                redirect_uri=redirect_uri,
+            )
+            logging.debug(
+                "Google identity resolved. company=%s email=%s email_verified=%s subject=%s",
+                company_short_name,
+                google_identity.email,
+                google_identity.email_verified,
+                google_identity.subject,
+            )
+        except GoogleAuthError as exc:
+            logging.warning(
+                "Google auth client rejected login. company=%s reason_code=%s",
+                company_short_name,
+                exc.reason_code,
+            )
+            self.log_access(
+                company_short_name=company_short_name,
+                auth_type='google',
+                outcome='failure',
+                reason_code=exc.reason_code,
+            )
+            return {
+                'success': False,
+                'reason_code': exc.reason_code,
+                'message': self.i18n_service.t(exc.message_key),
+            }
+        except Exception:
+            logging.exception("Unexpected Google auth client failure. company=%s", company_short_name)
+            self.log_access(
+                company_short_name=company_short_name,
+                auth_type='google',
+                outcome='failure',
+                reason_code='GOOGLE_AUTH_UNEXPECTED_ERROR',
+            )
+            return {
+                'success': False,
+                'reason_code': 'GOOGLE_AUTH_UNEXPECTED_ERROR',
+                'message': self.i18n_service.t('errors.auth.google_login_failed'),
+            }
+
+        auth_response = self.profile_service.login_with_google(
+            company_short_name=company_short_name,
+            google_identity=google_identity,
+        )
+
+        if not auth_response.get('success'):
+            logging.warning(
+                "Google login rejected by profile service. company=%s email=%s reason_code=%s",
+                company_short_name,
+                google_identity.email,
+                auth_response.get('reason_code', 'GOOGLE_LOGIN_FAILED'),
+            )
+            self.log_access(
+                company_short_name=company_short_name,
+                auth_type='google',
+                outcome='failure',
+                reason_code=auth_response.get('reason_code', 'GOOGLE_LOGIN_FAILED'),
+                user_identifier=google_identity.email,
+            )
+        else:
+            self.log_access(
+                company_short_name=company_short_name,
+                auth_type='google',
+                outcome='success',
+                user_identifier=auth_response.get('user_identifier'),
+            )
+
+        return auth_response
 
     def verify(self, anonymous: bool = False, company_short_name: str = None) -> dict:
         """

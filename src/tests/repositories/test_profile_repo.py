@@ -46,9 +46,20 @@ class TestProfileRepo:
         result = self.repo.get_user_by_email('fernando@opensoft.cl')
         assert result == self.user
 
+    def test_get_user_by_google_sub_when_success(self):
+        self.user.auth_method = 'google'
+        self.user.google_sub = 'google-sub-123'
+        self.session.add(self.user)
+        self.session.commit()
+
+        result = self.repo.get_user_by_google_sub('google-sub-123')
+
+        assert result == self.user
+
     def test_create_user_when_ok(self):
         new_user = self.repo.create_user(self.user)
         assert new_user.id == 1
+        assert new_user.auth_method == 'local'
 
     def test_save_and_update_user_when_ok(self):
         new_user = self.repo.create_user(self.user)

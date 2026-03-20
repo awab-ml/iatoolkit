@@ -194,6 +194,16 @@ class IAToolkit:
         static_folder = self._get_config_value('STATIC_FOLDER') or self._get_default_static_folder()
         template_folder = self._get_config_value('TEMPLATE_FOLDER') or self._get_default_template_folder()
         idle_timeout_minutes = int(self._get_config_value('BROWSER_SESSION_IDLE_TIMEOUT_MINUTES', 60))
+        flask_env = str(self._get_config_value('FLASK_ENV', '') or '').strip().lower()
+
+        session_cookie_secure_default = 'false' if flask_env == 'dev' else 'true'
+        session_cookie_samesite_default = 'Lax' if flask_env == 'dev' else 'None'
+        session_cookie_secure = str(
+            self._get_config_value('SESSION_COOKIE_SECURE', session_cookie_secure_default)
+        ).strip().lower() in {'1', 'true', 'yes', 'on'}
+        session_cookie_samesite = str(
+            self._get_config_value('SESSION_COOKIE_SAMESITE', session_cookie_samesite_default)
+        ).strip()
 
         self.app = Flask(__name__,
                          static_folder=static_folder,
@@ -202,8 +212,8 @@ class IAToolkit:
         self.app.config.update({
             'VERSION': self.version,
             'SECRET_KEY': self._get_config_value('FLASK_SECRET_KEY', 'iatoolkit-default-secret'),
-            'SESSION_COOKIE_SAMESITE': "None",
-            'SESSION_COOKIE_SECURE': True,
+            'SESSION_COOKIE_SAMESITE': session_cookie_samesite,
+            'SESSION_COOKIE_SECURE': session_cookie_secure,
             'SESSION_PERMANENT': False,
             'PERMANENT_SESSION_LIFETIME': timedelta(minutes=idle_timeout_minutes),
             'SESSION_REFRESH_EACH_REQUEST': True,
@@ -216,7 +226,7 @@ class IAToolkit:
         self.app.wsgi_app = ProxyFix(self.app.wsgi_app, x_proto=1)
 
         # Configuración para tokenizers en desarrollo
-        if self._get_config_value('FLASK_ENV') == 'dev':
+        if flask_env == 'dev':
             os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     def _setup_database(self):
@@ -430,6 +440,7 @@ class IAToolkit:
     def _bind_infrastructure(self, binder: Binder):
         from iatoolkit.infra.llm_proxy import LLMProxy
         from iatoolkit.infra.google_chat_app import GoogleChatApp
+        from iatoolkit.infra.google_auth_client import GoogleAuthClient
         from iatoolkit.infra.brevo_mail_app import BrevoMailApp
         from iatoolkit.infra.jina_embeddings_client import JinaEmbeddingsClient
         from iatoolkit.common.util import Utility
@@ -437,6 +448,7 @@ class IAToolkit:
 
         binder.bind(LLMProxy, to=LLMProxy)
         binder.bind(GoogleChatApp, to=GoogleChatApp)
+        binder.bind(GoogleAuthClient, to=GoogleAuthClient)
         binder.bind(BrevoMailApp, to=BrevoMailApp)
         binder.bind(JinaEmbeddingsClient, to=JinaEmbeddingsClient)
         binder.bind(Utility, to=Utility)
@@ -490,10 +502,12 @@ class IAToolkit:
         def inject_globals():
             from iatoolkit.services.profile_service import ProfileService
             from iatoolkit.services.i18n_service import I18nService
+            from iatoolkit.infra.google_auth_client import GoogleAuthClient
 
             # Get services from the injector
             profile_service = self._injector.get(ProfileService)
             i18n_service = self._injector.get(I18nService)
+            google_auth_client = self._injector.get(GoogleAuthClient)
 
             # The 't' function wrapper no longer needs to determine the language itself.
             # It will be automatically handled by the refactored I18nService.
@@ -530,6 +544,7 @@ class IAToolkit:
                 't': translate_for_template,
                 'optional_url_for': optional_url_for,
                 'google_analytics_id': self._get_config_value('GOOGLE_ANALYTICS_ID', ''),
+                'google_login_enabled': google_auth_client.is_enabled(),
             }
 
     def _get_default_static_folder(self) -> str:
