@@ -90,6 +90,25 @@ class TestProfileService:
         self.mock_session_context.get_profile_data.assert_called_once_with('testco', '1')
         assert result['profile'] == expected_profile
 
+    def test_get_current_session_info_with_explicit_company_updates_active_company(self, mock_session_manager):
+        with patch('iatoolkit.services.profile_service.SessionManager', mock_session_manager):
+            mock_session_manager.get.side_effect = lambda key, default=None: {
+                'company_sessions': {
+                    'company-a': {'user_identifier': 'user-a'},
+                    'company-b': {'user_identifier': 'user-b'},
+                },
+                'active_company_short_name': 'company-b',
+            }.get(key, default)
+            self.mock_session_context.get_profile_data.return_value = {"id": "user-a"}
+
+            app = Flask(__name__)
+            with app.test_request_context('/company-a/chat'):
+                result = self.service.get_current_session_info(company_short_name='company-a')
+
+        assert result['company_short_name'] == 'company-a'
+        assert result['user_identifier'] == 'user-a'
+        mock_session_manager.set.assert_called_with('active_company_short_name', 'company-a')
+
     # --- Other tests also need the mock_session_manager argument ---
 
     def test_login_when_ok(self, mock_session_manager):

@@ -91,6 +91,21 @@ class ProfileRepo:
     def get_companies(self) -> list[Company]:
         return self.session.query(Company).all()
 
+    def update_company_name(self, short_name: str, name: str) -> Company | None:
+        company = self.get_company_by_short_name(short_name)
+        if not company:
+            return None
+
+        normalized_name = str(name or "").strip()
+        if not normalized_name:
+            return company
+
+        if company.name != normalized_name:
+            company.name = normalized_name
+            self.session.commit()
+
+        return company
+
     def get_user_role_in_company(self, company_id, user_id, ):
         stmt = (
             select(user_company.c.role)
@@ -149,6 +164,8 @@ class ProfileRepo:
     def create_company(self, new_company: Company):
         company = self.session.query(Company).filter_by(short_name=new_company.short_name).first()
         if company:
+            if company.name != new_company.name:
+                company.name = new_company.name
             if company.parameters != new_company.parameters:
                 company.parameters = new_company.parameters
         else:

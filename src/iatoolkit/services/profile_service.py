@@ -149,6 +149,13 @@ class ProfileService:
         SessionManager.set('company_sessions', company_sessions)
         SessionManager.set('active_company_short_name', company_short_name)
 
+    def _set_active_company_short_name(self, company_short_name: str | None):
+        if not company_short_name:
+            return
+        if SessionManager.get('active_company_short_name') == company_short_name:
+            return
+        SessionManager.set('active_company_short_name', company_short_name)
+
     def clear_session_for_company(self, company_short_name: str):
         company_sessions = self._get_company_sessions()
         if company_short_name in company_sessions:
@@ -182,6 +189,10 @@ class ProfileService:
         if not user_identifier:
             # No authenticated web user.
             return {}
+
+        # Keep the fallback session pointer aligned with the company currently
+        # resolved for this request. This helps any subsequent non-scoped reads.
+        self._set_active_company_short_name(resolved_company_short_name)
 
         # 2. Use the identifiers to fetch the full, authoritative profile from Redis.
         profile = self.session_context.get_profile_data(resolved_company_short_name, user_identifier)

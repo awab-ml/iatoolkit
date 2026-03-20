@@ -505,8 +505,14 @@ class IAToolkit:
                     return None
                 return url_for(endpoint, **kwargs)
 
+            route_company_short_name = None
+            if request.view_args and request.view_args.get('company_short_name'):
+                route_company_short_name = request.view_args.get('company_short_name')
+
             # Resolve the session using the current company in the route when available.
-            session_info = profile_service.get_current_session_info()
+            session_info = profile_service.get_current_session_info(
+                company_short_name=route_company_short_name
+            )
             user_profile = session_info.get('profile', {})
 
             return {
@@ -515,7 +521,7 @@ class IAToolkit:
                 'license': self.license,
                 'app_name': 'IAToolkit',
                 'user_identifier': session_info.get('user_identifier'),
-                'company_short_name': session_info.get('company_short_name'),
+                'company_short_name': route_company_short_name or session_info.get('company_short_name'),
                 'user_role': user_profile.get('user_role'),
                 'user_is_local': user_profile.get('user_is_local'),
                 'user_email': user_profile.get('user_email'),

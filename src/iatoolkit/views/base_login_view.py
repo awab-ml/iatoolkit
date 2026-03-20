@@ -71,6 +71,8 @@ class BaseLoginView(MethodView):
             # --- SLOW PATH: Render the loading shell ---
             return render_template(
                 "onboarding_shell.html",
+                company_short_name=company_short_name,
+                user_identifier=user_identifier,
                 iframe_src_url=target_url,
                 branding=branding_data,
                 onboarding_cards=onboarding_cards
