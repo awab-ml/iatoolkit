@@ -59,10 +59,10 @@ MOCK_VALID_CONFIG = {
         }
     },
     'mail_provider': {
-        'provider': 'brevo_mail',
+        'provider': 'iatoolkit_mail',
         'sender_email': 'no-reply@acme.com',
         'sender_name': 'ACME IA',
-        'brevo_mail': {'brevo_api': 'TEST_BREVO_API'}
+        'iatoolkit_mail': {'api_key_secret_ref': 'TEST_BREVO_API'}
     },
     'help_files': {
         'onboarding_cards': 'onboarding.yaml'

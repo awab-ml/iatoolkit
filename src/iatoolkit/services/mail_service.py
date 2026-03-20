@@ -15,6 +15,12 @@ import smtplib
 from email.message import EmailMessage
 from iatoolkit.common.exceptions import IAToolkitException
 
+
+DEFAULT_MAIL_PROVIDER = "iatoolkit_mail"
+SMTP_MAIL_PROVIDER = "smtp"
+DEFAULT_MAIL_DOMAIN = "iatoolkit.com"
+
+
 class MailService:
     @inject
     def __init__(self,
@@ -64,7 +70,7 @@ class MailService:
         }
 
         # select provider and send the email through it
-        if provider == "brevo_mail":
+        if provider == DEFAULT_MAIL_PROVIDER:
             response = self.brevo_mail_app.send_email(
                 provider_config=provider_config,
                 sender=sender,
@@ -73,7 +79,7 @@ class MailService:
                 body=body,
                 attachments=norm_attachments
             )
-        elif provider == "smtplib":
+        elif provider == SMTP_MAIL_PROVIDER:
             response = self._send_with_smtplib(
                 provider_config=provider_config,
                 sender=sender,
@@ -93,42 +99,40 @@ class MailService:
 
     def _build_provider_config(self, company_short_name: str) -> tuple[str, dict]:
         """
-        Determina el provider activo (brevo_mail / smtplib) y construye
+        Determina el provider activo (iatoolkit_mail / smtp) y construye
         el diccionario de configuración a partir de las variables de entorno
         cuyos nombres están en company.yaml (mail_provider).
         """
         # get company mail configuration and provider
         mail_config = self.config_service.get_configuration(company_short_name, "mail_provider")
-        if not isinstance(mail_config, dict) or not mail_config:
-            raise IAToolkitException(
-                IAToolkitException.ErrorType.MAIL_ERROR,
-                f"missing mail_provider configuration for company '{company_short_name}'"
-            )
+        if not isinstance(mail_config, dict):
+            mail_config = {}
 
-        provider = mail_config.get("provider", "brevo_mail")
+        provider = mail_config.get("provider", DEFAULT_MAIL_PROVIDER)
 
         # get mail common parameteres
-        sender_email = mail_config.get("sender_email")
-        sender_name = mail_config.get("sender_name")
+        company_name = self.config_service.get_configuration(company_short_name, "name") or company_short_name
+        sender_email = mail_config.get("sender_email") or f"{company_short_name}@{DEFAULT_MAIL_DOMAIN}"
+        sender_name = mail_config.get("sender_name") or company_name
 
         # get parameters depending on provider
-        if provider == "brevo_mail":
-            brevo_cfg = mail_config.get("brevo_mail", {})
-            api_key_ref = brevo_cfg.get("brevo_api_secret_ref") or brevo_cfg.get("brevo_api", "BREVO_API_KEY")
+        if provider == DEFAULT_MAIL_PROVIDER:
+            iatoolkit_mail_cfg = mail_config.get("iatoolkit_mail", {})
+            api_key_ref = iatoolkit_mail_cfg.get("api_key_secret_ref", "BREVO_API_KEY")
             return provider, {
                 "api_key": resolve_secret(self.secret_provider, company_short_name, api_key_ref),
                 "sender_name": sender_name,
                 "sender_email": sender_email,
             }
 
-        if provider == "smtplib":
-            smtp_cfg = mail_config.get("smtplib", {})
-            host_ref = smtp_cfg.get("host_secret_ref") or smtp_cfg.get("host_env", "SMTP_HOST")
-            port_ref = smtp_cfg.get("port_secret_ref") or smtp_cfg.get("port_env", "SMTP_PORT")
-            username_ref = smtp_cfg.get("username_secret_ref") or smtp_cfg.get("username_env", "SMTP_USERNAME")
-            password_ref = smtp_cfg.get("password_secret_ref") or smtp_cfg.get("password_env", "SMTP_PASSWORD")
-            use_tls_ref = smtp_cfg.get("use_tls_secret_ref") or smtp_cfg.get("use_tls_env", "SMTP_USE_TLS")
-            use_ssl_ref = smtp_cfg.get("use_ssl_secret_ref") or smtp_cfg.get("use_ssl_env", "SMTP_USE_SSL")
+        if provider == SMTP_MAIL_PROVIDER:
+            smtp_cfg = mail_config.get("smtp", {})
+            host_ref = smtp_cfg.get("host_secret_ref", "SMTP_HOST")
+            port_ref = smtp_cfg.get("port_secret_ref", "SMTP_PORT")
+            username_ref = smtp_cfg.get("username_secret_ref", "SMTP_USERNAME")
+            password_ref = smtp_cfg.get("password_secret_ref", "SMTP_PASSWORD")
+            use_tls_ref = smtp_cfg.get("use_tls_secret_ref", "SMTP_USE_TLS")
+            use_ssl_ref = smtp_cfg.get("use_ssl_secret_ref", "SMTP_USE_SSL")
 
             host = resolve_secret(self.secret_provider, company_short_name, host_ref)
             port = resolve_secret(self.secret_provider, company_short_name, port_ref)
@@ -160,7 +164,7 @@ class MailService:
                            body: str,
                            attachments: list[dict] | None):
         """
-        Envía correo usando smtplib, utilizando la configuración normalizada
+        Envía correo usando SMTP, utilizando la configuración normalizada
         en provider_config.
         """
         host = provider_config.get("host")
@@ -173,7 +177,7 @@ class MailService:
         if not host or not port:
             raise IAToolkitException(
                 IAToolkitException.ErrorType.MAIL_ERROR,
-                "smtplib configuration is incomplete (host/port missing)"
+                "smtp configuration is incomplete (host/port missing)"
             )
 
         msg = EmailMessage()

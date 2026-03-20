@@ -496,34 +496,26 @@ web_search:
 
 ```yaml
 mail_provider:
-  provider: brevo_mail
+  provider: iatoolkit_mail
   sender_email: no-reply@example.com
   sender_name: Example AI
 
-  brevo_mail:
-    brevo_api_secret_ref: BREVO_API_KEY
-    brevo_api: BREVO_API_KEY    # legacy alias
+  iatoolkit_mail:
+    api_key_secret_ref: BREVO_API_KEY
 
-  smtplib:
+  smtp:
     host_secret_ref: SMTP_HOST
     port_secret_ref: SMTP_PORT
     username_secret_ref: SMTP_USERNAME
     password_secret_ref: SMTP_PASSWORD
     use_tls_secret_ref: SMTP_USE_TLS
     use_ssl_secret_ref: SMTP_USE_SSL
-
-    # legacy aliases:
-    host_env: SMTP_HOST
-    port_env: SMTP_PORT
-    username_env: SMTP_USERNAME
-    password_env: SMTP_PASSWORD
-    use_tls_env: SMTP_USE_TLS
-    use_ssl_env: SMTP_USE_SSL
 ```
 
-- `provider` required: `brevo_mail` or `smtplib`
-- `sender_email` required
-- `sender_name` optional
+- `provider` optional, defaults to `iatoolkit_mail`
+- supported `provider` values: `iatoolkit_mail` or `smtp`
+- `sender_email` optional, defaults to `<company_short_name>@iatoolkit.com`
+- `sender_name` optional, defaults to company `name`
 - Provider-specific blocks as shown above.
 
 ## 4.17 `storage_provider` (legacy/compat)

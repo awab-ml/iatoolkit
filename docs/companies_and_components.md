@@ -188,10 +188,10 @@ company.yaml
 │   └── external_urls{}           # External URLs (e.g., logout redirects, portals)
 │
 ├── mail_provider                 # email configuration
-│   ├── provider                  # define an email provider (brevo_mail or smptlib)
+│   ├── provider                  # define an email provider (iatoolkit_mail or smtp)
 │   ├── sender_email              # sender email address
 │   ├── sender_name               # sender name
-│   └── brevo_mail                # brevo_mail configuration
+│   └── iatoolkit_mail            # default IAToolkit mail configuration
 │       └── brevo_api             # api-key for brevo mail
 │
 ├── Branding                      # Visual customization for this company
@@ -635,18 +635,16 @@ The `mail_provider` section in `company.yaml` allows you to define how emails sh
 # Email / Mail Provider configuration
 mail_provider:
   # current provider to use:
-  provider: "brevo_mail"
+  provider: "iatoolkit_mail"
 
   # For mails sent from the Company, default sender email and name.
   sender_email: "sample_ia@iatoolkit.com"
   sender_name: "Sample Company IA"
 
-  brevo_mail:
-    # preferred secret reference (legacy: brevo_api)
-    brevo_api_secret_ref: "BREVO_API_KEY"
+  iatoolkit_mail:
+    api_key_secret_ref: "BREVO_API_KEY"
 
-  smtplib:
-    # preferred secret references (legacy: *_env)
+  smtp:
     host_secret_ref: "SMTP_HOST"
     port_secret_ref: "SMTP_PORT"
     username_secret_ref: "SMTP_USERNAME"
@@ -658,22 +656,22 @@ mail_provider:
 #### Key Parameters
 
 *   **`provider`**: Specifies which email service to use. The currently supported options are:
-    *   `"brevo_mail"`: For sending emails via the Brevo API.
-    *   `"smtplib"`: For sending emails through a standard SMTP server (e.g., Gmail, SendGrid, or a corporate mail server).
-*   **`sender_email`**: The default "From" email address that will appear on all emails sent by this company's assistant.
-*   **`sender_name`**: The default "From" name that will appear on all emails.
+    *   `"iatoolkit_mail"`: Default IAToolkit-managed mail provider, currently backed by Brevo.
+    *   `"smtp"`: For sending emails through a standard SMTP server (e.g., Gmail, SendGrid, or a corporate mail server).
+*   **`sender_email`**: Optional. If omitted, IAToolkit uses `<company_short_name>@iatoolkit.com`.
+*   **`sender_name`**: Optional. If omitted, IAToolkit uses the company `name`.
 
 #### Provider-Specific Blocks
 
-*   **`brevo_mail`**: This block is required if `provider` is set to `"brevo_mail"`.
-    *   **`brevo_api_secret_ref`**: Preferred secret reference for the Brevo API key (`brevo_api` remains supported as legacy alias).
+*   **`iatoolkit_mail`**: This block is used when `provider` is set to `"iatoolkit_mail"`.
+    *   **`api_key_secret_ref`**: Secret reference for the provider API key.
 
-*   **`smtplib`**: This block is required if `provider` is set to `"smtplib"`. It accepts preferred `*_secret_ref` keys and legacy `*_env` aliases.
-    *   `host_secret_ref` / `host_env`: SMTP server hostname (e.g., `smtp.gmail.com`).
-    *   `port_env`: The environment variable for the SMTP port (e.g., `587`).
-    *   `username_env`: The environment variable for the SMTP username.
-    *   `password_env`: The environment variable for the SMTP password or app-specific password.
-    *   `use_tls_env` / `use_ssl_env`: Environment variables to control the use of transport-layer security. Set the value to `"true"` in your `.env` file to enable them.
+*   **`smtp`**: This block is used when `provider` is set to `"smtp"`.
+    *   `host_secret_ref`: SMTP server hostname (e.g., `smtp.gmail.com`).
+    *   `port_secret_ref`: Secret reference for the SMTP port (e.g., `587`).
+    *   `username_secret_ref`: Secret reference for the SMTP username.
+    *   `password_secret_ref`: Secret reference for the SMTP password or app-specific password.
+    *   `use_tls_secret_ref` / `use_ssl_secret_ref`: Secret references to control transport security. Set the resolved value to `"true"` to enable them.
 
 By separating the configuration from the secrets, you can safely commit `company.yaml` to version control while keeping your sensitive credentials secure in the `.env` file.
 

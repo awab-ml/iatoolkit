@@ -559,14 +559,12 @@ class ConfigurationService:
         # 9. Mail Provider
         mail_config = config.get("mail_provider", {})
         if mail_config:
-            provider = mail_config.get("provider")
-            if not provider:
-                add_error("mail_provider", "Missing required key: 'provider'")
-            elif provider not in ["brevo_mail", "smtplib"]:
-                add_error("mail_provider", f"Unsupported provider: '{provider}'. Must be 'brevo_mail' or 'smtplib'.")
-
-            if not mail_config.get("sender_email"):
-                add_error("mail_provider", "Missing required key: 'sender_email'")
+            provider = mail_config.get("provider", "iatoolkit_mail")
+            if provider not in ["iatoolkit_mail", "smtp"]:
+                add_error(
+                    "mail_provider",
+                    f"Unsupported provider: '{provider}'. Must be 'iatoolkit_mail' or 'smtp'."
+                )
 
         # 10. Storage Provider
         storage_config = config.get("storage_provider", {})
