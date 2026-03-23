@@ -36,6 +36,10 @@ class ParsingProviderResolver:
         return self.provider_factory.get_provider(self._normalize_provider_alias(configured_provider))
 
     def _resolve_provider_name_for_request(self, kb_config: dict, request: ParseRequest) -> str:
+        metadata_provider = self._resolve_metadata_provider(request.metadata)
+        if metadata_provider:
+            return metadata_provider
+
         collection_provider = self._resolve_collection_provider_from_db(
             request.company_short_name,
             request.collection_name,
@@ -45,9 +49,18 @@ class ParsingProviderResolver:
 
         global_provider = kb_config.get("parsing_provider")
         if isinstance(global_provider, str) and global_provider.strip():
-            return global_provider.strip().lower()
+            return self._normalize_provider_alias(global_provider.strip().lower())
 
         return "auto"
+
+    def _resolve_metadata_provider(self, metadata: dict | None) -> str | None:
+        if not isinstance(metadata, dict):
+            return None
+
+        provider_name = metadata.get("parser_provider")
+        if isinstance(provider_name, str) and provider_name.strip():
+            return self._normalize_provider_alias(provider_name.strip().lower())
+        return None
 
     def _resolve_collection_provider_from_db(self, company_short_name: str, collection_name: str | None) -> str | None:
         if not collection_name:

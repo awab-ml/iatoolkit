@@ -36,6 +36,27 @@ class TestParsingProviderResolver:
         self.mock_factory.get_provider.assert_called_with("docling")
         assert result == mock_docling
 
+    def test_resolve_uses_metadata_provider_override_before_collection_and_global(self):
+        self.mock_config_service.get_configuration.return_value = {
+            "parsing_provider": "docling",
+        }
+        self.mock_document_repo.get_collection_by_name.return_value = MagicMock(parser_provider="docling")
+
+        mock_basic = MagicMock()
+        self.mock_factory.get_provider.return_value = mock_basic
+
+        request = ParseRequest(
+            company_short_name="acme",
+            filename="a.pdf",
+            content=b"x",
+            collection_name="Invoices",
+            metadata={"parser_provider": "basic"},
+        )
+        result = self.resolver.resolve(request)
+
+        self.mock_factory.get_provider.assert_called_with("basic")
+        assert result == mock_basic
+
     def test_resolve_uses_global_provider_when_collection_has_no_override(self):
         self.mock_config_service.get_configuration.return_value = {
             "parsing_provider": "basic",
