@@ -5,6 +5,7 @@
 
 import pytest
 from unittest.mock import MagicMock
+from types import SimpleNamespace
 from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.repositories.document_repo import DocumentRepo
 from iatoolkit.repositories.vs_repo import VSRepo
@@ -203,7 +204,7 @@ class TestKnowledgeBaseService:
         self.mock_session.query.return_value.filter_by.return_value.all.return_value = []
 
         self.service.sync_collection_types("acme", [
-            {"name": "Invoices", "parser_provider": "docling"},
+            {"name": "Invoices", "parser_provider": "docling", "description": "AP invoices and billing support docs"},
             {"name": "Contracts"},
             "legacy_collection",
         ])
@@ -214,6 +215,35 @@ class TestKnowledgeBaseService:
         assert inserted_names == ["contracts", "invoices", "legacy_collection"]
         invoices = [item for item in inserted if item.name == "invoices"][0]
         assert invoices.parser_provider == "docling"
+        assert invoices.description == "AP invoices and billing support docs"
+
+    def test_sync_collection_types_updates_existing_description(self):
+        self.mock_profile_service.get_company_by_short_name.return_value = self.company
+        existing = SimpleNamespace(name="invoices", parser_provider=None, description=None)
+        self.mock_session.query.return_value.filter_by.return_value.all.return_value = [existing]
+
+        self.service.sync_collection_types("acme", [
+            {"name": "Invoices", "description": "Accounts payable and billing records"}
+        ])
+
+        assert existing.description == "Accounts payable and billing records"
+        self.mock_session.add.assert_not_called()
+        self.mock_session.commit.assert_called()
+
+    def test_get_collection_descriptors_returns_description_and_parser_provider(self):
+        self.mock_profile_service.get_company_by_short_name.return_value = self.company
+        collection = SimpleNamespace(name="legal", description="Contracts and annexes", parser_provider="docling")
+        self.mock_session.query.return_value.filter_by.return_value.all.return_value = [collection]
+
+        result = self.service.get_collection_descriptors("acme")
+
+        assert result == [
+            {
+                "name": "legal",
+                "description": "Contracts and annexes",
+                "parser_provider": "docling",
+            }
+        ]
 
     def test_search_passes_metadata_filter_to_vs_repo(self):
         self.mock_profile_service.get_company_by_short_name.return_value = self.company

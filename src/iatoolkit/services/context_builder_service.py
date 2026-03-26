@@ -12,6 +12,7 @@ import hashlib
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.services.tool_service import ToolService
+from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.services.parsers.parsing_service import ParsingService
 from iatoolkit.services.company_context_service import CompanyContextService
 from iatoolkit.services.prompt_service import PromptService
@@ -36,6 +37,7 @@ class ContextBuilderService:
                  company_context_service: CompanyContextService,
                  parsing_service: ParsingService,
                  tool_service: ToolService,
+                 knowledge_base_service: KnowledgeBaseService,
                  prompt_service: PromptService,
                  util: Utility):
         self.profile_service = profile_service
@@ -43,6 +45,7 @@ class ContextBuilderService:
         self.company_context_service = company_context_service
         self.parsing_service = parsing_service
         self.tool_service = tool_service
+        self.knowledge_base_service = knowledge_base_service
         self.prompt_service = prompt_service
         self.util = util
 
@@ -142,11 +145,50 @@ class ContextBuilderService:
 
         # 3. Get company specific context (DB Schemas, Docs, etc.)
         company_specific_context = self.company_context_service.get_company_context(company_short_name)
+        collection_context = self._build_collection_context(company_short_name)
 
         # 4. Merge contexts
-        final_system_context = f"{company_specific_context}\n{rendered_system_prompt}"
+        final_system_context = "\n".join(
+            section
+            for section in (company_specific_context, collection_context, rendered_system_prompt)
+            if section
+        )
 
         return final_system_context, user_profile, selected_system_prompt_keys
+
+    def _build_collection_context(self, company_short_name: str) -> str:
+        try:
+            descriptors = self.knowledge_base_service.get_collection_descriptors(company_short_name)
+        except Exception as exc:
+            logging.warning("Could not load collection descriptors for %s: %s", company_short_name, exc)
+            return ""
+
+        if not isinstance(descriptors, list) or not descriptors:
+            return ""
+
+        lines = [
+            "### Available Document Collections",
+            "Use `iat_document_search` when internal company documents may help answer the user.",
+            "Available collections:",
+        ]
+
+        for entry in descriptors[:20]:
+            if not isinstance(entry, dict):
+                continue
+            name = str(entry.get("name") or "").strip()
+            if not name:
+                continue
+            description = str(entry.get("description") or "").strip()
+            if description:
+                lines.append(f"- {name}: {description}")
+            else:
+                lines.append(f"- {name}")
+
+        if len(lines) <= 3:
+            return ""
+
+        lines.append("If one collection clearly matches the question, prefer that collection. If unclear, search without specifying a collection first.")
+        return "\n".join(lines)
 
     def build_user_turn_prompt(self,
                                company: Company,

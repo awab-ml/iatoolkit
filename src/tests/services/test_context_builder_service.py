@@ -5,6 +5,7 @@ from iatoolkit.services.context_builder_service import ContextBuilderService
 from iatoolkit.services.profile_service import ProfileService
 from iatoolkit.repositories.profile_repo import ProfileRepo
 from iatoolkit.services.company_context_service import CompanyContextService
+from iatoolkit.services.knowledge_base_service import KnowledgeBaseService
 from iatoolkit.services.parsers.parsing_service import ParsingService
 from iatoolkit.services.tool_service import ToolService
 from iatoolkit.services.prompt_service import PromptService
@@ -23,6 +24,7 @@ class TestContextBuilderService:
         self.mock_profile_service = MagicMock(spec=ProfileService)
         self.mock_profile_repo = MagicMock(spec=ProfileRepo)
         self.mock_company_context = MagicMock(spec=CompanyContextService)
+        self.mock_knowledge_base_service = MagicMock(spec=KnowledgeBaseService)
         self.mock_parsing_service = MagicMock(spec=ParsingService)
         self.mock_tool_service = MagicMock(spec=ToolService)
         self.mock_prompt_service = MagicMock(spec=PromptService)
@@ -34,6 +36,7 @@ class TestContextBuilderService:
             company_context_service=self.mock_company_context,
             parsing_service=self.mock_parsing_service,
             tool_service=self.mock_tool_service,
+            knowledge_base_service=self.mock_knowledge_base_service,
             prompt_service=self.mock_prompt_service,
             util=self.mock_util
         )
@@ -52,6 +55,10 @@ class TestContextBuilderService:
             "selected_keys": ["query_main", "format_styles"],
         }
         self.mock_tool_service.get_tools_for_llm.return_value = []
+        self.mock_knowledge_base_service.get_collection_descriptors.return_value = [
+            {"name": "legal", "description": "Contracts and annexes", "parser_provider": "docling"},
+            {"name": "support", "description": "Policies and operational manuals", "parser_provider": None},
+        ]
         self.mock_util.render_prompt_from_string.return_value = "Rendered System Prompt"
         self.mock_company_context.get_company_context.return_value = "DB Schema Context"
 
@@ -60,6 +67,9 @@ class TestContextBuilderService:
 
         # Assert
         assert "DB Schema Context" in context
+        assert "Available Document Collections" in context
+        assert "- legal: Contracts and annexes" in context
+        assert "- support: Policies and operational manuals" in context
         assert "Rendered System Prompt" in context
         assert profile == mock_profile
         assert selected_keys == ["query_main", "format_styles"]
@@ -79,6 +89,21 @@ class TestContextBuilderService:
         assert context is None
         assert profile is None
         assert selected_keys == []
+
+    def test_build_system_context_omits_collection_block_when_no_collections(self):
+        self.mock_profile_service.get_profile_by_identifier.return_value = {}
+        self.mock_prompt_service.get_system_prompt_payload.return_value = {
+            "content": "System Template",
+            "selected_keys": [],
+        }
+        self.mock_tool_service.get_tools_for_llm.return_value = []
+        self.mock_knowledge_base_service.get_collection_descriptors.return_value = []
+        self.mock_util.render_prompt_from_string.return_value = "Rendered System Prompt"
+        self.mock_company_context.get_company_context.return_value = "DB Schema Context"
+
+        context, _, _ = self.service.build_system_context(MOCK_COMPANY_SHORT_NAME, MOCK_USER_ID)
+
+        assert "Available Document Collections" not in context
 
     def test_build_user_turn_prompt_basic(self):
         """Should build a simple prompt with a direct question and no files."""

@@ -649,26 +649,30 @@ class KnowledgeBaseService:
         for entry in normalized_entries:
             cat_name = entry["name"]
             parser_provider = entry["parser_provider"]
+            description = entry["description"]
             if cat_name not in existing_names:
                 new_type = CollectionType(
                     company_id=company.id,
                     name=cat_name,
-                    parser_provider=parser_provider
+                    parser_provider=parser_provider,
+                    description=description,
                 )
                 session.add(new_type)
             else:
                 existing = existing_names[cat_name]
-                if parser_provider is not None:
+                if entry.get("parser_provider_provided"):
                     existing.parser_provider = parser_provider
+                if entry.get("description_provided"):
+                    existing.description = description
 
         session.commit()
 
     @staticmethod
     def _normalize_collection_config_entries(categories_config: list) -> list[dict]:
         """
-        Accepts legacy list[str] and new list[dict{name, parser_provider,...}].
+        Accepts legacy list[str] and new list[dict{name, parser_provider, description,...}].
         Returns normalized entries:
-            [{"name": "contracts", "parser_provider": "docling"|None}, ...]
+            [{"name": "contracts", "parser_provider": "docling"|None, "description": "..."|None}, ...]
         """
         normalized: list[dict] = []
         seen_names = set()
@@ -676,6 +680,9 @@ class KnowledgeBaseService:
         for item in categories_config or []:
             name = None
             parser_provider = None
+            description = None
+            parser_provider_provided = False
+            description_provided = False
 
             if isinstance(item, str):
                 name = item.strip().lower()
@@ -683,9 +690,16 @@ class KnowledgeBaseService:
                 raw_name = item.get("name")
                 if isinstance(raw_name, str):
                     name = raw_name.strip().lower()
-                raw_provider = item.get("parser_provider")
-                if isinstance(raw_provider, str) and raw_provider.strip():
-                    parser_provider = raw_provider.strip().lower()
+                if "parser_provider" in item:
+                    parser_provider_provided = True
+                    raw_provider = item.get("parser_provider")
+                    if isinstance(raw_provider, str) and raw_provider.strip():
+                        parser_provider = raw_provider.strip().lower()
+                if "description" in item:
+                    description_provided = True
+                    raw_description = item.get("description")
+                    if isinstance(raw_description, str):
+                        description = raw_description.strip() or None
             else:
                 continue
 
@@ -695,21 +709,39 @@ class KnowledgeBaseService:
             normalized.append({
                 "name": name,
                 "parser_provider": parser_provider,
+                "description": description,
+                "parser_provider_provided": parser_provider_provided,
+                "description_provided": description_provided,
             })
             seen_names.add(name)
 
         return normalized
 
 
-    def get_collection_names(self, company_short_name: str) -> List[str]:
+    def get_collection_descriptors(self, company_short_name: str) -> List[dict]:
         """
-        Retrieves the names of all collections defined for a specific company.
+        Retrieves collection descriptors for a specific company.
+        Returns entries with name, description and parser provider.
         """
         company = self.profile_service.get_company_by_short_name(company_short_name)
         if not company:
-            logging.warning(f"Company {company_short_name} not found when listing collections.")
+            logging.warning(f"Company {company_short_name} not found when listing collection descriptors.")
             return []
 
         session = self.document_repo.session
         collections = session.query(CollectionType).filter_by(company_id=company.id).all()
-        return [c.name for c in collections]
+        return [
+            {
+                "name": c.name,
+                "description": c.description,
+                "parser_provider": c.parser_provider,
+            }
+            for c in collections
+        ]
+
+
+    def get_collection_names(self, company_short_name: str) -> List[str]:
+        """
+        Retrieves the names of all collections defined for a specific company.
+        """
+        return [entry["name"] for entry in self.get_collection_descriptors(company_short_name)]

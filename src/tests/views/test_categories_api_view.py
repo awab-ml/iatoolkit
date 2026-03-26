@@ -53,7 +53,10 @@ class TestCategoriesView:
 
     def test_get_categories_success(self):
         # 1. Mock collection types
-        self.kb_service.get_collection_names.return_value = ["Contracts", "Manuals"]
+        self.kb_service.get_collection_descriptors.return_value = [
+            {"name": "Contracts", "description": "Signed contracts", "parser_provider": "docling"},
+            {"name": "Manuals", "description": "Operations manuals", "parser_provider": None},
+        ]
 
         # 2. Mock prompt categories query
         mock_cat1 = PromptCategory(name="Sales", order=1)
@@ -82,6 +85,9 @@ class TestCategoriesView:
 
         assert "collection_types" in data
         assert "Contracts" in data["collection_types"]
+        assert "collection_type_details" in data
+        assert data["collection_type_details"][0]["name"] == "Contracts"
+        assert data["collection_type_details"][0]["description"] == "Signed contracts"
 
         assert "llm_models" in data
         assert "gpt-4" in data["llm_models"]
@@ -118,4 +124,20 @@ class TestCategoriesView:
         self.prompt_service.sync_prompt_categories.assert_called_once_with(
             self.company_short_name,
             ["Creative", "Coding", "Analysis"]
+        )
+
+    def test_post_sync_collection_type_details(self):
+        payload = {
+            "collection_type_details": [
+                {"name": "HR Docs", "description": "HR policies and templates"},
+                {"name": "Legal", "description": "Contracts and annexes"},
+            ]
+        }
+
+        response = self.client.post(f'/{self.company_short_name}/api/categories', json=payload)
+
+        assert response.status_code == 200
+        self.kb_service.sync_collection_types.assert_called_once_with(
+            self.company_short_name,
+            payload["collection_type_details"]
         )

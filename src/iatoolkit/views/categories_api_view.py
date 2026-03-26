@@ -53,6 +53,7 @@ class CategoriesApiView(MethodView):
                 "prompt_types": list(self.SUPPORTED_PROMPT_TYPES),
                 "prompt_categories": [],
                 "collection_types": [],
+                "collection_type_details": [],
                 "tool_types": [
                     Tool.TYPE_NATIVE,
                     Tool.TYPE_INFERENCE,
@@ -66,7 +67,12 @@ class CategoriesApiView(MethodView):
             response_data["prompt_categories"] = [c.name for c in prompt_cats]
 
             # B. Collection Types (from KnowledgeBaseService)
-            response_data["collection_types"] = self.knowledge_base_service.get_collection_names(company_short_name)
+            response_data["collection_type_details"] = self.knowledge_base_service.get_collection_descriptors(company_short_name)
+            response_data["collection_types"] = [
+                item["name"]
+                for item in response_data["collection_type_details"]
+                if isinstance(item, dict) and item.get("name")
+            ]
 
             # C. LLM Models (from ConfigurationService)
             _, llm_models = self.configuration_service.get_llm_configuration(company_short_name)
@@ -96,7 +102,12 @@ class CategoriesApiView(MethodView):
 
             # 4. Sync Collection Types
             # The service expects a list of names strings
-            if 'collection_types' in data:
+            if 'collection_type_details' in data:
+                self.knowledge_base_service.sync_collection_types(
+                    company_short_name,
+                    data.get('collection_type_details', [])
+                )
+            elif 'collection_types' in data:
                 self.knowledge_base_service.sync_collection_types(
                     company_short_name,
                     data.get('collection_types', [])
