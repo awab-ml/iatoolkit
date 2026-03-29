@@ -84,6 +84,14 @@ class FakeSemanticKnowledgeBaseService:
         self.embedding_service = embedding_service
         self.search_calls = []
 
+    def get_collection_descriptors(self, company_short_name):
+        return [
+            {
+                "name": "manuales",
+                "description": "Documentacion tecnica y operativa interna",
+            }
+        ]
+
     def search(self, company_short_name, query, n_results=5, collection=None, metadata_filter=None):
         embedding = self.embedding_service.embed_text(company_short_name, query)
         self.search_calls.append(
@@ -254,6 +262,7 @@ def test_prompt_execution_with_gemini_document_search_and_inference_embeddings()
         company_context_service=MagicMock(),
         parsing_service=MagicMock(),
         tool_service=tool_service,
+        knowledge_base_service=semantic_kb_service,
         prompt_service=FakePromptService(),
         util=utility,
     )

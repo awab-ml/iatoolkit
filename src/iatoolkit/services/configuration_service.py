@@ -517,13 +517,6 @@ class ConfigurationService:
             if docling_config is not None:
                 if not isinstance(docling_config, dict):
                     add_error("knowledge_base.docling", "Must be a dictionary.")
-                else:
-                    docling_do_ocr = docling_config.get("do_ocr")
-                    if docling_do_ocr is not None and not isinstance(docling_do_ocr, bool):
-                        add_error(
-                            "knowledge_base.docling.do_ocr",
-                            "Must be a boolean if provided.",
-                        )
 
             prod_connector = kb_config.get("connectors", {}).get("production", {})
             if prod_connector.get("type") == "s3":

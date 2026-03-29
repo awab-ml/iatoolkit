@@ -1,12 +1,12 @@
-import pytest
 from unittest.mock import MagicMock, patch
-import os
+
+import pytest
 from PIL import Image
 
-from iatoolkit.services.parsers.providers.docling_provider import DoclingParsingProvider
+from iatoolkit.common.exceptions import IAToolkitException
 from iatoolkit.services.configuration_service import ConfigurationService
 from iatoolkit.services.i18n_service import I18nService
-from iatoolkit.common.exceptions import IAToolkitException
+from iatoolkit.services.parsers.providers.docling_provider import DoclingParsingProvider
 
 
 class TestDoclingParsingProvider:
@@ -25,8 +25,7 @@ class TestDoclingParsingProvider:
 
     @pytest.fixture
     def provider(self, mock_i18n, mock_config):
-        with patch.dict(os.environ, {"DOCLING_ENABLED": "true"}):
-            return DoclingParsingProvider(i18n_service=mock_i18n, config_service=mock_config)
+        return DoclingParsingProvider(i18n_service=mock_i18n, config_service=mock_config)
 
     def test_supports(self, provider):
         request_pdf = MagicMock(filename="file.pdf")
@@ -34,20 +33,20 @@ class TestDoclingParsingProvider:
         assert provider.supports(request_pdf) is True
         assert provider.supports(request_png) is False
 
-    def test_parse_raises_if_disabled(self, mock_i18n):
-        with patch.dict(os.environ, {"DOCLING_ENABLED": "false"}):
-            provider = DoclingParsingProvider(i18n_service=mock_i18n, config_service=MagicMock(spec=ConfigurationService))
+    def test_parse_raises_if_provider_is_marked_unavailable(self, mock_i18n):
+        provider = DoclingParsingProvider(i18n_service=mock_i18n, config_service=MagicMock(spec=ConfigurationService))
+        provider.enabled = False
         with pytest.raises(IAToolkitException):
-            provider.parse(MagicMock(filename="a.pdf", content=b"x"))
+            provider.parse(MagicMock(filename="a.pdf", content=b"x", provider_config={}))
 
     @patch("iatoolkit.services.parsers.providers.docling_provider.tempfile.NamedTemporaryFile")
-    def test_parse_success_flow(self, mock_temp, provider):
+    def test_parse_success_flow_without_tables(self, mock_temp, provider):
         mock_tmp_file = MagicMock()
         mock_tmp_file.name = "/tmp/test.pdf"
         mock_temp.return_value.__enter__.return_value = mock_tmp_file
 
         mock_converter = MagicMock()
-        provider.converter = mock_converter
+        provider._converter_cache[(False, False)] = mock_converter
 
         mock_doc = MagicMock()
         mock_res = MagicMock()
@@ -62,22 +61,19 @@ class TestDoclingParsingProvider:
                 {"type": "section_header", "text": "Sec"}
             ]
         }
-
-        mock_table_obj = MagicMock()
-        mock_table_obj.export_to_markdown.return_value = "| A | B |"
-        mock_table_obj.export_to_dict.return_value = {"grid": []}
-        mock_table_obj.prov = [MagicMock(page_no=1)]
-        mock_doc.tables = [mock_table_obj]
+        mock_doc.tables = [MagicMock()]
         mock_doc.pictures = []
 
-        request = MagicMock(filename="test.pdf", content=b"fake_content")
-        result = provider.parse(request)
+        request = MagicMock(filename="test.pdf", content=b"fake_content", provider_config={})
+        with patch.object(provider, "_should_enable_ocr", return_value=False):
+            result = provider.parse(request)
 
         assert result.provider == "docling"
         assert len(result.texts) == 1
         assert result.texts[0].text == "Texto extraido"
         assert result.texts[0].meta.get("source_label") == "text"
-        assert len(result.tables) == 1
+        assert len(result.tables) == 0
+        assert result.metrics["detect_tables"] is False
         mock_converter.convert.assert_called_once_with("/tmp/test.pdf")
 
     def test_extract_texts_skips_list_item_and_section_header(self, provider):
@@ -136,27 +132,11 @@ class TestDoclingParsingProvider:
         assert images[0].meta.get("caption_text") == "Figura 3: Diagrama general"
         assert images[0].meta.get("caption_source") == "inferred"
 
+    def test_resolve_detect_tables_uses_provider_config(self, provider):
+        request = MagicMock(provider_config={"detect_tables": True})
+        assert provider._resolve_detect_tables(request) is True
 
-    def test_resolve_do_ocr_uses_company_config_flag(self, provider):
-        provider.config_service.get_configuration.return_value = {
-            "docling": {
-                "do_ocr": True,
-            }
-        }
-
-        with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("DOCLING_DO_OCR", None)
-            assert provider._resolve_do_ocr("sample_company") is True
-
-    def test_resolve_do_ocr_env_override_has_precedence(self, provider):
-        provider.config_service.get_configuration.return_value = {
-            "docling": {
-                "do_ocr": False,
-            }
-        }
-
-        with patch.dict(os.environ, {"DOCLING_DO_OCR": "true"}):
-            assert provider._resolve_do_ocr("sample_company") is True
-
-        with patch.dict(os.environ, {"DOCLING_DO_OCR": "false"}):
-            assert provider._resolve_do_ocr("sample_company") is False
+    def test_should_enable_ocr_only_for_scanned_pdfs(self, provider):
+        request = MagicMock(filename="scan.pdf", content=b"fake-content")
+        with patch.object(provider, "_pdf_needs_ocr", return_value=True):
+            assert provider._should_enable_ocr(request) is True

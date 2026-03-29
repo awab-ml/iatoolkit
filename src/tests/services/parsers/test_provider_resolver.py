@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
-from iatoolkit.services.parsers.provider_resolver import ParsingProviderResolver
 from iatoolkit.services.parsers.contracts import ParseRequest
+from iatoolkit.services.parsers.provider_resolver import ParsingProviderResolver
 
 
 class TestParsingProviderResolver:
@@ -15,6 +15,22 @@ class TestParsingProviderResolver:
             document_repo=self.mock_document_repo,
             provider_factory=self.mock_factory,
         )
+
+    def test_resolve_provider_name_uses_request_config_override_first(self):
+        self.mock_config_service.get_configuration.return_value = {
+            "parsing_provider": "docling",
+        }
+        self.mock_document_repo.get_collection_by_name.return_value = MagicMock(parser_provider="docling")
+
+        request = ParseRequest(
+            company_short_name="acme",
+            filename="a.pdf",
+            content=b"x",
+            collection_name="Invoices",
+            provider_config={"provider": "basic"},
+        )
+
+        assert self.resolver.resolve_provider_name(request) == "basic"
 
     def test_resolve_uses_collection_provider_override(self):
         self.mock_config_service.get_configuration.return_value = {
@@ -77,15 +93,14 @@ class TestParsingProviderResolver:
         self.mock_factory.get_provider.assert_called_with("basic")
         assert result == mock_basic
 
-    def test_resolve_auto_falls_back_to_basic_when_docling_disabled(self):
+    def test_resolve_auto_maps_to_basic_provider_instance(self):
         self.mock_config_service.get_configuration.return_value = {
             "parsing_provider": "auto",
         }
         self.mock_document_repo.get_collection_by_name.return_value = None
 
-        mock_docling = MagicMock(enabled=False)
         mock_basic = MagicMock()
-        self.mock_factory.get_provider.side_effect = [mock_docling, mock_basic]
+        self.mock_factory.get_provider.return_value = mock_basic
 
         request = ParseRequest(
             company_short_name="acme",
@@ -94,6 +109,7 @@ class TestParsingProviderResolver:
         )
         result = self.resolver.resolve(request)
 
+        self.mock_factory.get_provider.assert_called_with("basic")
         assert result == mock_basic
 
     def test_resolve_accepts_legacy_alias(self):

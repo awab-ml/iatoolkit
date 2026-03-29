@@ -182,7 +182,7 @@ class LLMQueryRepo:
             )
             prompt.attachment_mode = new_prompt.attachment_mode or prompt.attachment_mode or "extracted_only"
             prompt.attachment_parser_provider = (
-                new_prompt.attachment_parser_provider or prompt.attachment_parser_provider or "auto"
+                new_prompt.attachment_parser_provider or prompt.attachment_parser_provider or "basic"
             )
             prompt.attachment_fallback = new_prompt.attachment_fallback or prompt.attachment_fallback or "extract"
         else:
@@ -193,7 +193,7 @@ class LLMQueryRepo:
             if not new_prompt.attachment_mode:
                 new_prompt.attachment_mode = "extracted_only"
             if not new_prompt.attachment_parser_provider:
-                new_prompt.attachment_parser_provider = "auto"
+                new_prompt.attachment_parser_provider = "basic"
             if not new_prompt.attachment_fallback:
                 new_prompt.attachment_fallback = "extract"
             self.session.add(new_prompt)

@@ -149,7 +149,7 @@ class PromptService:
         return self.ATTACHMENT_FALLBACK_EXTRACT
 
     def _normalize_attachment_parser_provider(self, attachment_parser_provider: str | None) -> str:
-        candidate = str(attachment_parser_provider or self.ATTACHMENT_PARSER_PROVIDER_AUTO).strip().lower()
+        candidate = str(attachment_parser_provider or self.ATTACHMENT_PARSER_PROVIDER_BASIC).strip().lower()
         allowed = {
             self.ATTACHMENT_PARSER_PROVIDER_AUTO,
             self.ATTACHMENT_PARSER_PROVIDER_DOCLING,
@@ -159,7 +159,7 @@ class PromptService:
             return self.ATTACHMENT_PARSER_PROVIDER_BASIC
         if candidate in allowed:
             return candidate
-        return self.ATTACHMENT_PARSER_PROVIDER_AUTO
+        return self.ATTACHMENT_PARSER_PROVIDER_BASIC
 
     def _get_company_default_attachment_policy(self, company_short_name: str) -> dict:
         llm_config = self.configuration_service.get_configuration(company_short_name, "llm") or {}

@@ -286,7 +286,7 @@ properties:
 
         saved_prompt = self.llm_query_repo.create_or_update_prompt.call_args[0][0]
         assert saved_prompt.attachment_mode == "native_only"
-        assert saved_prompt.attachment_parser_provider == "auto"
+        assert saved_prompt.attachment_parser_provider == "basic"
         assert saved_prompt.attachment_fallback == "fail"
 
     # --- Tests para sync_company_prompts ---

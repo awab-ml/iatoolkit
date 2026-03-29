@@ -47,12 +47,58 @@ class TestBasicParsingProvider:
     @patch("iatoolkit.services.parsers.providers.basic_provider.BasicParsingProvider.read_pdf", return_value="PDF text")
     def test_extension_file_detection(self, mock_read_pdf, mock_read_scanned_pdf, mock_is_scanned_pdf):
         mock_is_scanned_pdf.return_value = True
-        result = self.provider.file_to_txt("test.pdf", "dummy_content")
+        result = self.provider.file_to_txt("test.pdf", "dummy_content", allow_ocr=True)
         assert result == "Scanned text"
 
         mock_is_scanned_pdf.return_value = False
         result = self.provider.file_to_txt("test.pdf", "dummy_content")
         assert result == "PDF text"
+
+    @patch("iatoolkit.services.parsers.providers.basic_provider.BasicParsingProvider.pdf_to_figure_entries", return_value=[])
+    @patch("iatoolkit.services.parsers.providers.basic_provider.shutil.which", return_value="/usr/bin/tesseract")
+    @patch("iatoolkit.services.parsers.providers.basic_provider.BasicParsingProvider.extract_text", return_value="ocr text")
+    def test_parse_pdf_uses_ocr_for_non_prompt_requests_when_tesseract_is_available(self, mock_extract_text, _, __):
+        with patch.dict("os.environ", {"TESSERACT_ENABLED": "true"}):
+            result = self.provider.parse(ParseRequest(
+                company_short_name="acme",
+                filename="scan.pdf",
+                content=b"pdf",
+                metadata={"source": "task_parse_document"},
+            ))
+
+        assert result.metrics["used_ocr"] is True
+        assert result.metrics["ocr_engine"] == "tesseract"
+        mock_extract_text.assert_called_once_with("scan.pdf", b"pdf", allow_ocr=True, pdf_needs_ocr=None)
+
+    @patch("iatoolkit.services.parsers.providers.basic_provider.BasicParsingProvider.pdf_to_figure_entries", return_value=[])
+    @patch("iatoolkit.services.parsers.providers.basic_provider.shutil.which", return_value="/usr/bin/tesseract")
+    @patch("iatoolkit.services.parsers.providers.basic_provider.BasicParsingProvider.extract_text", return_value="")
+    def test_parse_pdf_skips_ocr_for_prompt_attachments(self, mock_extract_text, _, __):
+        with patch.dict("os.environ", {"TESSERACT_ENABLED": "true"}):
+            result = self.provider.parse(ParseRequest(
+                company_short_name="acme",
+                filename="scan.pdf",
+                content=b"pdf",
+                metadata={"source": "prompt_task_attachment"},
+            ))
+
+        assert result.metrics["used_ocr"] is False
+        assert "ocr_engine" not in result.metrics
+        mock_extract_text.assert_called_once_with("scan.pdf", b"pdf", allow_ocr=False, pdf_needs_ocr=None)
+
+    @patch("iatoolkit.services.parsers.providers.basic_provider.BasicParsingProvider.pdf_to_figure_entries", return_value=[])
+    @patch("iatoolkit.services.parsers.providers.basic_provider.BasicParsingProvider.extract_text", return_value="ocr text")
+    def test_parse_pdf_reuses_precomputed_pdf_ocr_decision(self, mock_extract_text, _):
+        result = self.provider.parse(ParseRequest(
+            company_short_name="acme",
+            filename="scan.pdf",
+            content=b"pdf",
+            provider_config={"allow_ocr": True, "pdf_needs_ocr": True},
+        ))
+
+        assert result.metrics["used_ocr"] is True
+        assert result.metrics["ocr_engine"] == "tesseract"
+        mock_extract_text.assert_called_once_with("scan.pdf", b"pdf", allow_ocr=True, pdf_needs_ocr=True)
 
     def test_parse_builds_text_result(self):
         with patch.object(self.provider, "extract_text", return_value="hello world"):

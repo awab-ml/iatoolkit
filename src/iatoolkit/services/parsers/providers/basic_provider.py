@@ -8,6 +8,7 @@ from __future__ import annotations
 import io
 import logging
 import os
+import shutil
 
 import fitz
 import pytesseract
@@ -20,6 +21,8 @@ from iatoolkit.services.excel_service import ExcelService
 from iatoolkit.services.i18n_service import I18nService
 from iatoolkit.services.parsers.contracts import ParseRequest, ParseResult, ParsedImage, ParsedText
 from iatoolkit.services.parsers.image_normalizer import normalize_image
+from iatoolkit.services.parsers.pdf_ocr_detection import analyze_pdf_ocr_need
+
 
 @singleton
 class BasicParsingProvider:
@@ -38,11 +41,19 @@ class BasicParsingProvider:
         return True
 
     def parse(self, request: ParseRequest) -> ParseResult:
-        text = self.extract_text(request.filename, request.content)
+        allow_ocr = self._should_use_ocr(request)
+        pdf_needs_ocr = self._resolve_pdf_needs_ocr(request)
+        text = self.extract_text(
+            request.filename,
+            request.content,
+            allow_ocr=allow_ocr,
+            pdf_needs_ocr=pdf_needs_ocr,
+        )
 
         result = ParseResult(
             provider=self.name,
             provider_version=self.version,
+            metrics={"used_ocr": allow_ocr},
         )
 
         if text and text.strip():
@@ -82,42 +93,70 @@ class BasicParsingProvider:
                 except Exception as e:
                     result.warnings.append(f"Failed to normalize fallback image {index}: {e}")
 
+        if allow_ocr and request.filename.lower().endswith(".pdf"):
+            result.metrics["ocr_engine"] = "tesseract"
+
         return result
 
-    def extract_text(self, filename, file_content):
-        return self.file_to_txt(filename, file_content)
+    def _should_use_ocr(self, request: ParseRequest) -> bool:
+        if not request.filename.lower().endswith(".pdf"):
+            return False
 
-    def file_to_txt(self, filename, file_content):
+        provider_config = request.provider_config or {}
+        if "allow_ocr" in provider_config:
+            return self._as_bool(provider_config.get("allow_ocr"), default=False)
+
+        metadata = request.metadata or {}
+        if metadata.get("source") == "prompt_task_attachment":
+            return False
+
+        return self._can_use_tesseract()
+
+    @staticmethod
+    def _can_use_tesseract() -> bool:
+        env_value = os.getenv("TESSERACT_ENABLED")
+        if env_value is None or env_value.strip().lower() not in {"1", "true", "yes", "on"}:
+            return False
+        return shutil.which("tesseract") is not None
+
+    def extract_text(self, filename, file_content, allow_ocr: bool = False, pdf_needs_ocr: bool | None = None):
+        return self.file_to_txt(filename, file_content, allow_ocr=allow_ocr, pdf_needs_ocr=pdf_needs_ocr)
+
+    def file_to_txt(self, filename, file_content, allow_ocr: bool = False, pdf_needs_ocr: bool | None = None):
         try:
             if filename.lower().endswith('.docx'):
                 return self.read_docx(file_content)
-            elif filename.lower().endswith('.txt') or filename.lower().endswith('.md'):
+            if filename.lower().endswith('.txt') or filename.lower().endswith('.md'):
                 if isinstance(file_content, bytes):
                     try:
                         file_content = file_content.decode('utf-8')
                     except UnicodeDecodeError:
-                        raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
-                                                 self.i18n_service.t('errors.services.no_text_file'))
+                        raise IAToolkitException(
+                            IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
+                            self.i18n_service.t('errors.services.no_text_file'),
+                        )
 
                 return file_content
-            elif filename.lower().endswith('.pdf'):
-                if self.is_scanned_pdf(file_content):
-                    return self.read_scanned_pdf(file_content)
-                else:
-                    return self.read_pdf(file_content)
-            elif filename.lower().endswith(('.xlsx', '.xls')):
+            if filename.lower().endswith('.pdf'):
+                if self.is_scanned_pdf(file_content, precomputed=pdf_needs_ocr):
+                    return self.read_scanned_pdf(file_content) if allow_ocr else ""
+                return self.read_pdf(file_content)
+            if filename.lower().endswith(('.xlsx', '.xls')):
                 return self.excel_service.read_excel(file_content)
-            elif filename.lower().endswith('.csv'):
+            if filename.lower().endswith('.csv'):
                 return self.excel_service.read_csv(file_content)
-            else:
-                raise IAToolkitException(IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
-                                         "Formato de archivo desconocido")
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.FILE_FORMAT_ERROR,
+                "Formato de archivo desconocido",
+            )
         except IAToolkitException:
             raise
         except Exception as e:
             logging.exception(e)
-            raise IAToolkitException(IAToolkitException.ErrorType.FILE_IO_ERROR,
-                                     f"Error processing file: {e}") from e
+            raise IAToolkitException(
+                IAToolkitException.ErrorType.FILE_IO_ERROR,
+                f"Error processing file: {e}",
+            ) from e
 
     def read_docx(self, file_content):
         try:
@@ -149,19 +188,32 @@ class BasicParsingProvider:
         except Exception as e:
             raise ValueError(f"Error reading .pdf file: {e}")
 
-    def is_scanned_pdf(self, file_content):
-        with fitz.open(stream=io.BytesIO(file_content), filetype='pdf') as doc:
-            for page_num in range(len(doc)):
-                page = doc[page_num]
-                text = page.get_text()
-                if text.strip():
-                    return False
+    def is_scanned_pdf(self, file_content, precomputed: bool | None = None):
+        if precomputed is not None:
+            return precomputed
 
-                images = page.get_images(full=True)
-                if images:
-                    continue
+        decision = analyze_pdf_ocr_need(file_content)
+        logging.info(
+            "PDF OCR decision for basic provider: needs_ocr=%s reason=%s pages=%s image_pages=%s meaningful_pages=%s sparse_image_pages=%s total_text_chars=%s",
+            decision.needs_ocr,
+            decision.reason,
+            decision.page_count,
+            decision.image_page_count,
+            decision.meaningful_text_page_count,
+            decision.sparse_text_image_page_count,
+            decision.total_text_char_count,
+        )
+        return decision.needs_ocr
 
-        return True
+    def _resolve_pdf_needs_ocr(self, request: ParseRequest) -> bool | None:
+        if not request.filename.lower().endswith(".pdf"):
+            return None
+
+        provider_config = request.provider_config or {}
+        if "pdf_needs_ocr" in provider_config:
+            return self._as_bool(provider_config.get("pdf_needs_ocr"), default=False)
+
+        return None
 
     def read_scanned_pdf(self, file_content):
         images = self.pdf_to_images(file_content)
@@ -216,3 +268,17 @@ class BasicParsingProvider:
 
         img = Image.frombytes(pil_mode, (image.width, image.height), image.samples)
         return pytesseract.image_to_string(img, lang="spa")
+
+    @staticmethod
+    def _as_bool(value, *, default: bool = False) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on"}:
+                return True
+            if normalized in {"0", "false", "no", "off"}:
+                return False
+        return default
