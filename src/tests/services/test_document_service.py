@@ -87,18 +87,33 @@ class TestBasicParsingProvider:
         mock_extract_text.assert_called_once_with("scan.pdf", b"pdf", allow_ocr=False, pdf_needs_ocr=None)
 
     @patch("iatoolkit.services.parsers.providers.basic_provider.BasicParsingProvider.pdf_to_figure_entries", return_value=[])
+    @patch("iatoolkit.services.parsers.providers.basic_provider.shutil.which", return_value="/usr/bin/tesseract")
     @patch("iatoolkit.services.parsers.providers.basic_provider.BasicParsingProvider.extract_text", return_value="ocr text")
-    def test_parse_pdf_reuses_precomputed_pdf_ocr_decision(self, mock_extract_text, _):
-        result = self.provider.parse(ParseRequest(
-            company_short_name="acme",
-            filename="scan.pdf",
-            content=b"pdf",
-            provider_config={"allow_ocr": True, "pdf_needs_ocr": True},
-        ))
+    def test_parse_pdf_reuses_precomputed_pdf_ocr_decision(self, mock_extract_text, __, _):
+        with patch.dict("os.environ", {"TESSERACT_ENABLED": "true"}):
+            result = self.provider.parse(ParseRequest(
+                company_short_name="acme",
+                filename="scan.pdf",
+                content=b"pdf",
+                provider_config={"allow_ocr": True, "pdf_needs_ocr": True},
+            ))
 
         assert result.metrics["used_ocr"] is True
         assert result.metrics["ocr_engine"] == "tesseract"
         mock_extract_text.assert_called_once_with("scan.pdf", b"pdf", allow_ocr=True, pdf_needs_ocr=True)
+
+    @patch("iatoolkit.services.parsers.providers.basic_provider.shutil.which", return_value=None)
+    def test_parse_pdf_fails_explicitly_when_ocr_is_required_and_tesseract_is_unavailable(self, _):
+        with pytest.raises(IAToolkitException) as excinfo:
+            self.provider.parse(ParseRequest(
+                company_short_name="acme",
+                filename="scan.pdf",
+                content=b"pdf",
+                provider_config={"pdf_needs_ocr": True},
+            ))
+
+        assert excinfo.value.error_type == IAToolkitException.ErrorType.CONFIG_ERROR
+        assert "requires OCR but Tesseract is unavailable" in str(excinfo.value)
 
     def test_parse_builds_text_result(self):
         with patch.object(self.provider, "extract_text", return_value="hello world"):

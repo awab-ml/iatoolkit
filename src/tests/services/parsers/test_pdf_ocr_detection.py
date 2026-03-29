@@ -67,6 +67,27 @@ def test_analyze_pdf_ocr_need_skips_ocr_when_pages_have_meaningful_text():
     assert decision.meaningful_text_page_count == 4
 
 
+def test_analyze_pdf_ocr_need_detects_mixed_pdf_as_ocr_candidate():
+    meaningful_text = (
+        "Constitucion de sociedad por acciones comparecen los socios y acuerdan "
+        "las siguientes clausulas con domicilio en Santiago de Chile."
+    )
+    pages = [
+        FakePage(meaningful_text, 1),
+        FakePage("", 1),
+        FakePage("INUTILIZADO CONFORME ART. 404 INC. C.O.T.", 1),
+        FakePage(meaningful_text, 1),
+    ]
+
+    with patch("iatoolkit.services.parsers.pdf_ocr_detection.fitz.open", return_value=FakeDoc(pages)):
+        decision = analyze_pdf_ocr_need(b"%PDF-1.7")
+
+    assert decision.needs_ocr is True
+    assert decision.reason == "mixed_meaningful_and_sparse_image_pages"
+    assert decision.meaningful_text_page_count == 2
+    assert decision.sparse_text_image_page_count == 2
+
+
 def test_basic_provider_is_scanned_pdf_uses_shared_pdf_ocr_decision():
     provider = BasicParsingProvider(excel_service=MagicMock(), i18n_service=MagicMock())
     decision = PdfOcrDecision(

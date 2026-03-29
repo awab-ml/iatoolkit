@@ -108,7 +108,7 @@ class KnowledgeBaseService:
 
         # 2. Check for duplicates by HASH (Content deduplication)
         # If the same content exists (even with a different filename), we skip processing.
-        existing_doc = self.document_repo.get_by_hash(company.id, file_hash)
+        existing_doc = self.document_repo.get_by_hash(company.id, file_hash, collection_id)
         if existing_doc:
             if existing_doc.status == DocumentStatus.FAILED:
                 # If the previous ingestion failed, we delete the failed document and try again.

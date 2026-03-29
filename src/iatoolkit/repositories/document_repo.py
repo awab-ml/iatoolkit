@@ -33,12 +33,16 @@ class DocumentRepo:
 
         return self.session.query(Document).filter_by(company_id=company_id, filename=filename).first()
 
-    def get_by_hash(self, company_id: int, file_hash: str) -> Document:
-        """Find a document by its content hash within a company."""
+    def get_by_hash(self, company_id: int, file_hash: str, collection_id: int | None = None) -> Document:
+        """Find a document by its content hash within a company and collection scope."""
         if not company_id or not file_hash:
             return None
 
-        return self.session.query(Document).filter_by(company_id=company_id, hash=file_hash).first()
+        return self.session.query(Document).filter_by(
+            company_id=company_id,
+            hash=file_hash,
+            collection_type_id=collection_id,
+        ).first()
 
     def get_by_id(self, document_id: int) -> Document:
         if not document_id:

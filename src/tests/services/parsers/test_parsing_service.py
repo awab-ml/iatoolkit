@@ -179,6 +179,56 @@ def test_parse_document_auto_reuses_single_pdf_ocr_decision_for_all_provider_att
     second_request = basic_provider.parse.call_args_list[1].args[0]
     assert first_request.provider_config["pdf_needs_ocr"] is True
     assert second_request.provider_config["pdf_needs_ocr"] is True
+    assert first_request.provider_config["suppress_ocr_required_error"] is True
+
+
+def test_parse_document_auto_suppresses_basic_ocr_required_error_on_first_pass():
+    provider_resolver = MagicMock()
+    provider_resolver.resolve_provider_name.return_value = "auto"
+    provider_factory = MagicMock()
+
+    basic_provider = MagicMock()
+    basic_provider.parse.return_value = ParseResult(provider="basic", texts=[])
+
+    docling_provider = MagicMock(enabled=True)
+    docling_provider.supports.return_value = True
+    docling_provider.parse.return_value = ParseResult(
+        provider="docling",
+        texts=[ParsedText(text="D" * 120)],
+    )
+
+    def get_provider(name):
+        if name == "basic":
+            return basic_provider
+        if name == "docling":
+            return docling_provider
+        raise AssertionError(name)
+
+    provider_factory.get_provider.side_effect = get_provider
+    service = ParsingService(provider_resolver=provider_resolver, provider_factory=provider_factory)
+
+    fake_decision = MagicMock(
+        needs_ocr=True,
+        reason="mixed_meaningful_and_sparse_image_pages",
+        page_count=4,
+        image_page_count=4,
+        meaningful_text_page_count=2,
+        sparse_text_image_page_count=2,
+        total_text_char_count=200,
+    )
+
+    with patch("iatoolkit.services.parsers.parsing_service.analyze_pdf_ocr_need", return_value=fake_decision):
+        with patch("iatoolkit.services.parsers.parsing_service.shutil.which", return_value=None):
+            with patch.dict("os.environ", {}, clear=False):
+                result = service.parse_document(
+                    company_short_name="acme",
+                    filename="scan.pdf",
+                    content=b"%PDF-1",
+                )
+
+    assert result.provider == "docling"
+    first_request = basic_provider.parse.call_args.args[0]
+    assert first_request.provider_config["suppress_ocr_required_error"] is True
 
 
 def test_parse_document_basic_keeps_ocr_disabled_for_prompt_attachments():

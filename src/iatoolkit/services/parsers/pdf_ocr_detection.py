@@ -99,6 +99,17 @@ def analyze_pdf_ocr_need(content: bytes) -> PdfOcrDecision:
                     reason="majority_pages_image_first_with_sparse_text",
                 )
 
+            if sparse_text_image_page_count > 0 and meaningful_text_page_count > 0:
+                return PdfOcrDecision(
+                    needs_ocr=True,
+                    page_count=page_count,
+                    image_page_count=image_page_count,
+                    meaningful_text_page_count=meaningful_text_page_count,
+                    sparse_text_image_page_count=sparse_text_image_page_count,
+                    total_text_char_count=total_text_char_count,
+                    reason="mixed_meaningful_and_sparse_image_pages",
+                )
+
             return PdfOcrDecision(
                 needs_ocr=False,
                 page_count=page_count,

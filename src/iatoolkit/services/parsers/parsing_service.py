@@ -114,7 +114,12 @@ class ParsingService:
     def _parse_auto(self, request: ParseRequest) -> ParseResult:
         pdf_needs_ocr = self._resolve_pdf_needs_ocr(request)
         basic_result = self._parse_with_provider(
-            self._with_provider_overrides(request, allow_ocr=False, pdf_needs_ocr=pdf_needs_ocr),
+            self._with_provider_overrides(
+                request,
+                allow_ocr=False,
+                pdf_needs_ocr=pdf_needs_ocr,
+                suppress_ocr_required_error=True,
+            ),
             provider_name="basic",
             allow_basic_fallback=False,
         )
@@ -207,7 +212,8 @@ class ParsingService:
                                  *,
                                  allow_ocr: bool | None = None,
                                  detect_tables: bool | None = None,
-                                 pdf_needs_ocr: bool | None = None) -> ParseRequest:
+                                 pdf_needs_ocr: bool | None = None,
+                                 suppress_ocr_required_error: bool | None = None) -> ParseRequest:
         provider_config = deepcopy(request.provider_config or {})
         if allow_ocr is not None:
             provider_config["allow_ocr"] = allow_ocr
@@ -215,6 +221,8 @@ class ParsingService:
             provider_config["detect_tables"] = detect_tables
         if pdf_needs_ocr is not None:
             provider_config["pdf_needs_ocr"] = pdf_needs_ocr
+        if suppress_ocr_required_error is not None:
+            provider_config["suppress_ocr_required_error"] = suppress_ocr_required_error
 
         return ParseRequest(
             company_short_name=request.company_short_name,

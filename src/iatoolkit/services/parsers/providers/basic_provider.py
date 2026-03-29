@@ -43,6 +43,7 @@ class BasicParsingProvider:
     def parse(self, request: ParseRequest) -> ParseResult:
         allow_ocr = self._should_use_ocr(request)
         pdf_needs_ocr = self._resolve_pdf_needs_ocr(request)
+        self._raise_if_ocr_required_but_unavailable(request, pdf_needs_ocr)
         text = self.extract_text(
             request.filename,
             request.content,
@@ -114,10 +115,16 @@ class BasicParsingProvider:
 
     @staticmethod
     def _can_use_tesseract() -> bool:
+        return BasicParsingProvider._get_tesseract_status()[0]
+
+    @staticmethod
+    def _get_tesseract_status() -> tuple[bool, str]:
         env_value = os.getenv("TESSERACT_ENABLED")
         if env_value is None or env_value.strip().lower() not in {"1", "true", "yes", "on"}:
-            return False
-        return shutil.which("tesseract") is not None
+            return False, "env_disabled"
+        if shutil.which("tesseract") is None:
+            return False, "binary_not_found"
+        return True, "available"
 
     def extract_text(self, filename, file_content, allow_ocr: bool = False, pdf_needs_ocr: bool | None = None):
         return self.file_to_txt(filename, file_content, allow_ocr=allow_ocr, pdf_needs_ocr=pdf_needs_ocr)
@@ -214,6 +221,23 @@ class BasicParsingProvider:
             return self._as_bool(provider_config.get("pdf_needs_ocr"), default=False)
 
         return None
+
+    def _raise_if_ocr_required_but_unavailable(self, request: ParseRequest, pdf_needs_ocr: bool | None) -> None:
+        if not pdf_needs_ocr:
+            return
+
+        provider_config = request.provider_config or {}
+        if self._as_bool(provider_config.get("suppress_ocr_required_error"), default=False):
+            return
+
+        can_use_tesseract, reason = self._get_tesseract_status()
+        if can_use_tesseract:
+            return
+
+        raise IAToolkitException(
+            IAToolkitException.ErrorType.CONFIG_ERROR,
+            f"PDF '{request.filename}' requires OCR but Tesseract is unavailable ({reason}).",
+        )
 
     def read_scanned_pdf(self, file_content):
         images = self.pdf_to_images(file_content)

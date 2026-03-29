@@ -73,6 +73,30 @@ class TestDocumentRepo:
         assert result == self.mock_document
         self.session.query.assert_called()
 
+    def test_get_by_hash_scopes_by_collection(self):
+        self.session.query.return_value.filter_by.return_value.first.return_value = self.mock_document
+
+        result = self.repo.get_by_hash(1, "abc123", 7)
+
+        assert result == self.mock_document
+        self.session.query.return_value.filter_by.assert_called_once_with(
+            company_id=1,
+            hash="abc123",
+            collection_type_id=7,
+        )
+
+    def test_get_by_hash_scopes_null_collection(self):
+        self.session.query.return_value.filter_by.return_value.first.return_value = self.mock_document
+
+        result = self.repo.get_by_hash(1, "abc123", None)
+
+        assert result == self.mock_document
+        self.session.query.return_value.filter_by.assert_called_once_with(
+            company_id=1,
+            hash="abc123",
+            collection_type_id=None,
+        )
+
     def test_get_collection_ids_by_name_normalizes_and_deduplicates(self):
         legal = CollectionType(id=10, name="legal")
         contracts = CollectionType(id=20, name="contracts")
