@@ -3,7 +3,7 @@
 #
 # IAToolkit is open source software.
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -79,6 +79,26 @@ class TestPdfService:
         assert result["download_link"] == "/download/tok-html"
         upload_kwargs = self.mock_storage_service.upload_generated_download.call_args.kwargs
         assert upload_kwargs["file_content"].startswith(b"%PDF")
+
+    def test_pdf_generator_inlines_chat_css_for_html_input(self):
+        self.mock_storage_service.upload_generated_download.return_value = "companies/acme/generated_downloads/3/generated.pdf"
+        self.mock_storage_service.create_download_token.return_value = "tok-css"
+
+        with patch.object(self.pdf_service, "_render_html_to_pdf", return_value=b"%PDF-1.7\nstub") as mock_render:
+            self.pdf_service.pdf_generator(
+                "acme",
+                filename="chat.pdf",
+                content="<p>Hola</p>",
+                input_format="html",
+                template="simple",
+                page_size="A4",
+                orientation="portrait",
+            )
+
+        html_payload = mock_render.call_args.kwargs["html"]
+        assert ".llm-output" in html_payload
+        assert ".llm-output p" in html_payload
+        assert 'class="content llm-output"' in html_payload
 
     def test_pdf_generator_returns_error_when_content_is_missing(self):
         result = self.pdf_service.pdf_generator(

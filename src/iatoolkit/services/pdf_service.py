@@ -8,6 +8,8 @@ from __future__ import annotations
 import io
 import logging
 import re
+from functools import lru_cache
+from pathlib import Path
 from uuid import uuid4
 
 import fitz
@@ -98,6 +100,7 @@ BASE_HTML_TEMPLATE = Template("""
         padding-bottom: 4px;
       }
       {% endif %}
+      {{ extra_css }}
     </style>
   </head>
   <body>
@@ -107,7 +110,7 @@ BASE_HTML_TEMPLATE = Template("""
       {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
     </div>
     {% endif %}
-    <div class="content">
+    <div class="content {{ content_class }}">
       {{ body_html }}
     </div>
   </body>
@@ -155,6 +158,7 @@ class PdfService:
             body_html = self._content_to_html(content=content, input_format=input_format)
             document_html = self._wrap_html(
                 body_html=body_html,
+                input_format=input_format,
                 template_name=template_name,
                 title=title,
                 subtitle=subtitle,
@@ -251,12 +255,21 @@ class PdfService:
 
     def _wrap_html(self,
                    body_html: str,
+                   input_format: str,
                    template_name: str,
                    title: str | None,
                    subtitle: str | None) -> str:
         safe_body_html = self._sanitize_html(body_html)
+        extra_css = ""
+        content_class = ""
+        if input_format == "html":
+            extra_css = self._load_chat_llm_output_css()
+            content_class = "llm-output"
+
         return BASE_HTML_TEMPLATE.render(
             body_html=safe_body_html,
+            extra_css=extra_css,
+            content_class=content_class,
             template=template_name,
             title=escape(title) if title else None,
             subtitle=escape(subtitle) if subtitle else None,
@@ -300,3 +313,13 @@ class PdfService:
         if orientation == "landscape":
             return fitz.Rect(0, 0, paper_rect.height, paper_rect.width)
         return fitz.Rect(paper_rect)
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _load_chat_llm_output_css() -> str:
+        css_path = Path(__file__).resolve().parent.parent / "static" / "styles" / "llm_output.css"
+        try:
+            return css_path.read_text(encoding="utf-8")
+        except Exception:
+            logging.warning("Could not load chat LLM output CSS for PDF rendering: %s", css_path)
+            return ""
