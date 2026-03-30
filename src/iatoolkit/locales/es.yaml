@@ -1164,6 +1164,7 @@ services:
   mail_sent: "mail enviado exitosamente."
   start_query: "Hola, cual es tu pregunta?"
   mail_change_password: "se envio mail para cambio de clave"
+  generated_by_iatoolkit: "Documento generado por IAToolkit"
 
 rag:
   ingestion:

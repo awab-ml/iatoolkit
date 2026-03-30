@@ -72,7 +72,7 @@ class PdfService:
             title = self._clean_text(kwargs.get("title"))
             subtitle = self._clean_text(kwargs.get("subtitle"))
             company_name = self._resolve_company_name(company_short_name)
-            footer_text = self.i18n_service.t("services.generated_by_iatoolkit")
+            footer_text = self._resolve_generated_by_text()
             generated_date = datetime.now().strftime("%d-%m-%Y")
 
             body_html = self._content_to_html(content=content, input_format=input_format)
@@ -104,6 +104,7 @@ class PdfService:
                 storage_key=storage_key,
                 filename=filename,
             )
+            download_link = f"/download/{attachment_token}"
 
             logging.info(
                 "Generated PDF company=%s filename=%s input_format=%s template=%s page_size=%s orientation=%s bytes=%s",
@@ -120,7 +121,8 @@ class PdfService:
                 "filename": filename,
                 "attachment_token": attachment_token,
                 "content_type": PDF_MIME,
-                "download_link": f"/download/{attachment_token}",
+                "download_link": download_link,
+                "html_download": self._build_download_html(filename, download_link),
             }
         except IAToolkitException:
             raise
@@ -259,6 +261,12 @@ class PdfService:
             return company_name.strip()
         return company_short_name
 
+    def _resolve_generated_by_text(self) -> str:
+        translation = self.i18n_service.t("services.generated_by_iatoolkit")
+        if translation and translation != "services.generated_by_iatoolkit":
+            return translation
+        return "Documento generado por IAToolkit"
+
     @staticmethod
     @lru_cache(maxsize=1)
     def _get_template_environment() -> Environment:
@@ -268,4 +276,13 @@ class PdfService:
             autoescape=False,
             trim_blocks=True,
             lstrip_blocks=True,
+        )
+
+    @staticmethod
+    def _build_download_html(filename: str, download_link: str) -> str:
+        return (
+            f"<p>✅ Tu archivo {escape(filename)} ha sido generado:</p>\n"
+            f"<a href=\"{escape(download_link)}\" download>\n"
+            "    📥 Descargar\n"
+            "</a>"
         )

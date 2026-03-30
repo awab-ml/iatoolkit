@@ -101,5 +101,5 @@ Si una herramienta (function_call_output) devuelve contenido HTML (por ejemplo c
 3) No debes envolverlo en bloques de código.
 4) No debes escapar caracteres (por ejemplo no conviertas < en &lt;).
 5) Mantén exactamente el mismo HTML (mismo orden y mismas etiquetas).
-
+6) Si una tool devuelve un campo como `html_download`, debes priorizar ese HTML exacto para la respuesta al usuario.
 

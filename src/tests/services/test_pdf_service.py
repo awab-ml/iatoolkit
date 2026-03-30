@@ -52,6 +52,12 @@ class TestPdfService:
         assert result["attachment_token"] == "signed-token"
         assert result["download_link"] == "/download/signed-token"
         assert result["content_type"] == PDF_MIME
+        assert result["html_download"] == (
+            "<p>✅ Tu archivo informe.pdf ha sido generado:</p>\n"
+            "<a href=\"/download/signed-token\" download>\n"
+            "    📥 Descargar\n"
+            "</a>"
+        )
 
         self.mock_storage_service.upload_generated_download.assert_called_once()
         upload_kwargs = self.mock_storage_service.upload_generated_download.call_args.kwargs
@@ -105,7 +111,28 @@ class TestPdfService:
         assert 'class="content llm-output"' in html_payload
         assert "ACME Corp" in html_payload
         assert "translated:services.generated_by_iatoolkit" in html_payload
-        assert "generated-date" in html_payload
+        assert "document-footer" in html_payload
+
+    def test_pdf_generator_falls_back_when_generated_by_translation_is_missing(self):
+        self.mock_storage_service.upload_generated_download.return_value = "companies/acme/generated_downloads/4/generated.pdf"
+        self.mock_storage_service.create_download_token.return_value = "tok-fallback"
+        self.mock_i18n_service.t.side_effect = lambda key, **kwargs: (
+            key if key == "services.generated_by_iatoolkit" else f"translated:{key}"
+        )
+
+        with patch.object(self.pdf_service, "_render_html_to_pdf", return_value=b"%PDF-1.7\nstub") as mock_render:
+            self.pdf_service.pdf_generator(
+                "acme",
+                filename="chat.pdf",
+                content="<p>Hola</p>",
+                input_format="html",
+                template="simple",
+                page_size="A4",
+                orientation="portrait",
+            )
+
+        html_payload = mock_render.call_args.kwargs["html"]
+        assert "Documento generado por IAToolkit" in html_payload
 
     def test_pdf_generator_returns_error_when_content_is_missing(self):
         result = self.pdf_service.pdf_generator(
