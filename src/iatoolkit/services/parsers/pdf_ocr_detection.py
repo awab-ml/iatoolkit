@@ -13,6 +13,9 @@ _MEANINGFUL_TEXT_MIN_CHARS = 80
 _MEANINGFUL_TEXT_MIN_WORDS = 12
 _SCANNED_PAGE_RATIO_THRESHOLD = 0.6
 _DIGITAL_PAGE_RATIO_THRESHOLD = 0.4
+_SUBSTANTIAL_TEXT_PAGE_RATIO_THRESHOLD = 0.5
+_SUBSTANTIAL_TEXT_MIN_TOTAL_CHARS = 400
+_SUBSTANTIAL_TEXT_AVG_CHARS_PER_PAGE = 120
 
 
 @dataclass(frozen=True)
@@ -99,6 +102,24 @@ def analyze_pdf_ocr_need(content: bytes) -> PdfOcrDecision:
                     reason="majority_pages_image_first_with_sparse_text",
                 )
 
+            if (
+                sparse_text_image_page_count > 0
+                and _has_substantial_embedded_text(
+                    page_count=page_count,
+                    meaningful_text_page_count=meaningful_text_page_count,
+                    total_text_char_count=total_text_char_count,
+                )
+            ):
+                return PdfOcrDecision(
+                    needs_ocr=False,
+                    page_count=page_count,
+                    image_page_count=image_page_count,
+                    meaningful_text_page_count=meaningful_text_page_count,
+                    sparse_text_image_page_count=sparse_text_image_page_count,
+                    total_text_char_count=total_text_char_count,
+                    reason="substantial_embedded_text_detected",
+                )
+
             if sparse_text_image_page_count > 0 and meaningful_text_page_count > 0:
                 return PdfOcrDecision(
                     needs_ocr=True,
@@ -149,3 +170,26 @@ def _has_meaningful_text(text: str) -> bool:
 
 def _normalize_text(text: str) -> str:
     return " ".join((text or "").split()).strip()
+
+
+def _has_substantial_embedded_text(
+    *,
+    page_count: int,
+    meaningful_text_page_count: int,
+    total_text_char_count: int,
+) -> bool:
+    if page_count <= 0 or meaningful_text_page_count <= 0 or total_text_char_count <= 0:
+        return False
+
+    substantial_page_threshold = max(
+        2,
+        math.ceil(page_count * _SUBSTANTIAL_TEXT_PAGE_RATIO_THRESHOLD),
+    )
+    if meaningful_text_page_count >= substantial_page_threshold:
+        return True
+
+    substantial_char_threshold = max(
+        _SUBSTANTIAL_TEXT_MIN_TOTAL_CHARS,
+        page_count * _SUBSTANTIAL_TEXT_AVG_CHARS_PER_PAGE,
+    )
+    return total_text_char_count >= substantial_char_threshold

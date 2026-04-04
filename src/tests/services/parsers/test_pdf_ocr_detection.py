@@ -82,10 +82,45 @@ def test_analyze_pdf_ocr_need_detects_mixed_pdf_as_ocr_candidate():
     with patch("iatoolkit.services.parsers.pdf_ocr_detection.fitz.open", return_value=FakeDoc(pages)):
         decision = analyze_pdf_ocr_need(b"%PDF-1.7")
 
-    assert decision.needs_ocr is True
-    assert decision.reason == "mixed_meaningful_and_sparse_image_pages"
+    assert decision.needs_ocr is False
+    assert decision.reason == "substantial_embedded_text_detected"
     assert decision.meaningful_text_page_count == 2
     assert decision.sparse_text_image_page_count == 2
+
+
+def test_analyze_pdf_ocr_need_keeps_scientific_paper_with_figures_as_digital():
+    meaningful_text = (
+        "This scientific paper presents a reproducible methodology, experimental setup, "
+        "quantitative evaluation, related work, and discussion of the observed results."
+    )
+    pages = [FakePage(meaningful_text, 2) for _ in range(8)] + [FakePage("", 3), FakePage("", 2)]
+
+    with patch("iatoolkit.services.parsers.pdf_ocr_detection.fitz.open", return_value=FakeDoc(pages)):
+        decision = analyze_pdf_ocr_need(b"%PDF-1.7")
+
+    assert decision.needs_ocr is False
+    assert decision.reason == "substantial_embedded_text_detected"
+    assert decision.meaningful_text_page_count == 8
+    assert decision.sparse_text_image_page_count == 2
+
+
+def test_analyze_pdf_ocr_need_detects_low_text_mixed_pdf_as_ocr_candidate():
+    meaningful_text = (
+        "Constitucion de sociedad por acciones comparecen los socios y acuerdan "
+        "las siguientes clausulas con domicilio en Santiago de Chile."
+    )
+    pages = [
+        FakePage(meaningful_text, 1),
+        FakePage("", 1),
+    ]
+
+    with patch("iatoolkit.services.parsers.pdf_ocr_detection.fitz.open", return_value=FakeDoc(pages)):
+        decision = analyze_pdf_ocr_need(b"%PDF-1.7")
+
+    assert decision.needs_ocr is True
+    assert decision.reason == "mixed_meaningful_and_sparse_image_pages"
+    assert decision.meaningful_text_page_count == 1
+    assert decision.sparse_text_image_page_count == 1
 
 
 def test_basic_provider_is_scanned_pdf_uses_shared_pdf_ocr_decision():
