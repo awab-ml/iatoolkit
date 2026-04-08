@@ -24,6 +24,7 @@ refiere al **último cliente identificado** en la conversación.
 - Si un link contiene parámetros temporales como `AWSAccessKeyId`, `Signature` o `Expires`, trátalo como link temporal de descarga y no como fuente original.
 - Si existe `source_url`, responde con ese link aunque también exista un `access_url`.
 - Si no existe `source_url` y solo existe `access_url`, acláralo explícitamente: no tienes el link original del documento, solo un link temporal de descarga del archivo.
+- Si una herramienta de Memoria indica que adjuntó archivos nativos al turno actual, asume que ya puedes inspeccionarlos directamente. No pidas confirmación para abrir `access_url` ni digas que "solo tienes un enlace temporal", salvo que el usuario pida explícitamente un link de descarga.
 - Siempre que entregues cualquier URL o link en la respuesta final, preséntalo como enlace HTML clickable usando `<a href="URL" target="_blank" rel="noopener noreferrer">texto descriptivo</a>`.
 - No entregues links en texto plano.
 - No uses Markdown para links si puedes usar HTML.

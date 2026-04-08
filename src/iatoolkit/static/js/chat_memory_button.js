@@ -20,20 +20,17 @@ $(document).ready(function () {
 
     $('#memory-button').on('click', async function () {
         memoryModal.modal('show');
-        await refreshMemoryDashboard();
+        await refreshMemoryDashboard({ showLoading: true });
     });
 
-    $('#memory-run-lint-button').on('click', async function () {
+    memoryModal.on('click', '#memory-run-lint-button', async function () {
         const button = $(this);
-        const originalHtml = button.html();
         button.prop('disabled', true);
         button.addClass('is-loading');
-        button.html(`<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${escapeHtml(t_js('memory_lint_running'))}`);
         await nextPaint();
         const response = await callToolkit('/api/memory', { action: 'lint' }, 'POST');
         button.prop('disabled', false);
         button.removeClass('is-loading');
-        button.html(originalHtml);
 
         if (!response || response.status !== 'success') {
             toastr.error((response && response.error_message) || t_js('memory_lint_error'));
@@ -45,7 +42,7 @@ $(document).ready(function () {
         } else {
             toastr.success(t_js('memory_lint_scheduled'));
         }
-        await refreshMemoryDashboard();
+        await refreshMemoryDashboard({ showLoading: false });
     });
 
     $('#memory-save-capture-button').on('click', async function () {
@@ -81,7 +78,7 @@ $(document).ready(function () {
             toastr.success(t_js('memory_save_success'));
         }
         resetCaptureEditor();
-        await refreshMemoryDashboard();
+        await refreshMemoryDashboard({ showLoading: false });
     });
 
     $('#memory-pages-list').on('click', '.memory-page-card', async function () {
@@ -175,7 +172,7 @@ $(document).ready(function () {
         if (memoryEditingCapture && memoryEditingCapture.capture_id === deletedCaptureId) {
             resetCaptureEditor();
         }
-        await refreshMemoryDashboard();
+        await refreshMemoryDashboard({ showLoading: false });
     });
 
     memoryDeleteConfirmModal.on('hidden.bs.modal', function () {
@@ -263,10 +260,17 @@ async function saveItemToMemory(payload, options = {}) {
     return response;
 }
 
-async function refreshMemoryDashboard() {
-    $('#memory-loading').show();
+async function refreshMemoryDashboard(options = {}) {
+    const showLoading = options.showLoading !== false;
+    const loadingIndicator = $('#memory-loading');
+
+    if (showLoading) {
+        loadingIndicator.addClass('is-visible');
+    }
     const data = await callToolkit('/api/memory', undefined, 'GET');
-    $('#memory-loading').hide();
+    if (showLoading) {
+        loadingIndicator.removeClass('is-visible');
+    }
 
     if (!data || data.status !== 'success') {
         toastr.error(t_js('memory_load_error'));
@@ -342,10 +346,17 @@ function renderMemoryPages(pages) {
 
     empty.hide();
     pages.forEach(page => {
+        const title = String(page.title || '').trim() || t_js('memory_untitled');
+        const summary = cleanMemoryText(page.summary);
+        const hideSummary = !summary || isSameMemoryText(title, summary);
         const card = $(`
-            <button type="button" class="memory-page-card">
-                <div class="d-flex justify-content-between align-items-start gap-3">
+            <button type="button" class="memory-page-card ${hideSummary ? 'is-compact' : ''}">
+                <div class="memory-page-shell">
                     <div class="memory-page-copy">
+                        <div class="memory-page-kicker">
+                            <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                            <span>${escapeHtml(t_js('memory_page_card_label'))}</span>
+                        </div>
                         <div class="memory-page-title"></div>
                         <div class="memory-page-summary"></div>
                     </div>
@@ -356,8 +367,10 @@ function renderMemoryPages(pages) {
             </button>
         `);
         card.data('pageId', page.page_id);
-        card.find('.memory-page-title').text(page.title || t_js('memory_untitled'));
-        card.find('.memory-page-summary').text(page.summary || t_js('memory_no_summary'));
+        card.find('.memory-page-title').text(title);
+        card.find('.memory-page-summary')
+            .text(summary)
+            .toggle(!hideSummary);
         container.append(card);
     });
 }
@@ -369,31 +382,53 @@ function renderMemoryLintSummary(lint) {
     const duplicateCandidates = Number(lint.duplicate_candidates || 0);
     const orphanPages = Number(lint.orphan_pages || 0);
     const timestamp = String(lint.timestamp || '').trim();
+    const hasReview = Boolean(timestamp || checkedPages || actionsApplied || duplicateCandidates || orphanPages);
 
-    if (!checkedPages && !timestamp) {
-        container.hide().empty();
-        return;
-    }
-
-    const chips = [
-        `<span class="memory-lint-chip">${escapeHtml(t_js('memory_lint_checked').replace('{count}', String(checkedPages)))}</span>`,
-        `<span class="memory-lint-chip">${escapeHtml(t_js('memory_lint_actions').replace('{count}', String(actionsApplied)))}</span>`,
-        `<span class="memory-lint-chip">${escapeHtml(t_js('memory_lint_duplicates').replace('{count}', String(duplicateCandidates)))}</span>`,
-        `<span class="memory-lint-chip">${escapeHtml(t_js('memory_lint_orphans').replace('{count}', String(orphanPages)))}</span>`,
-    ].join('');
-
-    const details = Array.isArray(lint.details) ? lint.details.filter(Boolean).slice(0, 3) : [];
-    const detailsHtml = details.length
-        ? `<ul class="memory-lint-details">${details.map(item => `<li>${escapeHtml(String(item))}</li>`).join('')}</ul>`
-        : '';
+    const chips = hasReview
+        ? [
+            {
+                icon: 'bi-journal-check',
+                text: t_js('memory_lint_checked').replace('{count}', String(checkedPages)),
+            },
+            {
+                icon: 'bi-magic',
+                text: t_js('memory_lint_actions').replace('{count}', String(actionsApplied)),
+            },
+            {
+                icon: 'bi-copy',
+                text: t_js('memory_lint_duplicates').replace('{count}', String(duplicateCandidates)),
+            },
+            {
+                icon: 'bi-sign-intersection-side',
+                text: t_js('memory_lint_orphans').replace('{count}', String(orphanPages)),
+            },
+        ].map(chip => `
+            <div class="memory-lint-chip">
+                <span class="memory-lint-chip-icon" aria-hidden="true"><i class="bi ${chip.icon}"></i></span>
+                <span class="memory-lint-chip-text">${escapeHtml(chip.text)}</span>
+            </div>
+        `).join('')
+        : `<div class="memory-lint-empty-state">${escapeHtml(t_js('memory_lint_never_reviewed'))}</div>`;
 
     container.html(`
-        <div class="memory-lint-title-row">
-            <div class="memory-lint-title">${escapeHtml(t_js('memory_lint_last_title'))}</div>
-            ${timestamp ? `<div class="memory-lint-timestamp">${escapeHtml(formatMemoryDate(timestamp))}</div>` : ''}
+        <div class="memory-lint-card">
+            <div class="memory-lint-title-row">
+                <div class="memory-lint-title-group">
+                    <div class="memory-lint-badge" aria-hidden="true">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <div class="memory-lint-title-stack">
+                        <div class="memory-lint-title">${escapeHtml(t_js('memory_lint_last_title'))}</div>
+                        <div class="memory-lint-timestamp">${escapeHtml(timestamp ? formatMemoryDate(timestamp) : t_js('memory_lint_never_timestamp'))}</div>
+                    </div>
+                </div>
+                <button type="button" class="btn memory-lint-inline-action" id="memory-run-lint-button">
+                    <i class="bi bi-shield-check" aria-hidden="true"></i>
+                    <span>${escapeHtml(t_js('memory_lint_action'))}</span>
+                </button>
+            </div>
+            <div class="memory-lint-chips">${chips}</div>
         </div>
-        <div class="memory-lint-chips">${chips}</div>
-        ${detailsHtml}
     `).show();
 }
 

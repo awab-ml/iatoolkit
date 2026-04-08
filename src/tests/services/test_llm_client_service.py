@@ -242,6 +242,40 @@ class TestLLMClient:
         call_kwargs = self.mock_proxy.create_response.call_args.kwargs
         assert call_kwargs['attachments'] == native_attachments
 
+    def test_invoke_reinjects_native_attachments_returned_by_tool(self):
+        dispatcher_mock = MagicMock()
+        dispatcher_mock.dispatch.return_value = {
+            "status": "success",
+            "page": {"page_id": 14, "title": "Reporte"},
+            "__native_attachments__": [
+                {"name": "sales.csv", "mime_type": "text/csv", "base64": "U0FNUExF"}
+            ],
+        }
+
+        injector_mock = MagicMock()
+        injector_mock.get.return_value = dispatcher_mock
+
+        toolkit_mock = MagicMock()
+        toolkit_mock.get_injector.return_value = injector_mock
+
+        with patch('iatoolkit.current_iatoolkit', return_value=toolkit_mock):
+            tool_call = ToolCall('call1', 'function_call', 'iat_memory_get_page', '{"page_id": 14}')
+            response_with_tools = LLMResponse('r1', 'gpt-4o', 'completed', '', [tool_call], Usage(10, 5, 15))
+            self.mock_proxy.create_response.side_effect = [response_with_tools, self.mock_llm_response]
+
+            self.client.invoke(
+                company=self.company, user_identifier='user1', previous_response_id='prev1',
+                model='gpt-5', question='q', context='c', tools=[{}], text={}, images=[]
+            )
+
+        second_call_args = self.mock_proxy.create_response.call_args_list[1].kwargs
+        function_output_message = second_call_args['input'][1]
+        parsed_output = json.loads(function_output_message.get('output'))
+        assert "__native_attachments__" not in parsed_output
+        assert second_call_args['attachments'] == [
+            {"name": "sales.csv", "mime_type": "text/csv", "base64": "U0FNUExF"}
+        ]
+
     def test_invoke_serializes_dict_function_output_as_json(self):
         dispatcher_mock = MagicMock()
         dispatcher_mock.dispatch.return_value = {"status": "ok", "count": 2}

@@ -792,49 +792,66 @@ li {
 }
 
 .memory-tab-nav {
-    display: inline-flex;
-    gap: 0.18rem;
-    padding: 0.18rem;
-    background: color-mix(in srgb, var(--brand-primary-color) 10%, white);
-    border: 1px solid color-mix(in srgb, var(--brand-primary-color) 18%, white);
-    border-radius: 1rem;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.92),
-        0 8px 18px rgba(15, 23, 42, 0.05);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+    width: min(100%, 34rem);
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+.memory-tab-nav .nav-item {
+    min-width: 0;
 }
 
 .memory-tab-nav .nav-link {
-    border-radius: 0.82rem;
-    color: color-mix(in srgb, var(--brand-primary-color) 82%, #0f172a);
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    padding: 0.72rem 1.2rem;
-    background: transparent;
-    border: none;
-    min-width: 7.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.82rem 0.92rem 0.86rem;
+    border-radius: 1rem;
+    border: 1px solid #d8e0eb;
+    background: #ffffff;
+    color: #1f2937;
+    text-align: left;
     transition:
+        border-color 0.16s ease,
         background-color 0.16s ease,
-        color 0.16s ease,
         box-shadow 0.16s ease,
         transform 0.16s ease;
+    position: relative;
 }
 
 .memory-tab-nav .nav-link:hover {
-    background: color-mix(in srgb, var(--brand-primary-color) 12%, white);
-    color: var(--brand-primary-color);
+    border-color: color-mix(in srgb, var(--brand-primary-color) 24%, #cbd5e1);
+    background: #fbfcfe;
     transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
 }
 
 .memory-tab-nav .nav-link.active,
 .memory-tab-nav .show > .nav-link {
+    border-color: color-mix(in srgb, var(--brand-primary-color) 42%, #cbd5e1);
     background:
-        linear-gradient(135deg,
-            color-mix(in srgb, var(--brand-primary-color) 88%, white) 0%,
-            var(--brand-primary-color) 100%);
-    color: var(--brand-text-on-primary);
+        linear-gradient(180deg, color-mix(in srgb, var(--brand-primary-color) 14%, white) 0%, rgba(255, 255, 255, 1) 100%);
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.18),
-        0 8px 18px color-mix(in srgb, var(--brand-primary-color) 24%, transparent);
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        0 12px 28px rgba(15, 23, 42, 0.1);
+    color: var(--brand-primary-color);
+}
+
+.memory-tab-nav .nav-link.active::after,
+.memory-tab-nav .show > .nav-link::after {
+    content: "";
+    position: absolute;
+    inset: auto 0.9rem 0.55rem 0.9rem;
+    height: 0.18rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--brand-primary-color) 82%, white) 0%, color-mix(in srgb, var(--brand-primary-color) 36%, white) 100%);
 }
 
 .memory-tab-nav .nav-link:focus-visible {
@@ -844,12 +861,110 @@ li {
         0 0 0 5px color-mix(in srgb, var(--brand-primary-color) 38%, transparent);
 }
 
+.memory-tab-icon {
+    width: 2.2rem;
+    height: 2.2rem;
+    flex: 0 0 2.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.78rem;
+    color: #475467;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    font-size: 1rem;
+}
+
+.memory-tab-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.16rem;
+}
+
+.memory-tab-title {
+    display: block;
+    font-size: 0.97rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: inherit;
+}
+
+.memory-tab-subtitle {
+    display: block;
+    font-size: 0.77rem;
+    line-height: 1.28;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.memory-tab-nav .nav-link.active .memory-tab-icon,
+.memory-tab-nav .show > .nav-link .memory-tab-icon {
+    color: var(--brand-primary-color);
+    border-color: color-mix(in srgb, var(--brand-primary-color) 36%, #dbe4ee);
+    background: color-mix(in srgb, var(--brand-primary-color) 12%, white);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.92),
+        0 0 0 3px color-mix(in srgb, var(--brand-primary-color) 12%, white);
+}
+
+.memory-tab-nav .nav-link.active .memory-tab-subtitle,
+.memory-tab-nav .show > .nav-link .memory-tab-subtitle {
+    color: color-mix(in srgb, var(--brand-primary-color) 86%, #475467);
+}
+
+.memory-tab-nav .nav-link.active .memory-tab-title,
+.memory-tab-nav .show > .nav-link .memory-tab-title {
+    color: var(--brand-primary-color);
+}
+
+#memory-recent-tab .memory-tab-icon {
+    color: #b45309;
+    background: #fffaf0;
+    border-color: #f4dfb7;
+}
+
+#memory-pages-tab .memory-tab-icon {
+    color: color-mix(in srgb, var(--brand-primary-color) 88%, #243b53);
+    background: #f7f8ff;
+    border-color: color-mix(in srgb, var(--brand-primary-color) 14%, #dbe4ee);
+}
+
 .memory-toolbar {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.8rem;
     flex-wrap: wrap;
+}
+
+.memory-loading-indicator {
+    margin-left: auto;
+    min-height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.2rem 0;
+    color: #7b8798;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.16s ease, visibility 0.16s ease;
+}
+
+.memory-loading-indicator.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.memory-loading-indicator .spinner-border {
+    width: 0.82rem;
+    height: 0.82rem;
+    border-width: 0.12em;
+    color: var(--brand-primary-color);
 }
 
 .memory-lint-button {
@@ -878,60 +993,241 @@ li {
 
 .memory-lint-summary {
     margin-bottom: 0.9rem;
-    padding: 0.9rem 1rem;
-    border-radius: 1rem;
-    background: linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
-    border: 1px solid #e5e7eb;
+}
+
+.memory-lint-card {
+    position: relative;
+    overflow: hidden;
+    padding: 0.72rem 0.86rem 0.74rem;
+    border-radius: 0.96rem;
+    border: 1px solid color-mix(in srgb, var(--brand-primary-color) 22%, #dbe4ee);
+    background:
+        linear-gradient(180deg,
+            color-mix(in srgb, var(--brand-primary-color) 7%, white) 0%,
+            color-mix(in srgb, var(--brand-primary-color) 3%, white) 28%,
+            rgba(255, 255, 255, 0.99) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.92),
+        inset 0 0 0 1px color-mix(in srgb, var(--brand-primary-color) 8%, white),
+        0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.memory-lint-card::before {
+    content: none;
+}
+
+.memory-lint-card::after {
+    content: "";
+    position: absolute;
+    top: 0.78rem;
+    right: 0.86rem;
+    width: 4.4rem;
+    height: 1.45rem;
+    border-radius: 999px;
+    background:
+        radial-gradient(circle at 0.4rem 0.4rem, color-mix(in srgb, var(--brand-primary-color) 18%, white) 0 0.08rem, transparent 0.09rem) 0 0 / 0.55rem 0.55rem;
+    opacity: 0.7;
+    pointer-events: none;
 }
 
 .memory-lint-title-row {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    gap: 0.8rem;
-    margin-bottom: 0.6rem;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.44rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-primary-color) 12%, #e2e8f0);
     flex-wrap: wrap;
 }
 
+.memory-lint-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.memory-lint-title-stack {
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+
+.memory-lint-badge {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex: 0 0 1.1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--brand-primary-color);
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    font-size: 0.9rem;
+}
+
 .memory-lint-title {
-    font-size: 0.94rem;
+    font-size: 0.86rem;
     font-weight: 700;
     color: #0f172a;
+    line-height: 1.2;
+    letter-spacing: 0;
+    text-transform: uppercase;
 }
 
 .memory-lint-timestamp {
-    font-size: 0.82rem;
-    color: #94a3b8;
+    font-size: 0.74rem;
+    color: #7b8798;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    line-height: 1.1;
+    font-weight: 500;
 }
 
 .memory-lint-chips {
     display: flex;
+    align-items: center;
+    gap: 0.3rem 0.5rem;
     flex-wrap: wrap;
-    gap: 0.45rem;
+    min-width: 0;
 }
 
 .memory-lint-chip {
     display: inline-flex;
     align-items: center;
-    padding: 0.34rem 0.6rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid #e2e8f0;
-    color: #475569;
-    font-size: 0.8rem;
-    font-weight: 600;
+    gap: 0.26rem;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #526173;
+    font-weight: 500;
+    flex: 0 0 auto;
 }
 
-.memory-lint-details {
-    margin: 0.65rem 0 0;
-    padding-left: 1rem;
-    color: #475569;
-    font-size: 0.88rem;
+.memory-lint-empty-state {
+    color: #6b7280;
+    font-size: 0.76rem;
+    line-height: 1.2;
+}
+
+.memory-lint-chip + .memory-lint-chip::before {
+    content: "\2022";
+    color: #a0aec0;
+    margin-right: 0.26rem;
+}
+
+.memory-lint-chip-icon {
+    width: auto;
+    height: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0;
+    background: transparent;
+    color: #7b8798;
+    font-size: 0.7rem;
+    box-shadow: none;
+}
+
+.memory-lint-chip-text {
+    min-width: 0;
+    font-size: 0.76rem;
+    line-height: 1.2;
+    white-space: normal;
+}
+
+.memory-lint-inline-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--brand-primary-color) 14%, #dbe4ee);
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--brand-primary-color);
+    font-size: 0.76rem;
+    font-weight: 700;
+    line-height: 1.1;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.memory-lint-inline-action:hover,
+.memory-lint-inline-action:focus {
+    color: var(--brand-primary-color);
+    background: rgba(255, 255, 255, 0.92);
+    border-color: color-mix(in srgb, var(--brand-primary-color) 22%, #dbe4ee);
+}
+
+.memory-lint-inline-action.is-loading,
+.memory-lint-inline-action:disabled {
+    opacity: 1;
+    cursor: wait;
+    color: color-mix(in srgb, var(--brand-primary-color) 82%, #0f172a);
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.memory-lint-inline-action.is-loading i {
+    animation: memory-lint-button-spin 0.9s linear infinite;
+}
+
+@keyframes memory-lint-button-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 576px) {
+    .memory-loading-indicator {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-end;
+        min-height: 0;
+        font-size: 0.74rem;
+    }
+
+    .memory-lint-card {
+        padding: 0.62rem 0.72rem 0.64rem;
+    }
+
+    .memory-lint-title-group {
+        gap: 0.4rem;
+    }
+
+    .memory-lint-title-stack {
+        gap: 0.32rem 0.45rem;
+    }
+
+    .memory-lint-badge {
+        width: 1rem;
+        height: 1rem;
+        flex-basis: 1rem;
+    }
+
+    .memory-lint-title {
+        font-size: 0.82rem;
+    }
+
+    .memory-lint-chip-text {
+        font-size: 0.74rem;
+    }
+
+    .memory-lint-inline-action {
+        padding-inline: 0.58rem;
+    }
 }
 
 @media (max-width: 576px) {
     .memory-tab-nav {
-        display: flex;
         width: 100%;
     }
 
@@ -939,7 +1235,25 @@ li {
     .memory-tab-nav .nav-link {
         flex: 1 1 0;
         min-width: 0;
-        text-align: center;
+    }
+
+    .memory-tab-nav .nav-link {
+        gap: 0.68rem;
+        padding: 0.75rem 0.8rem;
+    }
+
+    .memory-tab-icon {
+        width: 2rem;
+        height: 2rem;
+        flex-basis: 2rem;
+    }
+
+    .memory-tab-title {
+        font-size: 0.92rem;
+    }
+
+    .memory-tab-subtitle {
+        font-size: 0.74rem;
     }
 }
 
@@ -964,6 +1278,25 @@ li {
     transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
 }
 
+.memory-page-card {
+    position: relative;
+    overflow: hidden;
+    border-color: #dbe4ee;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 251, 255, 0.98) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.86),
+        0 4px 14px rgba(15, 23, 42, 0.03);
+}
+
+.memory-page-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 0.22rem;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--brand-primary-color) 58%, white) 0%, rgba(255, 255, 255, 0) 72%);
+}
+
 .memory-page-card:hover,
 .memory-item-card:hover {
     border-color: rgba(76, 106, 141, 0.35);
@@ -976,16 +1309,56 @@ li {
     box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
 }
 
-.memory-page-title {
+.memory-page-shell {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.9rem;
+}
+
+.memory-page-copy {
+    min-width: 0;
+    display: grid;
+    gap: 0.34rem;
+}
+
+.memory-page-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 1rem;
+    color: color-mix(in srgb, var(--brand-primary-color) 78%, #64748b);
+    font-size: 0.68rem;
     font-weight: 700;
-    color: #111827;
-    margin-bottom: 0.25rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.memory-page-kicker i {
+    font-size: 0.76rem;
+}
+
+.memory-page-title {
+    color: #1f2937;
+    font-size: 0.98rem;
+    line-height: 1.42;
+    font-weight: 600;
+    letter-spacing: -0.01em;
 }
 
 .memory-page-summary,
 .memory-item-preview {
-    color: #4b5563;
-    font-size: 0.95rem;
+    color: #667085;
+    font-size: 0.94rem;
+    line-height: 1.5;
+}
+
+.memory-page-card.is-compact .memory-page-copy {
+    gap: 0.2rem;
+}
+
+.memory-page-card.is-compact .memory-page-title {
+    color: #273449;
 }
 
 .memory-item-shell {
@@ -1108,7 +1481,8 @@ li {
     color: #64748b;
     font-size: 1rem;
     line-height: 1;
-    padding-top: 0.15rem;
+    padding-top: 0.2rem;
+    flex: 0 0 auto;
 }
 
 .memory-page-card.is-open .memory-page-open-hint i {

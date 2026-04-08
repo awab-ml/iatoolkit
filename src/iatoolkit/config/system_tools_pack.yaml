@@ -310,7 +310,7 @@ tools:
         - query
         - limit
   - function_name: iat_memory_get_page
-    description: Recupera una página completa de la Memoria personal del usuario, incluyendo resumen, decisiones, próximos pasos y fuentes.
+    description: Recupera una página completa de la Memoria personal del usuario, incluyendo resumen, decisiones, próximos pasos y fuentes. Si la página proviene de capturas con archivos adjuntos compatibles, esos archivos pueden quedar adjuntos nativamente al turno actual del modelo para inspección directa; en ese caso no hace falta pedir permiso para abrir un access_url temporal.
     routing:
       force_include_capability: has_user_memory
     routing_profile:

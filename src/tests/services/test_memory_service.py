@@ -365,6 +365,51 @@ class TestMemoryService:
         assert result["page"]["source_items"][0]["filename"] == "469204.pdf"
         assert result["page"]["source_items"][0]["access_url"] == "https://cdn.example.com/469204.pdf"
 
+    def test_get_page_can_include_native_attachments_for_file_sources(self):
+        page = SimpleNamespace(
+            id=14,
+            title="469204.pdf",
+            summary="Saved file: 469204.pdf",
+            slug="469204-pdf",
+            wiki_path="companies/acme/users/x/memory/wiki/469204-pdf.md",
+            updated_at=None,
+        )
+        item = SimpleNamespace(
+            id=91,
+            item_type=MemoryItemType.FILE,
+            status="compiled",
+            title="469204.pdf",
+            content_text="Saved file: 469204.pdf",
+            source_url=None,
+            filename="469204.pdf",
+            mime_type="application/pdf",
+            storage_key="companies/acme/users/x/memory/raw/469204.pdf",
+            created_at=None,
+        )
+        self.memory_repo.get_page.return_value = page
+        self.memory_wiki_service.read_page.return_value = {
+            "title": "469204.pdf",
+            "summary": "Saved file: 469204.pdf",
+            "sources": ["469204.pdf"],
+            "source_item_ids": [91],
+        }
+        self.memory_repo.list_items_by_ids.return_value = [item]
+        self.storage_service.generate_presigned_url.return_value = "https://cdn.example.com/469204.pdf"
+        self.storage_service.get_document_content.return_value = b"%PDF-1.4"
+
+        result = self.service.get_page("acme", "user@example.com", 14, include_native_attachments=True)
+
+        assert result["status"] == "success"
+        assert len(result[MemoryService.TOOL_NATIVE_ATTACHMENTS_KEY]) == 1
+        attachment = result[MemoryService.TOOL_NATIVE_ATTACHMENTS_KEY][0]
+        assert attachment["name"] == "469204.pdf"
+        assert attachment["mime_type"] == "application/pdf"
+        assert attachment["base64"] == "JVBERi0xLjQ="
+        assert result["native_attachment_delivery"]["status"] == "native_attached"
+        assert result["native_attachment_delivery"]["count"] == 1
+        assert result["native_attachment_delivery"]["filenames"] == ["469204.pdf"]
+        assert "already available to the model" in result["native_attachment_delivery"]["note"]
+
     def test_serialize_item_includes_capture_group_id(self):
         item = SimpleNamespace(
             id=5,

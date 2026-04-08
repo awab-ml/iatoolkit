@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import base64
+import logging
 import mimetypes
 import os
 import re
@@ -31,6 +33,10 @@ from iatoolkit.services.storage_service import StorageService
 
 
 class MemoryService:
+    TOOL_NATIVE_ATTACHMENTS_KEY = "__native_attachments__"
+    MAX_NATIVE_ATTACHMENTS_PER_PAGE = 10
+    MAX_NATIVE_ATTACHMENT_BYTES = 20 * 1024 * 1024
+
     @inject
     def __init__(self,
                  profile_repo: ProfileRepo,
@@ -321,7 +327,11 @@ class MemoryService:
             "raw_items": raw_matches,
         }
 
-    def get_page(self, company_short_name: str, user_identifier: str, page_id: int) -> dict:
+    def get_page(self,
+                 company_short_name: str,
+                 user_identifier: str,
+                 page_id: int,
+                 include_native_attachments: bool = False) -> dict:
         self._compile_on_demand(company_short_name, user_identifier)
         company = self.profile_repo.get_company_by_short_name(company_short_name)
         if not company:
@@ -350,7 +360,25 @@ class MemoryService:
             ],
         })
         payload["sources"] = payload.get("sources") or []
-        return {"status": "success", "page": payload}
+        response = {"status": "success", "page": payload}
+        if include_native_attachments:
+            native_attachments = self._build_page_native_attachments(
+                company_short_name=company_short_name,
+                source_items=source_items,
+            )
+            response[self.TOOL_NATIVE_ATTACHMENTS_KEY] = native_attachments
+            response["native_attachment_delivery"] = {
+                "status": "native_attached" if native_attachments else "none",
+                "count": len(native_attachments),
+                "filenames": [str(item.get("name") or "").strip() for item in native_attachments if item.get("name")],
+                "note": (
+                    "Attached files are already available to the model as native files for direct inspection in this turn. "
+                    "Use access_url only when the user explicitly asks for a download link."
+                    if native_attachments else
+                    "No native files were attached for this page."
+                ),
+            }
+        return response
 
     def lint_memory_wiki(self, company_short_name: str, user_identifier: str) -> dict:
         trigger_result = self.memory_lint_trigger.trigger(
@@ -560,6 +588,55 @@ class MemoryService:
         if not source_item_ids:
             return []
         return self.memory_repo.list_items_by_ids(company_id, user_identifier, source_item_ids)
+
+    def _build_page_native_attachments(self,
+                                       company_short_name: str,
+                                       source_items: list[MemoryItem]) -> list[dict]:
+        attachments = []
+        seen_storage_keys = set()
+
+        for item in source_items or []:
+            if len(attachments) >= self.MAX_NATIVE_ATTACHMENTS_PER_PAGE:
+                break
+            if getattr(item, "item_type", None) != MemoryItemType.FILE:
+                continue
+
+            storage_key = str(getattr(item, "storage_key", "") or "").strip()
+            if not storage_key or storage_key in seen_storage_keys:
+                continue
+
+            try:
+                file_bytes = self.storage_service.get_document_content(company_short_name, storage_key)
+            except Exception as exc:
+                logging.warning("Could not load memory attachment '%s': %s", storage_key, exc)
+                continue
+
+            if not isinstance(file_bytes, (bytes, bytearray)) or not file_bytes:
+                continue
+            if len(file_bytes) > self.MAX_NATIVE_ATTACHMENT_BYTES:
+                logging.info(
+                    "Skipping memory attachment '%s' because it exceeds %s bytes.",
+                    storage_key,
+                    self.MAX_NATIVE_ATTACHMENT_BYTES,
+                )
+                continue
+
+            filename = str(getattr(item, "filename", None) or os.path.basename(storage_key) or "attachment").strip()
+            mime_type = str(
+                getattr(item, "mime_type", None)
+                or mimetypes.guess_type(filename)[0]
+                or "application/octet-stream"
+            ).strip().lower()
+
+            seen_storage_keys.add(storage_key)
+            attachments.append({
+                "name": filename,
+                "mime_type": mime_type,
+                "base64": base64.b64encode(file_bytes).decode("ascii"),
+                "size_bytes": len(file_bytes),
+            })
+
+        return attachments
 
     def _score_page_match(self,
                           normalized_query: str,

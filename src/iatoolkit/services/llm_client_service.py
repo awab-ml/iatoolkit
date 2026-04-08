@@ -83,6 +83,7 @@ class llmClient:
 
         images = images or []
         attachments = attachments or []
+        active_attachments = list(attachments)
         f_calls = []  # keep track of the function calls executed by the LLM
         f_call_time = 0
         response = None
@@ -122,7 +123,7 @@ class llmClient:
                     text=text_payload,
                     reasoning=reasoning,
                     images=images,
-                    attachments=attachments,
+                    attachments=active_attachments,
                 )
                 stats = self.get_stats(response)
 
@@ -189,6 +190,9 @@ class llmClient:
                         error_message = f"Dispatch error en tool {function_name} con args {args} -******- {str(e)}"
                         raise IAToolkitException(IAToolkitException.ErrorType.CALL_ERROR, error_message)
 
+                    result, tool_native_attachments = self._split_tool_result_and_native_attachments(result)
+                    active_attachments = self._merge_native_attachments(active_attachments, tool_native_attachments)
+
                     # add the return value into the list of messages
                     input_messages.append({
                         "type": "function_call_output",
@@ -225,7 +229,7 @@ class llmClient:
                     tools=tools,
                     text=text_payload,
                     images=images,
-                    attachments=attachments,
+                    attachments=active_attachments,
                 )
                 stats_fcall = self.add_stats(stats_fcall, self.get_stats(response))
 
@@ -327,6 +331,47 @@ class llmClient:
             return json.dumps(result, ensure_ascii=False, default=str)
         except Exception:
             return str(result)
+
+    @staticmethod
+    def _split_tool_result_and_native_attachments(result):
+        if not isinstance(result, dict):
+            return result, []
+
+        attachments = result.get("__native_attachments__")
+        if not isinstance(attachments, list):
+            return result, []
+
+        sanitized = dict(result)
+        sanitized.pop("__native_attachments__", None)
+        return sanitized, attachments
+
+    @staticmethod
+    def _merge_native_attachments(current_attachments, new_attachments):
+        merged = list(current_attachments or [])
+        seen = {
+            (
+                str(item.get("name") or item.get("filename") or "").strip(),
+                str(item.get("mime_type") or item.get("type") or "").strip().lower(),
+                str(item.get("base64") or item.get("content") or "").strip(),
+            )
+            for item in merged
+            if isinstance(item, dict)
+        }
+
+        for attachment in new_attachments or []:
+            if not isinstance(attachment, dict):
+                continue
+            signature = (
+                str(attachment.get("name") or attachment.get("filename") or "").strip(),
+                str(attachment.get("mime_type") or attachment.get("type") or "").strip().lower(),
+                str(attachment.get("base64") or attachment.get("content") or "").strip(),
+            )
+            if not signature[0] or not signature[2] or signature in seen:
+                continue
+            seen.add(signature)
+            merged.append(attachment)
+
+        return merged
 
     def set_company_context(self,
             company: Company,

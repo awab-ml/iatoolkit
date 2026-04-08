@@ -56,6 +56,24 @@ class TestToolService:
     def test_system_handlers_include_pdf_generator(self):
         assert self.service.system_handlers["iat_generate_pdf"] == self.mock_pdf_service.pdf_generator
 
+    def test_handle_memory_get_page_tool_requests_native_attachments(self):
+        self.service._memory_service = MagicMock()
+        self.service._memory_service.get_page.return_value = {"status": "success", "page": {"page_id": 14}}
+
+        result = self.service._handle_memory_get_page_tool(
+            company_short_name="my_company",
+            user_identifier="user-123",
+            page_id=14,
+        )
+
+        self.service._memory_service.get_page.assert_called_once_with(
+            company_short_name="my_company",
+            user_identifier="user-123",
+            page_id=14,
+            include_native_attachments=True,
+        )
+        assert result["status"] == "success"
+
 
     def test_register_system_tools_success(self):
         """

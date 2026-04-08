@@ -241,6 +241,7 @@ class ToolService:
                 company_short_name=company_short_name,
                 user_identifier=user_identifier,
                 page_id=page_id,
+                include_native_attachments=True,
             )
         except Exception:
             logging.exception(

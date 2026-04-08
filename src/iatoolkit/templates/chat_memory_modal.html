@@ -38,29 +38,34 @@
                             <ul class="nav nav-pills memory-tab-nav" id="memory-tab-nav" role="tablist">
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link active" id="memory-recent-tab" data-bs-toggle="pill" data-bs-target="#memory-recent-pane" type="button" role="tab">
-                                        {{ t('ui.memory.tab_recent') }}
+                                        <span class="memory-tab-icon" aria-hidden="true">
+                                            <i class="bi bi-journal-arrow-down"></i>
+                                        </span>
+                                        <span class="memory-tab-copy">
+                                            <span class="memory-tab-title">{{ t('ui.memory.tab_recent') }}</span>
+                                            <span class="memory-tab-subtitle">{{ t('ui.memory.tab_recent_helper') }}</span>
+                                        </span>
                                     </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link" id="memory-pages-tab" data-bs-toggle="pill" data-bs-target="#memory-pages-pane" type="button" role="tab">
-                                        {{ t('ui.memory.tab_memories') }}
+                                        <span class="memory-tab-icon" aria-hidden="true">
+                                            <i class="bi bi-file-earmark-text"></i>
+                                        </span>
+                                        <span class="memory-tab-copy">
+                                            <span class="memory-tab-title">{{ t('ui.memory.tab_memories') }}</span>
+                                            <span class="memory-tab-subtitle">{{ t('ui.memory.tab_memories_helper') }}</span>
+                                        </span>
                                     </button>
                                 </li>
                             </ul>
-                            <button type="button" class="btn btn-sm btn-outline-secondary memory-lint-button" id="memory-run-lint-button">
-                                <i class="bi bi-shield-check me-2"></i>
-                                {{ t('ui.memory.run_lint') }}
-                            </button>
-                        </div>
-
-                        <div id="memory-lint-summary" class="memory-lint-summary" style="display:none;"></div>
-
-                        <div id="memory-loading" class="text-center p-4" style="display:none;">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">{{ t('ui.memory.loading') }}</span>
+                            <div id="memory-loading" class="memory-loading-indicator" aria-live="polite" aria-atomic="true">
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span>{{ t('ui.memory.loading_dashboard') }}</span>
                             </div>
-                            <p class="mt-2 mb-0">{{ t('ui.memory.loading_dashboard') }}</p>
                         </div>
+
+                        <div id="memory-lint-summary" class="memory-lint-summary"></div>
 
                         <div class="tab-content">
                             <div class="tab-pane fade show active" id="memory-recent-pane" role="tabpanel">
